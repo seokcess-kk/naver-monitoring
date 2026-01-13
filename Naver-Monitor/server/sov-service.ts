@@ -571,7 +571,7 @@ export async function executeSovRun(runId: string): Promise<void> {
                 brandEmbeddings.get(brand)!
               );
               const combinedScore = calculateCombinedScore(ruleScore, semanticScore);
-              const isRelevant = combinedScore >= RELEVANCE_THRESHOLD;
+              const isRelevant = ruleScore >= 0.8 || combinedScore >= RELEVANCE_THRESHOLD;
 
               await db.insert(sovScores).values({
                 exposureId: exposure.id,
