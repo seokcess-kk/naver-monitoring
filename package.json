@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "cd Naver-Monitor && npm run build",
+    "build": "cd Naver-Monitor && npm run db:push && npm run build",
     "start": "cd Naver-Monitor && npm run start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

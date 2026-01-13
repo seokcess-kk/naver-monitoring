@@ -41,6 +41,7 @@ app.use(
     store: new PgSession({
       pool,
       tableName: "sessions",
+      createTableIfMissing: true,
     }),
     secret: process.env.SESSION_SECRET || "naver-monitor-session-secret-key-2024",
     resave: false,
