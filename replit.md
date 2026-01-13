@@ -40,13 +40,28 @@ Preferred communication style: Simple, everyday language.
 - **Migrations:** Drizzle Kit (`npm run db:push`)
 
 ### Authentication
-- Email/password authentication (migrated from Replit Auth)
+- Email/password authentication with 3-step registration flow:
+  1. Email input and verification email sent
+  2. Email verification via token link
+  3. Password setup and account creation
 - SendGrid integration for email verification and password reset
 - Session-based auth with PostgreSQL session store
-- Rate-limited auth endpoints (10 requests/15 minutes)
+- Rate-limited auth endpoints (10 requests/15 minutes for auth, 3 requests/minute for resend)
+- verification_tokens table supports both registration and password_reset types
+- Users are only created after email verification is complete
+- Re-registration allowed for unverified emails with expired tokens
 
 ### API Structure
-- `/api/auth/*` - Authentication endpoints (register, login, verify-email, logout)
+- `/api/auth/*` - Authentication endpoints:
+  - `POST /api/auth/start-registration` - Initiate registration with email
+  - `GET /api/auth/verify-registration` - Verify token validity
+  - `POST /api/auth/complete-registration` - Set password and create account
+  - `POST /api/auth/resend-registration` - Resend verification email
+  - `POST /api/auth/login` - User login
+  - `POST /api/auth/logout` - User logout
+  - `GET /api/auth/user` - Get current user
+  - `POST /api/auth/forgot-password` - Request password reset
+  - `POST /api/auth/reset-password` - Reset password with token
 - `/api/api-keys` - User API key management (CRUD)
 - `/api/search` - Unified Naver search (4 channels + SmartBlock)
 - `/api/search/channel` - Individual channel pagination
