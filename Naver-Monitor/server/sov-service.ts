@@ -867,25 +867,22 @@ export async function executeSovRun(runId: string): Promise<void> {
     }
     
     const flatItems: FlatSmartBlockItem[] = [];
+    const mapPlacePatterns = [
+      "지도", "map", "플레이스", "place", "장소", 
+      "위치", "location", "매장", "store", "업체"
+    ];
+    
     for (const section of smartBlockSections) {
       const sectionTitle = section.sectionTitle.toLowerCase();
-      const isTargetSection = 
-        sectionTitle.includes("뉴스") ||
-        sectionTitle.includes("news") ||
-        sectionTitle.includes("view") ||
-        sectionTitle.includes("블로그") ||
-        sectionTitle.includes("blog") ||
-        sectionTitle.includes("포스트") ||
-        sectionTitle.includes("인플루언서") ||
-        sectionTitle.includes("콘텐츠") ||
-        sectionTitle.includes("관련") ||
-        sectionTitle.includes("추천") ||
-        sectionTitle.includes("카페") ||
-        sectionTitle.includes("cafe") ||
-        sectionTitle.includes("지식") ||
-        sectionTitle.includes("kin");
+      const normalizedTitle = sectionTitle.replace(/\s+/g, "");
+      
+      const isExcludedSection = mapPlacePatterns.some(pattern => 
+        normalizedTitle.includes(pattern.toLowerCase())
+      );
         
-      if (isTargetSection) {
+      if (isExcludedSection) {
+        console.log(`[SOV] Excluding map/place section: "${section.sectionTitle}"`);
+      } else {
         console.log(`[SOV] Including section: "${section.sectionTitle}" (${section.posts.length} posts)`);
         for (const post of section.posts) {
           flatItems.push({
@@ -895,8 +892,6 @@ export async function executeSovRun(runId: string): Promise<void> {
             description: post.summary || "",
           });
         }
-      } else {
-        console.log(`[SOV] Skipping section: "${section.sectionTitle}"`);
       }
     }
 
