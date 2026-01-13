@@ -122,3 +122,6 @@
 ## Development Commands
 - `npm run dev` - 개발 서버 실행
 - `npm run db:push` - 데이터베이스 스키마 동기화
+
+## Architecture Documentation
+자세한 아키텍처 문서는 [ARCHITECTURE.md](./ARCHITECTURE.md)를 참조하세요.
