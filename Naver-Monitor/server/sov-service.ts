@@ -299,10 +299,74 @@ async function extractViewContent(url: string): Promise<string | null> {
   }
 }
 
-async function extractCafeContent(url: string): Promise<string | null> {
+async function extractCafeContentMobile(url: string): Promise<string | null> {
   let browser = null;
   try {
-    console.log(`[SOV] Extracting cafe content from: ${url}`);
+    const mobileUrl = convertCafeUrlToMobile(url);
+    console.log(`[SOV] Extracting cafe content (mobile): ${mobileUrl}`);
+    
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    });
+
+    const page = await browser.newPage();
+    await page.setUserAgent(
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
+    );
+    await page.setViewport({ width: 390, height: 844 });
+    
+    await page.setExtraHTTPHeaders({
+      "Referer": "https://m.search.naver.com/search.naver?where=m_cafe",
+      "Accept-Language": "ko-KR,ko;q=0.9",
+    });
+    
+    await page.goto(mobileUrl, { waitUntil: "networkidle2", timeout: 25000 });
+    await new Promise(r => setTimeout(r, 2000));
+    
+    const textContent = await page.evaluate(() => {
+      const selectors = [
+        ".se-main-container",
+        ".article_container",
+        ".ArticleContentBox",
+        ".post_article",
+        ".article_viewer",
+        ".ContentRenderer",
+        "#ct",
+        ".content_area",
+        "article",
+        ".se-component-content"
+      ];
+      
+      for (const selector of selectors) {
+        const el = document.querySelector(selector);
+        if (el && el.textContent && el.textContent.trim().length > 100) {
+          return el.textContent.trim();
+        }
+      }
+      
+      const scripts = document.querySelectorAll("script, style, noscript, header, nav, footer, .gnb, .lnb, .cafe_header");
+      scripts.forEach((el) => el.remove());
+      return document.body?.innerText || "";
+    });
+
+    const cleaned = textContent.replace(/\s+/g, " ").trim();
+    console.log(`[SOV] Cafe mobile content extracted: ${cleaned.length} chars`);
+    return cleaned.length > 100 ? cleaned.slice(0, 5000) : null;
+  } catch (error) {
+    console.error("[SOV] Cafe mobile extraction failed:", error);
+    return null;
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+}
+
+async function extractCafeContentPC(url: string): Promise<string | null> {
+  let browser = null;
+  try {
+    console.log(`[SOV] Extracting cafe content (PC fallback): ${url}`);
     
     browser = await puppeteer.launch({
       headless: true,
@@ -367,16 +431,27 @@ async function extractCafeContent(url: string): Promise<string | null> {
     });
 
     const cleaned = textContent.replace(/\s+/g, " ").trim();
-    console.log(`[SOV] Cafe content extracted: ${cleaned.length} chars`);
+    console.log(`[SOV] Cafe PC content extracted: ${cleaned.length} chars`);
     return cleaned.length > 100 ? cleaned.slice(0, 5000) : null;
   } catch (error) {
-    console.error("[SOV] Cafe extraction failed:", error);
+    console.error("[SOV] Cafe PC extraction failed:", error);
     return null;
   } finally {
     if (browser) {
       await browser.close();
     }
   }
+}
+
+async function extractCafeContent(url: string): Promise<string | null> {
+  let content = await extractCafeContentMobile(url);
+  if (content) {
+    return content;
+  }
+  
+  console.log(`[SOV] Mobile cafe extraction failed, trying PC version...`);
+  content = await extractCafeContentPC(url);
+  return content;
 }
 
 async function extractContentWithPuppeteer(url: string): Promise<string | null> {
