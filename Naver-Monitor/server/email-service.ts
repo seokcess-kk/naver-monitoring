@@ -2,6 +2,17 @@ import sgMail from '@sendgrid/mail';
 
 let connectionSettings: any;
 
+function getAppBaseUrl(): string {
+  if (process.env.REPLIT_DOMAINS) {
+    const domains = process.env.REPLIT_DOMAINS.split(',');
+    return 'https://' + domains[0];
+  }
+  if (process.env.REPLIT_DEV_DOMAIN) {
+    return 'https://' + process.env.REPLIT_DEV_DOMAIN;
+  }
+  return 'http://localhost:5000';
+}
+
 async function getCredentials() {
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME
   const xReplitToken = process.env.REPL_IDENTITY 
@@ -42,7 +53,7 @@ export async function getUncachableSendGridClient() {
 export async function sendRegistrationEmail(toEmail: string, registrationToken: string) {
   const { client, fromEmail } = await getUncachableSendGridClient();
   
-  const registrationUrl = `${process.env.REPLIT_DEV_DOMAIN ? 'https://' + process.env.REPLIT_DEV_DOMAIN : 'http://localhost:5000'}/complete-signup?token=${registrationToken}`;
+  const registrationUrl = `${getAppBaseUrl()}/complete-signup?token=${registrationToken}`;
   
   const msg = {
     to: toEmail,
@@ -94,7 +105,7 @@ export async function sendRegistrationEmail(toEmail: string, registrationToken: 
 export async function sendPasswordResetEmail(toEmail: string, resetToken: string, userName?: string) {
   const { client, fromEmail } = await getUncachableSendGridClient();
   
-  const resetUrl = `${process.env.REPLIT_DEV_DOMAIN ? 'https://' + process.env.REPLIT_DEV_DOMAIN : 'http://localhost:5000'}/reset-password?token=${resetToken}`;
+  const resetUrl = `${getAppBaseUrl()}/reset-password?token=${resetToken}`;
   
   const msg = {
     to: toEmail,
