@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/header";
@@ -9,8 +9,18 @@ import { ApiKeySetup } from "@/components/api-key-setup";
 import { SovPanel } from "@/components/sov-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, BarChart3 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Search, BarChart3, Monitor, Smartphone, TrendingUp } from "lucide-react";
 import type { ApiKeyPublic } from "@shared/schema";
+
+interface KeywordVolumeData {
+  keyword: string;
+  monthlyPcQcCnt: number | null;
+  monthlyMobileQcCnt: number | null;
+  available: boolean;
+  configured?: boolean;
+  error?: boolean;
+}
 
 interface SearchResult {
   smartBlock: SmartBlockResult[];
@@ -90,11 +100,31 @@ export default function Dashboard() {
   });
   const [currentKeyword, setCurrentKeyword] = useState("");
   const [currentSort, setCurrentSort] = useState<"sim" | "date">("sim");
+  const [keywordVolume, setKeywordVolume] = useState<KeywordVolumeData | null>(null);
+  const [isLoadingVolume, setIsLoadingVolume] = useState(false);
 
   const { data: apiKey, isLoading: apiKeyLoading, refetch: refetchApiKey } = useQuery<ApiKeyPublic>({
     queryKey: ["/api/api-keys"],
     enabled: !!user,
   });
+
+  const fetchKeywordVolume = async (keyword: string) => {
+    setIsLoadingVolume(true);
+    try {
+      const response = await fetch(`/api/keyword-volume?keyword=${encodeURIComponent(keyword)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setKeywordVolume(data);
+      } else {
+        setKeywordVolume({ keyword, monthlyPcQcCnt: null, monthlyMobileQcCnt: null, available: false, error: true });
+      }
+    } catch (error) {
+      console.error("Keyword volume fetch error:", error);
+      setKeywordVolume({ keyword, monthlyPcQcCnt: null, monthlyMobileQcCnt: null, available: false, error: true });
+    } finally {
+      setIsLoadingVolume(false);
+    }
+  };
 
   const handleSearch = async (keyword: string, sort: "sim" | "date") => {
     if (!apiKey?.hasClientSecret) return;
@@ -103,12 +133,15 @@ export default function Dashboard() {
     setCurrentKeyword(keyword);
     setCurrentSort(sort);
     setChannelPages({ blog: 1, cafe: 1, kin: 1, news: 1 });
+    setKeywordVolume(null);
 
     try {
-      const response = await fetch(`/api/search?keyword=${encodeURIComponent(keyword)}&sort=${sort}&page=1`);
-      if (!response.ok) throw new Error("검색 실패");
-      const data = await response.json();
+      const searchResponse = await fetch(`/api/search?keyword=${encodeURIComponent(keyword)}&sort=${sort}&page=1`);
+      if (!searchResponse.ok) throw new Error("검색 실패");
+      const data = await searchResponse.json();
       setSearchResults(data);
+      
+      fetchKeywordVolume(keyword);
     } catch (error) {
       console.error("Search error:", error);
     } finally {
@@ -197,6 +230,58 @@ export default function Dashboard() {
                   isSearching={isSearching}
                   hasApiKey={!!apiKey.hasClientSecret}
                 />
+
+                {currentKeyword && (
+                  <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-background">
+                    <CardContent className="py-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-primary/10">
+                            <TrendingUp className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-lg">{currentKeyword}</p>
+                            <p className="text-xs text-muted-foreground">최근 30일 검색량</p>
+                          </div>
+                        </div>
+                        
+                        {isLoadingVolume ? (
+                          <div className="flex gap-6">
+                            <Skeleton className="h-12 w-24" />
+                            <Skeleton className="h-12 w-24" />
+                          </div>
+                        ) : keywordVolume?.available ? (
+                          <div className="flex gap-6">
+                            <div className="text-center px-4 py-2 rounded-lg bg-background border">
+                              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                                <Monitor className="w-4 h-4" />
+                                <span className="text-xs font-medium">PC</span>
+                              </div>
+                              <p className="text-xl font-bold text-foreground">
+                                {keywordVolume.monthlyPcQcCnt?.toLocaleString() ?? "-"}
+                              </p>
+                            </div>
+                            <div className="text-center px-4 py-2 rounded-lg bg-background border">
+                              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                                <Smartphone className="w-4 h-4" />
+                                <span className="text-xs font-medium">Mobile</span>
+                              </div>
+                              <p className="text-xl font-bold text-foreground">
+                                {keywordVolume.monthlyMobileQcCnt?.toLocaleString() ?? "-"}
+                              </p>
+                            </div>
+                          </div>
+                        ) : keywordVolume?.error ? (
+                          <p className="text-sm text-destructive">검색량 조회 실패</p>
+                        ) : keywordVolume?.configured === false ? (
+                          <p className="text-sm text-muted-foreground">검색량 API 미설정</p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">검색량 데이터 없음</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {searchResults && (
                   <>

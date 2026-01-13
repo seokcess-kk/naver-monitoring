@@ -8,6 +8,7 @@ import { insertApiKeySchema, updateApiKeySchema } from "@shared/schema";
 import { z } from "zod";
 import { rateLimit } from "express-rate-limit";
 import { createSovRun, executeSovRun, getSovRun, getSovResultsByRun, getSovExposuresByRun, getSovResultsByTypeForRun } from "./sov-service";
+import { getKeywordVolume, isConfigured as isNaverAdConfigured } from "./naver-ad-api";
 
 function normalizeIPv6(ip: string): string {
   if (!ip.includes(":")) return ip;
@@ -396,6 +397,56 @@ export async function registerRoutes(
     } catch (error) {
       console.error("SOV runs fetch error:", error);
       res.status(500).json({ message: "분석 목록 조회에 실패했습니다." });
+    }
+  });
+
+  const keywordVolumeSchema = z.object({
+    keyword: z.string().min(1, "키워드는 필수입니다").max(100, "키워드는 100자 이하여야 합니다").transform(s => s.trim()),
+  });
+
+  app.get("/api/keyword-volume", isAuthenticated, searchLimiter, async (req: any, res) => {
+    try {
+      if (!isNaverAdConfigured()) {
+        return res.json({
+          keyword: req.query.keyword || "",
+          monthlyPcQcCnt: null,
+          monthlyMobileQcCnt: null,
+          available: false,
+          configured: false,
+        });
+      }
+
+      const parseResult = keywordVolumeSchema.safeParse(req.query);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          message: "잘못된 입력입니다", 
+          errors: parseResult.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+        });
+      }
+
+      const { keyword } = parseResult.data;
+      const volumeData = await getKeywordVolume(keyword);
+
+      if (!volumeData) {
+        return res.json({
+          keyword,
+          monthlyPcQcCnt: null,
+          monthlyMobileQcCnt: null,
+          available: false,
+          configured: true,
+        });
+      }
+
+      res.json({
+        keyword: volumeData.keyword,
+        monthlyPcQcCnt: volumeData.monthlyPcQcCnt,
+        monthlyMobileQcCnt: volumeData.monthlyMobileQcCnt,
+        available: true,
+        configured: true,
+      });
+    } catch (error) {
+      console.error("Keyword volume fetch error:", error);
+      res.status(500).json({ message: "검색량 조회에 실패했습니다." });
     }
   });
 
