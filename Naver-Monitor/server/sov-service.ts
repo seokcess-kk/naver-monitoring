@@ -296,37 +296,156 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: 
   ]);
 }
 
+async function extractImagesFromPage(url: string): Promise<string[]> {
+  let browser = null;
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    });
+
+    const page = await browser.newPage();
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    );
+    
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 20000 });
+
+    const imageUrls = await page.evaluate(() => {
+      const contentSelectors = [
+        ".se-main-container",
+        ".post_ct",
+        ".content_view",
+        "article",
+        ".article_body",
+        "#dic_area",
+        ".newsct_article"
+      ];
+      
+      let container: Element | null = null;
+      for (const selector of contentSelectors) {
+        const el = document.querySelector(selector);
+        if (el) {
+          container = el;
+          break;
+        }
+      }
+      
+      const targetElement = container || document.body;
+      const images = targetElement.querySelectorAll("img");
+      const urls: string[] = [];
+      
+      images.forEach((img) => {
+        const src = img.src || img.getAttribute("data-src") || img.getAttribute("data-lazy-src");
+        if (src && 
+            src.startsWith("http") && 
+            !src.includes("icon") && 
+            !src.includes("logo") &&
+            !src.includes("button") &&
+            !src.includes("banner") &&
+            img.width > 100 && 
+            img.height > 100) {
+          urls.push(src);
+        }
+      });
+      
+      return urls.slice(0, 5);
+    });
+
+    console.log(`[SOV] Extracted ${imageUrls.length} images from: ${url}`);
+    return imageUrls;
+  } catch (error) {
+    console.error("[SOV] Image extraction failed:", error);
+    return [];
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+}
+
+async function extractTextFromImages(imageUrls: string[]): Promise<string | null> {
+  if (imageUrls.length === 0) {
+    return null;
+  }
+
+  try {
+    console.log(`[SOV] Analyzing ${imageUrls.length} images with Vision API`);
+    
+    const contentParts: Array<{type: "text", text: string} | {type: "image_url", image_url: {url: string, detail: "low"}}> = [
+      {
+        type: "text",
+        text: "이 이미지들에서 보이는 모든 텍스트를 추출해주세요. 브랜드명, 회사명, 제품명, 서비스명을 특히 주의해서 찾아주세요. 텍스트만 추출하고 설명은 필요없습니다.",
+      },
+    ];
+    
+    for (const url of imageUrls.slice(0, 3)) {
+      contentParts.push({
+        type: "image_url",
+        image_url: { url, detail: "low" },
+      });
+    }
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: contentParts as any,
+        },
+      ],
+      max_tokens: 1000,
+    });
+
+    const extractedText = response.choices[0]?.message?.content;
+    if (extractedText && extractedText.length > 10) {
+      console.log(`[SOV] Vision API extracted: ${extractedText.length} chars`);
+      return extractedText;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("[SOV] Vision API error:", error);
+    return null;
+  }
+}
+
 async function extractContent(url: string): Promise<{ content: string | null; status: string; urlType: string }> {
   const urlType = getUrlType(url);
   console.log(`[SOV] Extracting content for URL type: ${urlType}, URL: ${url}`);
   
   try {
+    let textContent: string | null = null;
+    
     if (urlType === "blog") {
-      const blogContent = await withTimeout(extractBlogContent(url), 35000, null);
-      if (blogContent) {
-        return { content: blogContent, status: "success", urlType };
+      textContent = await withTimeout(extractBlogContent(url), 35000, null);
+      if (textContent) {
+        return { content: textContent, status: "success", urlType };
       }
-      console.log(`[SOV] Blog extraction failed for: ${url}`);
-      return { content: null, status: "failed", urlType };
-    }
-
-    if (urlType === "view") {
-      const viewContent = await withTimeout(extractViewContent(url), 35000, null);
-      if (viewContent) {
-        return { content: viewContent, status: "success", urlType };
+    } else if (urlType === "view") {
+      textContent = await withTimeout(extractViewContent(url), 35000, null);
+      if (textContent) {
+        return { content: textContent, status: "success", urlType };
       }
-      console.log(`[SOV] VIEW extraction failed for: ${url}`);
-      return { content: null, status: "failed", urlType };
+    } else {
+      textContent = await withTimeout(extractContentWithHttp(url), 15000, null);
+      if (textContent) {
+        return { content: textContent, status: "success", urlType };
+      }
+
+      textContent = await withTimeout(extractContentWithPuppeteer(url), 30000, null);
+      if (textContent) {
+        return { content: textContent, status: "success", urlType };
+      }
     }
 
-    const httpContent = await withTimeout(extractContentWithHttp(url), 15000, null);
-    if (httpContent) {
-      return { content: httpContent, status: "success", urlType };
-    }
-
-    const puppeteerContent = await withTimeout(extractContentWithPuppeteer(url), 30000, null);
-    if (puppeteerContent) {
-      return { content: puppeteerContent, status: "success", urlType };
+    console.log(`[SOV] Text extraction failed, trying image OCR for: ${url}`);
+    const imageUrls = await withTimeout(extractImagesFromPage(url), 25000, []);
+    if (imageUrls.length > 0) {
+      const imageText = await withTimeout(extractTextFromImages(imageUrls), 30000, null);
+      if (imageText) {
+        return { content: imageText, status: "success_ocr", urlType };
+      }
     }
 
     console.log(`[SOV] Content extraction failed for: ${url}`);
