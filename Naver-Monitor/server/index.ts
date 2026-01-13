@@ -1,8 +1,11 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { requestIdMiddleware, requestLoggerMiddleware, errorLoggerMiddleware } from "./middleware/observability";
+import { pool } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
@@ -12,6 +15,14 @@ declare module "http" {
     rawBody: unknown;
   }
 }
+
+declare module "express-session" {
+  interface SessionData {
+    userId?: string;
+  }
+}
+
+const PgSession = connectPgSimple(session);
 
 app.use(requestIdMiddleware);
 
@@ -24,6 +35,25 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+app.use(
+  session({
+    store: new PgSession({
+      pool,
+      tableName: "sessions",
+    }),
+    secret: process.env.SESSION_SECRET || "naver-monitor-session-secret-key-2024",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: "lax",
+    },
+  })
+);
+
 app.use(requestLoggerMiddleware);
 
 export function log(message: string, source = "express") {

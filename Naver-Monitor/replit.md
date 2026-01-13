@@ -5,6 +5,14 @@
 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록(플레이스, 뉴스 등) 노출 현황을 실시간으로 확인할 수 있습니다.
 
 ## Recent Changes
+- 2026-01-13: 이메일/비밀번호 인증 시스템으로 변경
+  - Replit Auth에서 이메일/비밀번호 기반 인증으로 전환
+  - SendGrid 통합으로 이메일 인증 및 비밀번호 재설정 지원
+  - bcryptjs를 사용한 비밀번호 해시
+  - 새 DB 테이블: verification_tokens
+  - 새 컬럼: users.password_hash, users.email_verified
+  - 로그인/회원가입/비밀번호 찾기 UI 구현
+
 - 2026-01-13: SOV 본문 추출 로직 개선
   - URL 타입별 분기 처리 (blog/view/news/other)
   - 네이버 블로그 전용 추출: 모바일 URL 변환 + 다양한 URL 형식 지원
@@ -36,7 +44,6 @@
   - UI/UX 전면 개선: 그라디언트 브랜딩, 섹션별 색상 코딩, 카드 레이아웃 개선
   
 - 2026-01-12: 초기 MVP 구현
-  - Replit Auth 기반 회원 인증 시스템
   - 회원별 네이버 API 키 등록/관리 기능
   - 네이버 검색 API 4채널 통합 검색
   - Puppeteer 기반 스마트블록 크롤링
@@ -47,6 +54,7 @@
 ### Frontend (React + Vite)
 - `/client/src/App.tsx` - 메인 앱 컴포넌트, 라우팅
 - `/client/src/pages/landing.tsx` - 비로그인 사용자용 랜딩 페이지
+- `/client/src/pages/auth.tsx` - 로그인/회원가입 페이지
 - `/client/src/pages/dashboard.tsx` - 로그인 사용자용 대시보드
 - `/client/src/components/header.tsx` - 공통 헤더 (네비게이션, 사용자 메뉴)
 - `/client/src/components/api-key-setup.tsx` - API 키 등록/수정 컴포넌트
@@ -57,15 +65,18 @@
 
 ### Backend (Express + PostgreSQL)
 - `/server/routes.ts` - API 엔드포인트 정의
+- `/server/auth-routes.ts` - 인증 관련 API 엔드포인트
+- `/server/auth-service.ts` - 인증 서비스 (회원가입, 로그인, 이메일 인증)
+- `/server/email-service.ts` - SendGrid 이메일 발송 서비스
 - `/server/storage.ts` - 데이터베이스 CRUD 작업
 - `/server/naver-api.ts` - 네이버 검색 API 호출
 - `/server/crawler.ts` - Puppeteer 기반 스마트블록 크롤링
 - `/server/sov-service.ts` - SOV 분석 서비스 (임베딩, 관련성 계산)
-- `/server/replit_integrations/auth/` - Replit Auth 인증 모듈
 
 ### Database Schema
-- `users` - 사용자 정보 (Replit Auth)
+- `users` - 사용자 정보 (email, password_hash, email_verified)
 - `sessions` - 세션 저장소
+- `verification_tokens` - 이메일 인증 및 비밀번호 재설정 토큰
 - `api_keys` - 사용자별 네이버 API 키 저장
 - `sov_runs` - SOV 분석 실행 기록
 - `sov_exposures` - 분석된 콘텐츠 노출 정보
@@ -73,18 +84,35 @@
 - `sov_results` - 최종 SOV 퍼센트 결과
 
 ## API Endpoints
-- `GET /api/health` - 서버 상태 확인
+
+### 인증
+- `POST /api/auth/register` - 회원가입
+- `POST /api/auth/login` - 로그인
+- `POST /api/auth/logout` - 로그아웃
 - `GET /api/auth/user` - 현재 로그인 사용자 정보
+- `GET /api/auth/verify-email` - 이메일 인증
+- `POST /api/auth/resend-verification` - 인증 이메일 재발송
+- `POST /api/auth/forgot-password` - 비밀번호 재설정 요청
+- `POST /api/auth/reset-password` - 비밀번호 재설정
+
+### API 키 관리
 - `GET /api/api-keys` - 사용자의 API 키 조회
 - `POST /api/api-keys` - API 키 등록
 - `PUT /api/api-keys` - API 키 수정
 - `DELETE /api/api-keys` - API 키 삭제
+
+### 검색
 - `GET /api/search` - 통합 검색 (스마트블록 + API 4채널)
-- `GET /api/search/channel` - 채널별 단일 검색 (페이지네이션용, 스마트블록 크롤링 없음)
+- `GET /api/search/channel` - 채널별 단일 검색 (페이지네이션용)
+
+### SOV 분석
 - `POST /api/sov/run` - SOV 분석 시작
 - `GET /api/sov/status/:runId` - 분석 상태 조회
 - `GET /api/sov/result/:runId` - 분석 결과 조회
 - `GET /api/sov/runs` - 사용자의 분석 기록 목록
+
+### 기타
+- `GET /api/health` - 서버 상태 확인
 
 ## User Preferences
 - 한국어 UI

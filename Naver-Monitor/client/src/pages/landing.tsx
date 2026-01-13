@@ -14,7 +14,7 @@ export default function LandingPage() {
             <span className="text-lg font-bold">통합 모니터링</span>
           </div>
           <Button asChild data-testid="button-login">
-            <a href="/api/login">로그인</a>
+            <a href="/auth">로그인</a>
           </Button>
         </div>
       </header>
@@ -39,7 +39,7 @@ export default function LandingPage() {
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <Button size="lg" asChild data-testid="button-get-started">
-                    <a href="/api/login">무료로 시작하기</a>
+                    <a href="/auth">무료로 시작하기</a>
                   </Button>
                   <Button size="lg" variant="outline" data-testid="button-learn-more">
                     자세히 알아보기

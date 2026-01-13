@@ -1,7 +1,7 @@
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { registerAuthRoutes, isAuthenticated } from "./auth-routes";
 import { searchAllChannels, searchSingleChannel } from "./naver-api";
 import { crawlNaverSearch } from "./crawler";
 import { insertApiKeySchema, updateApiKeySchema } from "@shared/schema";
@@ -38,8 +38,8 @@ function getClientIp(req: Request): string {
 
 function generateRateLimitKey(req: Request): string {
   const authReq = req as any;
-  if (authReq.user?.claims?.sub) {
-    return `user:${authReq.user.claims.sub}`;
+  if (authReq.session?.userId) {
+    return `user:${authReq.session.userId}`;
   }
   const ip = getClientIp(req);
   return `ip:${ip}`;
@@ -79,7 +79,6 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  await setupAuth(app);
   registerAuthRoutes(app);
 
   app.get("/api/health", (_req, res) => {
@@ -88,7 +87,7 @@ export async function registerRoutes(
 
   app.get("/api/api-keys", isAuthenticated, apiKeyLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId!
       const apiKey = await storage.getApiKeyByUserId(userId);
       if (!apiKey) {
         return res.json(null);
@@ -106,7 +105,7 @@ export async function registerRoutes(
 
   app.post("/api/api-keys", isAuthenticated, apiKeyLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId!
       
       const existing = await storage.getApiKeyByUserId(userId);
       if (existing) {
@@ -136,7 +135,7 @@ export async function registerRoutes(
 
   app.put("/api/api-keys", isAuthenticated, apiKeyLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId!
 
       const validated = updateApiKeySchema.parse({
         clientId: req.body.clientId,
@@ -163,7 +162,7 @@ export async function registerRoutes(
 
   app.delete("/api/api-keys", isAuthenticated, apiKeyLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId!
       await storage.deleteApiKey(userId);
       res.status(204).send();
     } catch (error) {
@@ -174,7 +173,7 @@ export async function registerRoutes(
 
   app.get("/api/search", isAuthenticated, searchLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId!
       
       const parseResult = searchQuerySchema.safeParse(req.query);
       if (!parseResult.success) {
@@ -216,7 +215,7 @@ export async function registerRoutes(
 
   app.get("/api/search/channel", isAuthenticated, searchLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId!
       
       const parseResult = channelSearchQuerySchema.safeParse(req.query);
       if (!parseResult.success) {
@@ -264,7 +263,7 @@ export async function registerRoutes(
 
   app.post("/api/sov/run", isAuthenticated, sovLimiter, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId!
       
       const parseResult = sovRunSchema.safeParse(req.body);
       if (!parseResult.success) {
@@ -295,7 +294,7 @@ export async function registerRoutes(
 
   app.get("/api/sov/status/:runId", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId!
       const { runId } = req.params;
 
       const run = await getSovRun(runId);
@@ -326,7 +325,7 @@ export async function registerRoutes(
 
   app.get("/api/sov/result/:runId", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId!
       const { runId } = req.params;
 
       const run = await getSovRun(runId);
@@ -382,7 +381,7 @@ export async function registerRoutes(
 
   app.get("/api/sov/runs", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId!
       const runs = await storage.getSovRunsByUser(userId);
 
       res.json(runs.map((run) => ({
