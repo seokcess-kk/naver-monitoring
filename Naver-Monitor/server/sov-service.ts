@@ -72,7 +72,7 @@ async function extractContentWithHttp(url: string): Promise<string | null> {
   }
 }
 
-function getUrlType(url: string): "blog" | "view" | "news" | "other" {
+function getUrlType(url: string): "blog" | "view" | "news" | "cafe" | "other" {
   if (url.includes("blog.naver.com")) {
     return "blog";
   }
@@ -81,6 +81,9 @@ function getUrlType(url: string): "blog" | "view" | "news" | "other" {
   }
   if (url.includes("news.naver.com") || url.includes("n.news.naver.com")) {
     return "news";
+  }
+  if (url.includes("cafe.naver.com")) {
+    return "cafe";
   }
   return "other";
 }
@@ -228,6 +231,86 @@ async function extractViewContent(url: string): Promise<string | null> {
     return cleaned.length > 100 ? cleaned.slice(0, 5000) : null;
   } catch (error) {
     console.error("[SOV] VIEW extraction failed:", error);
+    return null;
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+}
+
+async function extractCafeContent(url: string): Promise<string | null> {
+  let browser = null;
+  try {
+    console.log(`[SOV] Extracting cafe content from: ${url}`);
+    
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    });
+
+    const page = await browser.newPage();
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    );
+    
+    await page.setExtraHTTPHeaders({
+      "Referer": "https://search.naver.com/search.naver?where=article&query=cafe",
+    });
+    
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 25000 });
+    await new Promise(r => setTimeout(r, 3000));
+    
+    const iframeSrc = await page.evaluate(() => {
+      const iframe = document.querySelector('iframe#cafe_main') as HTMLIFrameElement;
+      return iframe?.getAttribute('src') || '';
+    });
+    
+    if (iframeSrc) {
+      const fullIframeSrc = iframeSrc.startsWith('//') 
+        ? `https:${iframeSrc}` 
+        : iframeSrc.startsWith('http') 
+          ? iframeSrc 
+          : `https://cafe.naver.com${iframeSrc}`;
+      
+      console.log(`[SOV] Navigating to cafe iframe: ${fullIframeSrc}`);
+      
+      await page.setExtraHTTPHeaders({
+        "Referer": "https://search.naver.com/search.naver?where=article&query=cafe",
+      });
+      
+      await page.goto(fullIframeSrc, { waitUntil: "networkidle2", timeout: 25000 });
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    
+    const textContent = await page.evaluate(() => {
+      const selectors = [
+        ".se-main-container",
+        ".article_container",
+        ".ArticleContentBox",
+        "#tbody",
+        ".content",
+        ".ContentRenderer",
+        "article"
+      ];
+      
+      for (const selector of selectors) {
+        const el = document.querySelector(selector);
+        if (el && el.textContent && el.textContent.trim().length > 100) {
+          return el.textContent.trim();
+        }
+      }
+      
+      const scripts = document.querySelectorAll("script, style, noscript, header, nav, footer, .gnb, .lnb");
+      scripts.forEach((el) => el.remove());
+      return document.body?.innerText || "";
+    });
+
+    const cleaned = textContent.replace(/\s+/g, " ").trim();
+    console.log(`[SOV] Cafe content extracted: ${cleaned.length} chars`);
+    return cleaned.length > 100 ? cleaned.slice(0, 5000) : null;
+  } catch (error) {
+    console.error("[SOV] Cafe extraction failed:", error);
     return null;
   } finally {
     if (browser) {
@@ -424,6 +507,11 @@ async function extractContent(url: string): Promise<{ content: string | null; st
       }
     } else if (urlType === "view") {
       textContent = await withTimeout(extractViewContent(url), 35000, null);
+      if (textContent) {
+        return { content: textContent, status: "success", urlType };
+      }
+    } else if (urlType === "cafe") {
+      textContent = await withTimeout(extractCafeContent(url), 40000, null);
       if (textContent) {
         return { content: textContent, status: "success", urlType };
       }
