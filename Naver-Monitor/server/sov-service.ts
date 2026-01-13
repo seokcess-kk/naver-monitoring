@@ -163,18 +163,32 @@ function convertCafeUrlToMobile(url: string): string {
   }
 }
 
-function convertNewsUrlToMobile(url: string): string {
+function convertNewsUrlToMobile(url: string): string | null {
   try {
     const urlObj = new URL(url);
+    const hostname = urlObj.hostname;
     
-    if (urlObj.hostname === "news.naver.com" || urlObj.hostname === "n.news.naver.com") {
-      return url.replace("news.naver.com", "m.news.naver.com").replace("n.news.naver.com", "m.news.naver.com");
+    if (hostname.startsWith("m.")) {
+      return null;
     }
     
-    return url;
+    const mobileHostMappings: Record<string, string> = {
+      "news.naver.com": "m.news.naver.com",
+      "n.news.naver.com": "m.news.naver.com",
+      "sports.news.naver.com": "m.sports.naver.com",
+      "entertain.naver.com": "m.entertain.naver.com",
+      "entertainment.naver.com": "m.entertain.naver.com",
+    };
+    
+    const mobileHost = mobileHostMappings[hostname];
+    if (mobileHost) {
+      return url.replace(hostname, mobileHost);
+    }
+    
+    return null;
   } catch (error) {
     console.error("[SOV] News URL conversion error:", error);
-    return url;
+    return null;
   }
 }
 
@@ -660,12 +674,25 @@ async function extractContent(
       }
     } else if (urlType === "news") {
       const mobileNewsUrl = convertNewsUrlToMobile(url);
-      textContent = await withTimeout(extractContentWithHttp(mobileNewsUrl), 15000, null);
+      
+      if (mobileNewsUrl) {
+        textContent = await withTimeout(extractContentWithHttp(mobileNewsUrl), 15000, null);
+        if (textContent) {
+          return { content: textContent, status: "success", urlType };
+        }
+        
+        textContent = await withTimeout(extractContentWithPuppeteer(mobileNewsUrl), 30000, null);
+        if (textContent) {
+          return { content: textContent, status: "success", urlType };
+        }
+      }
+      
+      textContent = await withTimeout(extractContentWithHttp(url), 15000, null);
       if (textContent) {
         return { content: textContent, status: "success", urlType };
       }
       
-      textContent = await withTimeout(extractContentWithPuppeteer(mobileNewsUrl), 30000, null);
+      textContent = await withTimeout(extractContentWithPuppeteer(url), 30000, null);
       if (textContent) {
         return { content: textContent, status: "success", urlType };
       }
