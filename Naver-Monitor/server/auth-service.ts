@@ -82,6 +82,14 @@ export async function completeRegistration(
   firstName?: string,
   lastName?: string
 ): Promise<User> {
+  if (!token || token.length === 0) {
+    throw new Error('인증 토큰이 필요합니다');
+  }
+
+  if (!password || password.length < 8) {
+    throw new Error('비밀번호는 최소 8자 이상이어야 합니다');
+  }
+
   const [tokenRecord] = await db
     .select()
     .from(verificationTokens)
