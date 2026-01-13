@@ -879,7 +879,11 @@ export async function executeSovRun(runId: string): Promise<void> {
         sectionTitle.includes("인플루언서") ||
         sectionTitle.includes("콘텐츠") ||
         sectionTitle.includes("관련") ||
-        sectionTitle.includes("추천");
+        sectionTitle.includes("추천") ||
+        sectionTitle.includes("카페") ||
+        sectionTitle.includes("cafe") ||
+        sectionTitle.includes("지식") ||
+        sectionTitle.includes("kin");
         
       if (isTargetSection) {
         console.log(`[SOV] Including section: "${section.sectionTitle}" (${section.posts.length} posts)`);
