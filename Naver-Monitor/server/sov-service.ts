@@ -130,6 +130,66 @@ function convertBlogUrlToMobile(url: string): string {
   }
 }
 
+function convertCafeUrlToMobile(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    
+    if (urlObj.hostname === "cafe.naver.com" || urlObj.hostname === "m.cafe.naver.com") {
+      const pathParts = urlObj.pathname.split("/").filter(Boolean);
+      
+      if (pathParts.length >= 2) {
+        const cafeName = pathParts[0];
+        const articleId = pathParts[1];
+        
+        if (/^\d+$/.test(articleId)) {
+          console.log(`[SOV] Converted cafe URL: cafe=${cafeName}, article=${articleId}`);
+          return `https://m.cafe.naver.com/${cafeName}/${articleId}`;
+        }
+      }
+      
+      if (urlObj.pathname.includes("ArticleRead")) {
+        const clubId = urlObj.searchParams.get("clubid");
+        const articleId = urlObj.searchParams.get("articleid");
+        if (clubId && articleId) {
+          return `https://m.cafe.naver.com/ca-fe/web/cafes/${clubId}/articles/${articleId}`;
+        }
+      }
+    }
+    
+    return url.replace("cafe.naver.com", "m.cafe.naver.com");
+  } catch (error) {
+    console.error("[SOV] Cafe URL conversion error:", error);
+    return url;
+  }
+}
+
+function convertNewsUrlToMobile(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    
+    if (urlObj.hostname === "news.naver.com" || urlObj.hostname === "n.news.naver.com") {
+      return url.replace("news.naver.com", "m.news.naver.com").replace("n.news.naver.com", "m.news.naver.com");
+    }
+    
+    return url;
+  } catch (error) {
+    console.error("[SOV] News URL conversion error:", error);
+    return url;
+  }
+}
+
+function convertViewUrlToMobile(url: string): string {
+  try {
+    if (url.includes("in.naver.com") || url.includes("post.naver.com")) {
+      return url;
+    }
+    return url;
+  } catch (error) {
+    console.error("[SOV] View URL conversion error:", error);
+    return url;
+  }
+}
+
 async function extractBlogContent(url: string): Promise<string | null> {
   let browser = null;
   try {
