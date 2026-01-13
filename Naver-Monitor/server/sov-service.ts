@@ -628,7 +628,10 @@ async function extractTextFromImages(imageUrls: string[]): Promise<string | null
   }
 }
 
-async function extractContent(url: string): Promise<{ content: string | null; status: string; urlType: string }> {
+async function extractContent(
+  url: string, 
+  apiDescription?: string
+): Promise<{ content: string | null; status: string; urlType: string }> {
   const urlType = getUrlType(url);
   console.log(`[SOV] Extracting content for URL type: ${urlType}, URL: ${url}`);
   
@@ -646,7 +649,23 @@ async function extractContent(url: string): Promise<{ content: string | null; st
         return { content: textContent, status: "success", urlType };
       }
     } else if (urlType === "cafe") {
-      textContent = await withTimeout(extractCafeContent(url), 40000, null);
+      textContent = await withTimeout(extractCafeContent(url), 50000, null);
+      if (textContent) {
+        return { content: textContent, status: "success", urlType };
+      }
+      
+      if (apiDescription && apiDescription.length > 50) {
+        console.log(`[SOV] Cafe crawling failed, using API description: ${apiDescription.length} chars`);
+        return { content: apiDescription, status: "success_api", urlType };
+      }
+    } else if (urlType === "news") {
+      const mobileNewsUrl = convertNewsUrlToMobile(url);
+      textContent = await withTimeout(extractContentWithHttp(mobileNewsUrl), 15000, null);
+      if (textContent) {
+        return { content: textContent, status: "success", urlType };
+      }
+      
+      textContent = await withTimeout(extractContentWithPuppeteer(mobileNewsUrl), 30000, null);
       if (textContent) {
         return { content: textContent, status: "success", urlType };
       }
@@ -670,11 +689,21 @@ async function extractContent(url: string): Promise<{ content: string | null; st
         return { content: imageText, status: "success_ocr", urlType };
       }
     }
+    
+    if (apiDescription && apiDescription.length > 30) {
+      console.log(`[SOV] All extraction failed, using API description fallback: ${apiDescription.length} chars`);
+      return { content: apiDescription, status: "success_api", urlType };
+    }
 
     console.log(`[SOV] Content extraction failed for: ${url}`);
     return { content: null, status: "failed", urlType };
   } catch (error) {
     console.error("[SOV] Content extraction error:", error);
+    
+    if (apiDescription && apiDescription.length > 30) {
+      return { content: apiDescription, status: "success_api", urlType };
+    }
+    
     return { content: null, status: "failed", urlType };
   }
 }
@@ -893,7 +922,7 @@ export async function executeSovRun(runId: string): Promise<void> {
     const extractionTasks = exposures.map((exposure) =>
       contentExtractionLimit(async () => {
         try {
-          const { content, status } = await extractContent(exposure.url);
+          const { content, status } = await extractContent(exposure.url, exposure.description || undefined);
 
           await db
             .update(sovExposures)
