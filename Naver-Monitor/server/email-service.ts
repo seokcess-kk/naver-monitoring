@@ -39,15 +39,15 @@ export async function getUncachableSendGridClient() {
   };
 }
 
-export async function sendVerificationEmail(toEmail: string, verificationToken: string, userName?: string) {
+export async function sendRegistrationEmail(toEmail: string, registrationToken: string) {
   const { client, fromEmail } = await getUncachableSendGridClient();
   
-  const verificationUrl = `${process.env.REPLIT_DEV_DOMAIN ? 'https://' + process.env.REPLIT_DEV_DOMAIN : 'http://localhost:5000'}/api/auth/verify-email?token=${verificationToken}`;
+  const registrationUrl = `${process.env.REPLIT_DEV_DOMAIN ? 'https://' + process.env.REPLIT_DEV_DOMAIN : 'http://localhost:5000'}/complete-signup?token=${registrationToken}`;
   
   const msg = {
     to: toEmail,
     from: fromEmail,
-    subject: '네이버 통합 모니터링 - 이메일 인증',
+    subject: '네이버 통합 모니터링 - 회원가입 인증',
     html: `
       <div style="font-family: 'Noto Sans KR', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
@@ -56,12 +56,12 @@ export async function sendVerificationEmail(toEmail: string, verificationToken: 
         <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
           <h2 style="color: #333; margin-top: 0;">이메일 인증을 완료해주세요</h2>
           <p style="color: #666; line-height: 1.6;">
-            ${userName ? `안녕하세요, ${userName}님!` : '안녕하세요!'}<br><br>
-            네이버 통합 모니터링 서비스에 가입해 주셔서 감사합니다.<br>
-            아래 버튼을 클릭하여 이메일 인증을 완료해주세요.
+            안녕하세요!<br><br>
+            네이버 통합 모니터링 서비스 가입을 위해<br>
+            아래 버튼을 클릭하여 이메일 인증을 완료하고 회원가입을 진행해주세요.
           </p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${verificationUrl}" 
+            <a href="${registrationUrl}" 
                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                       color: white; 
                       padding: 15px 40px; 
@@ -69,7 +69,7 @@ export async function sendVerificationEmail(toEmail: string, verificationToken: 
                       border-radius: 8px; 
                       font-weight: bold;
                       display: inline-block;">
-              이메일 인증하기
+              회원가입 계속하기
             </a>
           </div>
           <p style="color: #999; font-size: 12px; margin-top: 30px;">
@@ -83,10 +83,10 @@ export async function sendVerificationEmail(toEmail: string, verificationToken: 
 
   try {
     await client.send(msg);
-    console.log(`[Email] Verification email sent to ${toEmail}`);
+    console.log(`[Email] Registration email sent to ${toEmail}`);
     return true;
   } catch (error) {
-    console.error('[Email] Failed to send verification email:', error);
+    console.error('[Email] Failed to send registration email:', error);
     throw error;
   }
 }

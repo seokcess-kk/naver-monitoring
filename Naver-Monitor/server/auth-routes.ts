@@ -1,16 +1,16 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { rateLimit } from "express-rate-limit";
-import { z } from "zod";
 import {
-  registerUser,
+  startRegistration,
+  verifyRegistrationToken,
+  completeRegistration,
   loginUser,
-  verifyEmailToken,
   requestPasswordReset,
   resetPassword,
-  resendVerificationEmail,
+  resendRegistrationEmail,
   findUserById,
 } from "./auth-service";
-import { registerSchema, loginSchema } from "@shared/schema";
+import { startRegistrationSchema, completeRegistrationSchema, loginSchema } from "@shared/schema";
 
 declare module "express-session" {
   interface SessionData {
@@ -54,9 +54,9 @@ export function isAuthenticated(req: Request, res: Response, next: NextFunction)
 }
 
 export function registerAuthRoutes(app: Express) {
-  app.post("/api/auth/register", authLimiter, async (req, res) => {
+  app.post("/api/auth/start-registration", authLimiter, async (req, res) => {
     try {
-      const parseResult = registerSchema.safeParse(req.body);
+      const parseResult = startRegistrationSchema.safeParse(req.body);
       if (!parseResult.success) {
         return res.status(400).json({
           message: "입력 값이 올바르지 않습니다",
@@ -67,20 +67,102 @@ export function registerAuthRoutes(app: Express) {
         });
       }
 
-      const { email, password, firstName, lastName } = parseResult.data;
+      const { email } = parseResult.data;
 
-      const { user } = await registerUser(email, password, firstName, lastName);
+      await startRegistration(email);
 
-      res.status(201).json({
-        message: "회원가입이 완료되었습니다. 이메일을 확인하여 인증을 완료해주세요.",
-        email: user.email,
+      res.status(200).json({
+        message: "인증 이메일이 발송되었습니다. 이메일을 확인해주세요.",
+        email,
       });
     } catch (error: any) {
-      console.error("[Auth] Register error:", error);
+      console.error("[Auth] Start registration error:", error);
       if (error.message === "이미 등록된 이메일입니다") {
         return res.status(409).json({ message: error.message });
       }
       res.status(500).json({ message: "회원가입 중 오류가 발생했습니다" });
+    }
+  });
+
+  app.get("/api/auth/verify-registration", async (req, res) => {
+    try {
+      const token = req.query.token as string;
+      if (!token) {
+        return res.status(400).json({ message: "토큰이 필요합니다", valid: false });
+      }
+
+      const result = await verifyRegistrationToken(token);
+
+      res.json({
+        valid: true,
+        email: result.email,
+      });
+    } catch (error: any) {
+      console.error("[Auth] Verify registration token error:", error);
+      res.status(400).json({
+        message: error.message || "유효하지 않은 토큰입니다",
+        valid: false,
+      });
+    }
+  });
+
+  app.post("/api/auth/complete-registration", authLimiter, async (req, res) => {
+    try {
+      const parseResult = completeRegistrationSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({
+          message: "입력 값이 올바르지 않습니다",
+          errors: parseResult.error.errors.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        });
+      }
+
+      const { token, password, firstName, lastName } = parseResult.data;
+
+      const user = await completeRegistration(token, password, firstName, lastName);
+
+      req.session.userId = user.id;
+
+      res.status(201).json({
+        message: "회원가입이 완료되었습니다.",
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          emailVerified: user.emailVerified,
+        },
+      });
+    } catch (error: any) {
+      console.error("[Auth] Complete registration error:", error);
+      if (error.message === "이미 등록된 이메일입니다") {
+        return res.status(409).json({ message: error.message });
+      }
+      if (error.message.includes("유효하지 않") || error.message.includes("만료된")) {
+        return res.status(400).json({ message: error.message });
+      }
+      res.status(500).json({ message: "회원가입 중 오류가 발생했습니다" });
+    }
+  });
+
+  app.post("/api/auth/resend-registration", resendLimiter, async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ message: "이메일 주소를 입력해주세요" });
+      }
+
+      await resendRegistrationEmail(email);
+
+      res.json({ message: "인증 이메일이 재발송되었습니다" });
+    } catch (error: any) {
+      console.error("[Auth] Resend registration error:", error);
+      if (error.message === "이미 등록된 이메일입니다") {
+        return res.status(409).json({ message: error.message });
+      }
+      res.json({ message: "인증 이메일이 발송되었습니다" });
     }
   });
 
@@ -161,41 +243,6 @@ export function registerAuthRoutes(app: Express) {
     } catch (error) {
       console.error("[Auth] Get user error:", error);
       res.status(500).json({ message: "사용자 정보 조회 중 오류가 발생했습니다" });
-    }
-  });
-
-  app.get("/api/auth/verify-email", async (req, res) => {
-    try {
-      const token = req.query.token as string;
-      if (!token) {
-        return res.redirect("/?error=invalid_token");
-      }
-
-      await verifyEmailToken(token);
-
-      res.redirect("/auth?verified=true");
-    } catch (error: any) {
-      console.error("[Auth] Email verification error:", error);
-      res.redirect(`/auth?error=${encodeURIComponent(error.message || "verification_failed")}`);
-    }
-  });
-
-  app.post("/api/auth/resend-verification", resendLimiter, async (req, res) => {
-    try {
-      const { email } = req.body;
-      if (!email) {
-        return res.status(400).json({ message: "이메일 주소를 입력해주세요" });
-      }
-
-      await resendVerificationEmail(email);
-
-      res.json({ message: "인증 이메일이 발송되었습니다" });
-    } catch (error: any) {
-      console.error("[Auth] Resend verification error:", error);
-      if (error.message === "이미 인증된 이메일입니다") {
-        return res.status(400).json({ message: error.message });
-      }
-      res.json({ message: "이메일이 등록되어 있다면 인증 메일이 발송됩니다" });
     }
   });
 

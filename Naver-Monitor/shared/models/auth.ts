@@ -27,7 +27,8 @@ export const users = pgTable("users", {
 
 export const verificationTokens = pgTable("verification_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  email: varchar("email"),
   token: varchar("token").notNull().unique(),
   type: varchar("type", { length: 20 }).notNull(),
   expiresAt: timestamp("expires_at").notNull(),
@@ -35,6 +36,7 @@ export const verificationTokens = pgTable("verification_tokens", {
 }, (table) => [
   index("idx_verification_tokens_user_id").on(table.userId),
   index("idx_verification_tokens_token").on(table.token),
+  index("idx_verification_tokens_email").on(table.email),
 ]);
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -42,6 +44,17 @@ export const insertUserSchema = createInsertSchema(users).omit({
   emailVerified: true,
   createdAt: true,
   updatedAt: true,
+});
+
+export const startRegistrationSchema = z.object({
+  email: z.string().email("유효한 이메일 주소를 입력해주세요"),
+});
+
+export const completeRegistrationSchema = z.object({
+  token: z.string().min(1, "인증 토큰이 필요합니다"),
+  password: z.string().min(8, "비밀번호는 최소 8자 이상이어야 합니다"),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
 });
 
 export const registerSchema = z.object({

@@ -2,8 +2,8 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { db } from './db';
 import { users, verificationTokens, type User, type VerificationToken } from '@shared/schema';
-import { eq, and, gt } from 'drizzle-orm';
-import { sendVerificationEmail, sendPasswordResetEmail } from './email-service';
+import { eq, and, gt, or, lt } from 'drizzle-orm';
+import { sendRegistrationEmail, sendPasswordResetEmail } from './email-service';
 
 const SALT_ROUNDS = 12;
 
@@ -29,40 +29,92 @@ export async function findUserById(id: string): Promise<User | undefined> {
   return user;
 }
 
-export async function registerUser(
-  email: string,
-  password: string,
-  firstName?: string,
-  lastName?: string
-): Promise<{ user: User; verificationToken: string }> {
-  const existingUser = await findUserByEmail(email);
+export async function startRegistration(email: string): Promise<void> {
+  const normalizedEmail = email.toLowerCase();
+  
+  const existingUser = await findUserByEmail(normalizedEmail);
   if (existingUser) {
     throw new Error('이미 등록된 이메일입니다');
   }
 
-  const passwordHash = await hashPassword(password);
-  
-  const [user] = await db.insert(users).values({
-    email: email.toLowerCase(),
-    passwordHash,
-    firstName,
-    lastName,
-    emailVerified: false,
-  }).returning();
+  await db.delete(verificationTokens).where(
+    and(
+      eq(verificationTokens.email, normalizedEmail),
+      eq(verificationTokens.type, 'registration')
+    )
+  );
 
   const token = generateToken();
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
   await db.insert(verificationTokens).values({
-    userId: user.id,
+    email: normalizedEmail,
     token,
-    type: 'email_verification',
+    type: 'registration',
     expiresAt,
   });
 
-  await sendVerificationEmail(user.email, token, firstName);
+  await sendRegistrationEmail(normalizedEmail, token);
+}
 
-  return { user, verificationToken: token };
+export async function verifyRegistrationToken(token: string): Promise<{ email: string; valid: boolean }> {
+  const [tokenRecord] = await db
+    .select()
+    .from(verificationTokens)
+    .where(
+      and(
+        eq(verificationTokens.token, token),
+        eq(verificationTokens.type, 'registration'),
+        gt(verificationTokens.expiresAt, new Date())
+      )
+    );
+
+  if (!tokenRecord || !tokenRecord.email) {
+    throw new Error('유효하지 않거나 만료된 인증 링크입니다');
+  }
+
+  return { email: tokenRecord.email, valid: true };
+}
+
+export async function completeRegistration(
+  token: string,
+  password: string,
+  firstName?: string,
+  lastName?: string
+): Promise<User> {
+  const [tokenRecord] = await db
+    .select()
+    .from(verificationTokens)
+    .where(
+      and(
+        eq(verificationTokens.token, token),
+        eq(verificationTokens.type, 'registration'),
+        gt(verificationTokens.expiresAt, new Date())
+      )
+    );
+
+  if (!tokenRecord || !tokenRecord.email) {
+    throw new Error('유효하지 않거나 만료된 인증 링크입니다');
+  }
+
+  const existingUser = await findUserByEmail(tokenRecord.email);
+  if (existingUser) {
+    throw new Error('이미 등록된 이메일입니다');
+  }
+
+  const passwordHash = await hashPassword(password);
+
+  const [user] = await db.insert(users).values({
+    email: tokenRecord.email,
+    passwordHash,
+    firstName,
+    lastName,
+    emailVerified: true,
+  }).returning();
+
+  await db.delete(verificationTokens).where(eq(verificationTokens.id, tokenRecord.id));
+
+  return user;
 }
 
 export async function loginUser(email: string, password: string): Promise<User> {
@@ -79,33 +131,6 @@ export async function loginUser(email: string, password: string): Promise<User> 
   if (!user.emailVerified) {
     throw new Error('이메일 인증이 필요합니다. 이메일을 확인해주세요');
   }
-
-  return user;
-}
-
-export async function verifyEmailToken(token: string): Promise<User> {
-  const [tokenRecord] = await db
-    .select()
-    .from(verificationTokens)
-    .where(
-      and(
-        eq(verificationTokens.token, token),
-        eq(verificationTokens.type, 'email_verification'),
-        gt(verificationTokens.expiresAt, new Date())
-      )
-    );
-
-  if (!tokenRecord) {
-    throw new Error('유효하지 않거나 만료된 인증 링크입니다');
-  }
-
-  const [user] = await db
-    .update(users)
-    .set({ emailVerified: true, updatedAt: new Date() })
-    .where(eq(users.id, tokenRecord.userId))
-    .returning();
-
-  await db.delete(verificationTokens).where(eq(verificationTokens.id, tokenRecord.id));
 
   return user;
 }
@@ -148,7 +173,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
       )
     );
 
-  if (!tokenRecord) {
+  if (!tokenRecord || !tokenRecord.userId) {
     throw new Error('유효하지 않거나 만료된 재설정 링크입니다');
   }
 
@@ -157,7 +182,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
   const [user] = await db
     .update(users)
     .set({ passwordHash, updatedAt: new Date() })
-    .where(eq(users.id, tokenRecord.userId))
+    .where(eq(users.id, tokenRecord.userId!))
     .returning();
 
   await db.delete(verificationTokens).where(eq(verificationTokens.id, tokenRecord.id));
@@ -165,20 +190,18 @@ export async function resetPassword(token: string, newPassword: string): Promise
   return user;
 }
 
-export async function resendVerificationEmail(email: string): Promise<void> {
-  const user = await findUserByEmail(email);
-  if (!user) {
-    return;
-  }
-
-  if (user.emailVerified) {
-    throw new Error('이미 인증된 이메일입니다');
+export async function resendRegistrationEmail(email: string): Promise<void> {
+  const normalizedEmail = email.toLowerCase();
+  
+  const existingUser = await findUserByEmail(normalizedEmail);
+  if (existingUser) {
+    throw new Error('이미 등록된 이메일입니다');
   }
 
   await db.delete(verificationTokens).where(
     and(
-      eq(verificationTokens.userId, user.id),
-      eq(verificationTokens.type, 'email_verification')
+      eq(verificationTokens.email, normalizedEmail),
+      eq(verificationTokens.type, 'registration')
     )
   );
 
@@ -186,11 +209,11 @@ export async function resendVerificationEmail(email: string): Promise<void> {
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
   await db.insert(verificationTokens).values({
-    userId: user.id,
+    email: normalizedEmail,
     token,
-    type: 'email_verification',
+    type: 'registration',
     expiresAt,
   });
 
-  await sendVerificationEmail(user.email, token, user.firstName || undefined);
+  await sendRegistrationEmail(normalizedEmail, token);
 }

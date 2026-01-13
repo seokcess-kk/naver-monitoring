@@ -7,15 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Layers, Mail, Lock, User, AlertCircle, CheckCircle } from "lucide-react";
+import { Layers, Mail, Lock, AlertCircle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-
-interface AuthFormData {
-  email: string;
-  password: string;
-  firstName?: string;
-  lastName?: string;
-}
 
 async function loginRequest(data: { email: string; password: string }) {
   const response = await fetch("/api/auth/login", {
@@ -34,25 +27,24 @@ async function loginRequest(data: { email: string; password: string }) {
   return result;
 }
 
-async function registerRequest(data: AuthFormData) {
-  const response = await fetch("/api/auth/register", {
+async function startRegistrationRequest(email: string) {
+  const response = await fetch("/api/auth/start-registration", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(data),
+    body: JSON.stringify({ email }),
   });
   
   const result = await response.json();
   
   if (!response.ok) {
-    throw new Error(result.message || "회원가입 실패");
+    throw new Error(result.message || "회원가입 요청 실패");
   }
   
   return result;
 }
 
-async function resendVerificationRequest(email: string) {
-  const response = await fetch("/api/auth/resend-verification", {
+async function resendRegistrationRequest(email: string) {
+  const response = await fetch("/api/auth/resend-registration", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
@@ -91,18 +83,16 @@ export default function AuthPage() {
   const [activeTab, setActiveTab] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [needsVerification, setNeedsVerification] = useState(false);
-  const [verificationEmail, setVerificationEmail] = useState("");
+  const [showEmailSent, setShowEmailSent] = useState(false);
+  const [sentEmail, setSentEmail] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("verified") === "true") {
-      setSuccess("이메일 인증이 완료되었습니다. 로그인해주세요.");
+      setSuccess("회원가입이 완료되었습니다. 로그인해주세요.");
       window.history.replaceState({}, "", window.location.pathname);
     }
     const errorParam = params.get("error");
@@ -125,20 +115,16 @@ export default function AuthPage() {
       navigate("/");
     },
     onError: (err: Error) => {
-      if (err.message.includes("이메일 인증이 필요")) {
-        setNeedsVerification(true);
-        setVerificationEmail(email);
-      }
       setError(err.message);
     },
   });
 
-  const registerMutation = useMutation({
-    mutationFn: registerRequest,
-    onSuccess: (result) => {
-      setSuccess(result.message || "회원가입이 완료되었습니다. 이메일을 확인해주세요.");
-      setActiveTab("login");
-      setPassword("");
+  const startRegistrationMutation = useMutation({
+    mutationFn: startRegistrationRequest,
+    onSuccess: (_, email) => {
+      setSentEmail(email);
+      setShowEmailSent(true);
+      setError(null);
     },
     onError: (err: Error) => {
       setError(err.message);
@@ -146,10 +132,9 @@ export default function AuthPage() {
   });
 
   const resendMutation = useMutation({
-    mutationFn: resendVerificationRequest,
+    mutationFn: resendRegistrationRequest,
     onSuccess: () => {
       setSuccess("인증 이메일이 재발송되었습니다.");
-      setNeedsVerification(false);
     },
     onError: (err: Error) => {
       setError(err.message);
@@ -174,17 +159,11 @@ export default function AuthPage() {
     loginMutation.mutate({ email, password });
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleStartRegistration = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
-    
-    if (password.length < 8) {
-      setError("비밀번호는 최소 8자 이상이어야 합니다");
-      return;
-    }
-    
-    registerMutation.mutate({ email, password, firstName, lastName });
+    startRegistrationMutation.mutate(email);
   };
 
   const handleForgotPassword = (e: React.FormEvent) => {
@@ -194,15 +173,89 @@ export default function AuthPage() {
     forgotPasswordMutation.mutate(email);
   };
 
-  const handleResendVerification = () => {
+  const handleResend = () => {
     setError(null);
-    resendMutation.mutate(verificationEmail);
+    setSuccess(null);
+    resendMutation.mutate(sentEmail);
   };
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+
+  if (showEmailSent) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
+                <Layers className="w-7 h-7 text-primary-foreground" />
+              </div>
+              <span className="text-2xl font-bold">통합 모니터링</span>
+            </div>
+          </div>
+
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {success && (
+            <Alert className="mb-4 border-green-500 bg-green-50 dark:bg-green-950">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800 dark:text-green-200">{success}</AlertDescription>
+            </Alert>
+          )}
+
+          <Card>
+            <CardHeader className="text-center">
+              <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mb-4">
+                <Mail className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+              </div>
+              <CardTitle>이메일을 확인해주세요</CardTitle>
+              <CardDescription>
+                <span className="font-medium text-foreground">{sentEmail}</span>
+                <br />
+                위 주소로 인증 이메일을 발송했습니다.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center text-sm text-muted-foreground">
+              <p>이메일의 링크를 클릭하여 회원가입을 완료해주세요.</p>
+              <p className="mt-2">이메일이 도착하지 않았나요?</p>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-4">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={handleResend}
+                disabled={resendMutation.isPending}
+              >
+                {resendMutation.isPending ? "발송 중..." : "인증 이메일 재발송"}
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full"
+                onClick={() => {
+                  setShowEmailSent(false);
+                  setEmail("");
+                }}
+              >
+                다른 이메일로 가입하기
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <p className="text-center text-sm text-muted-foreground mt-6">
+            <a href="/" className="hover:text-primary">← 홈으로 돌아가기</a>
+          </p>
+        </div>
       </div>
     );
   }
@@ -219,23 +272,6 @@ export default function AuthPage() {
           </div>
           <p className="text-muted-foreground">네이버 검색 결과를 한눈에 파악하세요</p>
         </div>
-
-        {needsVerification && (
-          <Alert className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
-            <AlertCircle className="h-4 w-4 text-yellow-600" />
-            <AlertDescription className="text-yellow-800 dark:text-yellow-200">
-              이메일 인증이 필요합니다.
-              <Button 
-                variant="ghost" 
-                className="px-1 h-auto text-yellow-600"
-                onClick={handleResendVerification}
-                disabled={resendMutation.isPending}
-              >
-                {resendMutation.isPending ? "발송 중..." : "인증 메일 재발송"}
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
 
         {error && (
           <Alert variant="destructive" className="mb-4">
@@ -359,34 +395,8 @@ export default function AuthPage() {
               </TabsContent>
 
               <TabsContent value="register">
-                <form onSubmit={handleRegister}>
+                <form onSubmit={handleStartRegistration}>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="first-name">이름</Label>
-                        <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="first-name"
-                            type="text"
-                            placeholder="이름"
-                            value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
-                            className="pl-10"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="last-name">성</Label>
-                        <Input
-                          id="last-name"
-                          type="text"
-                          placeholder="성"
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                        />
-                      </div>
-                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="register-email">이메일</Label>
                       <div className="relative">
@@ -402,31 +412,18 @@ export default function AuthPage() {
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="register-password">비밀번호</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="register-password"
-                          type="password"
-                          placeholder="최소 8자 이상"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="pl-10"
-                          minLength={8}
-                          required
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">최소 8자 이상 입력해주세요</p>
-                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      입력하신 이메일로 인증 링크가 발송됩니다.<br />
+                      이메일 인증 후 비밀번호를 설정하여 가입이 완료됩니다.
+                    </p>
                   </CardContent>
                   <CardFooter>
                     <Button 
                       type="submit" 
                       className="w-full" 
-                      disabled={registerMutation.isPending}
+                      disabled={startRegistrationMutation.isPending}
                     >
-                      {registerMutation.isPending ? "가입 중..." : "회원가입"}
+                      {startRegistrationMutation.isPending ? "발송 중..." : "인증 이메일 받기"}
                     </Button>
                   </CardFooter>
                 </form>
