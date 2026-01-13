@@ -1,0 +1,160 @@
+2026-01-13 17:25:08.35
+753ed5a3
+System
+starting up user application
+2026-01-13 17:25:08.36
+753ed5a3
+System
+forwarding local port 5000 to external port 80 (mapped as 1104)
+2026-01-13 17:25:09.93
+753ed5a3
+User
+> workspace@1.0.0 start
+2026-01-13 17:25:09.93
+753ed5a3
+User
+> cd Naver-Monitor && npm run start
+2026-01-13 17:25:10.27
+753ed5a3
+User
+> NODE_ENV=production node dist/index.cjs
+2026-01-13 17:25:10.27
+753ed5a3
+User
+> rest-express@1.0.0 start
+2026-01-13 17:25:12.46
+753ed5a3
+User
+8:25:12 AM [express] serving on port 5000
+2026-01-13 17:25:13.32
+753ed5a3
+User
+[INFO] [b19e062a] GET / 200 14ms user=anon
+2026-01-13 17:25:45.60
+753ed5a3
+User
+[INFO] [673d70cd] GET / 200 4ms user=anon
+2026-01-13 17:26:59.76
+753ed5a3
+User
+[INFO] [2242c3cd] GET / 200 3ms user=anon
+2026-01-13 17:27:00.34
+753ed5a3
+User
+[INFO] [96ec6e2d] GET /api/auth/user 200 2ms user=anon
+2026-01-13 17:27:00.34
+753ed5a3
+User
+8:27:00 AM [express] GET /api/auth/user 200 in 2ms
+2026-01-13 17:27:13.80
+753ed5a3
+User
+[INFO] [a411266d] GET /auth 200 3ms user=anon
+2026-01-13 17:27:14.21
+753ed5a3
+User
+8:27:14 AM [express] GET /api/auth/user 304 in 1ms
+2026-01-13 17:27:14.21
+753ed5a3
+User
+[INFO] [5dab8f01] GET /api/auth/user 304 1ms user=anon
+2026-01-13 17:28:27.21
+753ed5a3
+User
+[Email] Registration email sent to mbu@glitzy.kr
+2026-01-13 17:28:27.21
+753ed5a3
+User
+[INFO] [0228c538] POST /api/auth/start-registration 200 1777ms user=anon
+2026-01-13 17:28:27.21
+753ed5a3
+User
+8:28:27 AM [express] POST /api/auth/start-registration 200 in 1769ms :: {"message":"인증 이메일이 발송되었습니다. 이메일을 확인해주세요.","email":"mbu@glitzy.kr"}
+2026-01-13 17:29:16.50
+753ed5a3
+User
+[Email] Registration email sent to mbu@glitzy.kr
+2026-01-13 17:29:16.50
+753ed5a3
+User
+[INFO] [2f455583] POST /api/auth/resend-registration 200 856ms user=anon
+2026-01-13 17:29:16.50
+753ed5a3
+User
+8:29:16 AM [express] POST /api/auth/resend-registration 200 in 855ms :: {"message":"인증 이메일이 재발송되었습니다"}
+2026-01-13 17:29:54.78
+753ed5a3
+User
+[INFO] [de5e5fd6] GET / 304 2ms user=anon
+2026-01-13 17:29:55.19
+753ed5a3
+User
+[INFO] [2bc86bd5] GET /api/auth/user 304 1ms user=anon
+2026-01-13 17:29:55.20
+753ed5a3
+User
+8:29:55 AM [express] GET /api/auth/user 304 in 1ms
+2026-01-13 17:30:10.38
+753ed5a3
+User
+[INFO] [979e9ec7] GET /auth 304 3ms user=anon
+2026-01-13 17:30:10.78
+753ed5a3
+User
+[INFO] [1931ad11] GET /api/auth/user 304 1ms user=anon
+2026-01-13 17:30:10.78
+753ed5a3
+User
+8:30:10 AM [express] GET /api/auth/user 304 in 0ms
+2026-01-13 17:31:07.27
+753ed5a3
+User
+[INFO] [b8196bca] GET /api/auth/user 304 1ms user=anon
+2026-01-13 17:31:07.27
+753ed5a3
+User
+8:31:07 AM [express] GET /api/auth/user 304 in 0ms
+2026-01-13 17:32:36.76
+753ed5a3
+User
+[INFO] [45634965] GET / 200 3ms user=anon
+2026-01-13 17:32:37.64
+753ed5a3
+User
+[INFO] [b3ba62fa] GET /api/auth/user 200 1ms user=anon
+2026-01-13 17:32:37.64
+753ed5a3
+User
+8:32:37 AM [express] GET /api/auth/user 200 in 1ms
+2026-01-13 17:32:41.30
+753ed5a3
+User
+[INFO] [2bc7bcb1] GET /auth 200 2ms user=anon
+2026-01-13 17:32:41.71
+753ed5a3
+User
+[INFO] [bbb275ec] GET /api/auth/user 304 0ms user=anon
+2026-01-13 17:32:41.71
+753ed5a3
+User
+8:32:41 AM [express] GET /api/auth/user 304 in 0ms
+2026-01-13 17:32:47.75
+753ed5a3
+User
+[Email] Registration email sent to assagaori00@gmail.com
+2026-01-13 17:32:47.75
+753ed5a3
+User
+[INFO] [6092e252] POST /api/auth/start-registration 200 1516ms user=anon
+2026-01-13 17:32:47.75
+753ed5a3
+User
+8:32:47 AM [express] POST /api/auth/start-registration 200 in 1515ms :: {"message":"인증 이메일이 발송되었습니다. 이메일을 확인해주세요.","email":"assagaori00@gmail.com"}
+2026-01-13 17:42:29.54
+d795ebfe
+System
+starting up user application
+2026-01-13 17:42:29.54
+d795ebfe
+System
+metasidecar: loaded enterprise status from environment is_enterprise=false
