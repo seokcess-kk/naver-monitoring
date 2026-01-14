@@ -4,7 +4,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Layers, Mail, Lock, AlertCircle, CheckCircle } from "lucide-react";
@@ -17,13 +24,13 @@ async function loginRequest(data: { email: string; password: string }) {
     credentials: "include",
     body: JSON.stringify(data),
   });
-  
+
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.message || "로그인 실패");
   }
-  
+
   return result;
 }
 
@@ -33,13 +40,13 @@ async function startRegistrationRequest(email: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
   });
-  
+
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.message || "회원가입 요청 실패");
   }
-  
+
   return result;
 }
 
@@ -49,13 +56,13 @@ async function resendRegistrationRequest(email: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
   });
-  
+
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.message || "재발송 실패");
   }
-  
+
   return result;
 }
 
@@ -65,13 +72,13 @@ async function forgotPasswordRequest(email: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
   });
-  
+
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.message || "요청 실패");
   }
-  
+
   return result;
 }
 
@@ -79,7 +86,7 @@ export default function AuthPage() {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { isAuthenticated, isLoading } = useAuth();
-  
+
   const [activeTab, setActiveTab] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -196,7 +203,7 @@ export default function AuthPage() {
               <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
                 <Layers className="w-7 h-7 text-primary-foreground" />
               </div>
-              <span className="text-2xl font-bold">통합 모니터링</span>
+              <span className="text-2xl font-bold">SEARCH SCOPE</span>
             </div>
           </div>
 
@@ -210,7 +217,9 @@ export default function AuthPage() {
           {success && (
             <Alert className="mb-4 border-green-500 bg-green-50 dark:bg-green-950">
               <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800 dark:text-green-200">{success}</AlertDescription>
+              <AlertDescription className="text-green-800 dark:text-green-200">
+                {success}
+              </AlertDescription>
             </Alert>
           )}
 
@@ -222,8 +231,7 @@ export default function AuthPage() {
               <CardTitle>이메일을 확인해주세요</CardTitle>
               <CardDescription>
                 <span className="font-medium text-foreground">{sentEmail}</span>
-                <br />
-                위 주소로 인증 이메일을 발송했습니다.
+                <br />위 주소로 인증 이메일을 발송했습니다.
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center text-sm text-muted-foreground">
@@ -231,16 +239,16 @@ export default function AuthPage() {
               <p className="mt-2">이메일이 도착하지 않았나요?</p>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full"
                 onClick={handleResend}
                 disabled={resendMutation.isPending}
               >
                 {resendMutation.isPending ? "발송 중..." : "인증 이메일 재발송"}
               </Button>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="w-full"
                 onClick={() => {
                   setShowEmailSent(false);
@@ -253,7 +261,9 @@ export default function AuthPage() {
           </Card>
 
           <p className="text-center text-sm text-muted-foreground mt-6">
-            <a href="/" className="hover:text-primary">← 홈으로 돌아가기</a>
+            <a href="/" className="hover:text-primary">
+              ← 홈으로 돌아가기
+            </a>
           </p>
         </div>
       </div>
@@ -268,9 +278,11 @@ export default function AuthPage() {
             <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
               <Layers className="w-7 h-7 text-primary-foreground" />
             </div>
-            <span className="text-2xl font-bold">통합 모니터링</span>
+            <span className="text-2xl font-bold">SEARCH SCOPE</span>
           </div>
-          <p className="text-muted-foreground">네이버 검색 결과를 한눈에 파악하세요</p>
+          <p className="text-muted-foreground">
+            네이버 검색 결과를 한눈에 파악하세요
+          </p>
         </div>
 
         {error && (
@@ -283,7 +295,9 @@ export default function AuthPage() {
         {success && (
           <Alert className="mb-4 border-green-500 bg-green-50 dark:bg-green-950">
             <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800 dark:text-green-200">{success}</AlertDescription>
+            <AlertDescription className="text-green-800 dark:text-green-200">
+              {success}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -291,7 +305,9 @@ export default function AuthPage() {
           <Card>
             <CardHeader>
               <CardTitle>비밀번호 찾기</CardTitle>
-              <CardDescription>가입하신 이메일 주소를 입력해주세요</CardDescription>
+              <CardDescription>
+                가입하신 이메일 주소를 입력해주세요
+              </CardDescription>
             </CardHeader>
             <form onSubmit={handleForgotPassword}>
               <CardContent className="space-y-4">
@@ -312,16 +328,18 @@ export default function AuthPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-4">
-                <Button 
-                  type="submit" 
-                  className="w-full" 
+                <Button
+                  type="submit"
+                  className="w-full"
                   disabled={forgotPasswordMutation.isPending}
                 >
-                  {forgotPasswordMutation.isPending ? "발송 중..." : "재설정 메일 발송"}
+                  {forgotPasswordMutation.isPending
+                    ? "발송 중..."
+                    : "재설정 메일 발송"}
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="ghost" 
+                <Button
+                  type="button"
+                  variant="ghost"
                   className="w-full"
                   onClick={() => setShowForgotPassword(false)}
                 >
@@ -332,11 +350,14 @@ export default function AuthPage() {
           </Card>
         ) : (
           <Card>
-            <Tabs value={activeTab} onValueChange={(value) => {
-              setActiveTab(value);
-              setError(null);
-              setSuccess(null);
-            }}>
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) => {
+                setActiveTab(value);
+                setError(null);
+                setSuccess(null);
+              }}
+            >
               <CardHeader>
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="login">로그인</TabsTrigger>
@@ -379,16 +400,16 @@ export default function AuthPage() {
                     </div>
                   </CardContent>
                   <CardFooter className="flex flex-col gap-4">
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
+                    <Button
+                      type="submit"
+                      className="w-full"
                       disabled={loginMutation.isPending}
                     >
                       {loginMutation.isPending ? "로그인 중..." : "로그인"}
                     </Button>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
+                    <Button
+                      type="button"
+                      variant="ghost"
                       className="text-sm text-muted-foreground"
                       onClick={() => setShowForgotPassword(true)}
                     >
@@ -417,17 +438,20 @@ export default function AuthPage() {
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      입력하신 이메일로 인증 링크가 발송됩니다.<br />
+                      입력하신 이메일로 인증 링크가 발송됩니다.
+                      <br />
                       이메일 인증 후 비밀번호를 설정하여 가입이 완료됩니다.
                     </p>
                   </CardContent>
                   <CardFooter>
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
+                    <Button
+                      type="submit"
+                      className="w-full"
                       disabled={startRegistrationMutation.isPending}
                     >
-                      {startRegistrationMutation.isPending ? "발송 중..." : "인증 이메일 받기"}
+                      {startRegistrationMutation.isPending
+                        ? "발송 중..."
+                        : "인증 이메일 받기"}
                     </Button>
                   </CardFooter>
                 </form>
@@ -437,7 +461,9 @@ export default function AuthPage() {
         )}
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          <a href="/" className="hover:text-primary">← 홈으로 돌아가기</a>
+          <a href="/" className="hover:text-primary">
+            ← 홈으로 돌아가기
+          </a>
         </p>
       </div>
     </div>
