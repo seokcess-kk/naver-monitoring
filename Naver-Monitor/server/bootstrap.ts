@@ -36,20 +36,19 @@ export function markReady() {
   isReady = true;
 }
 
-app.get("/health", (_req, res) => {
+// Health check endpoints - respond to all methods
+app.all("/health", (_req, res) => {
   res.status(200).send("OK");
 });
 
-app.head("/health", (_req, res) => {
-  res.status(200).send("");
-});
-
+// Root endpoint guard during startup - respond to all methods
 app.use((req, res, next) => {
-  if (req.path === "/" && req.method === "GET" && !isReady) {
-    return res.status(200).send("<!DOCTYPE html><html><head><title>Starting...</title><meta http-equiv='refresh' content='2'></head><body><h1>Application is starting...</h1></body></html>");
-  }
-  if (req.path === "/" && req.method === "HEAD" && !isReady) {
-    return res.status(200).send("");
+  if (req.path === "/" && !isReady) {
+    if (req.method === "GET") {
+      return res.status(200).send("<!DOCTYPE html><html><head><title>Starting...</title><meta http-equiv='refresh' content='2'></head><body><h1>Application is starting...</h1></body></html>");
+    }
+    // HEAD, OPTIONS, etc.
+    return res.status(200).send("OK");
   }
   next();
 });
@@ -58,7 +57,6 @@ httpServer.listen(
   {
     port,
     host: "0.0.0.0",
-    reusePort: true,
   },
   () => {
     log(`Server listening on port ${port} - health checks ready`);
