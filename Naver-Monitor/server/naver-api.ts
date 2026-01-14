@@ -1,6 +1,22 @@
 import axios, { AxiosError } from "axios";
 import LRUCache from "lru-cache";
 
+export type NaverChannel = "blog" | "cafe" | "kin" | "news";
+
+interface ChannelConfig {
+  endpoint: string;
+  label: string;
+}
+
+const CHANNEL_CONFIG: Record<NaverChannel, ChannelConfig> = {
+  blog: { endpoint: "https://openapi.naver.com/v1/search/blog.json", label: "블로그" },
+  cafe: { endpoint: "https://openapi.naver.com/v1/search/cafearticle.json", label: "카페" },
+  kin: { endpoint: "https://openapi.naver.com/v1/search/kin.json", label: "지식iN" },
+  news: { endpoint: "https://openapi.naver.com/v1/search/news.json", label: "뉴스" },
+} as const;
+
+export const NAVER_CHANNELS = Object.keys(CHANNEL_CONFIG) as NaverChannel[];
+
 interface NaverApiParams {
   query: string;
   display?: number;
@@ -13,12 +29,7 @@ interface NaverApiCredentials {
   clientSecret: string;
 }
 
-interface CachedResult {
-  data: any;
-  cachedAt: number;
-}
-
-const apiCache = new LRUCache<string, CachedResult>({
+const apiCache = new LRUCache<string, unknown>({
   max: 500,
   ttl: 3 * 60 * 1000,
 });
@@ -54,7 +65,7 @@ export async function callNaverApi(
   const cached = apiCache.get(cacheKey);
   if (cached) {
     console.log(`[NaverAPI] Cache hit: ${query.substring(0, 20)}...`);
-    return cached.data;
+    return cached;
   }
   
   const response = await axios.get(endpoint, {
@@ -66,45 +77,41 @@ export async function callNaverApi(
     timeout: 10000,
   });
   
-  apiCache.set(cacheKey, { data: response.data, cachedAt: Date.now() });
+  apiCache.set(cacheKey, response.data);
   return response.data;
 }
 
-export async function searchBlog(params: NaverApiParams, credentials: NaverApiCredentials) {
+export async function searchChannel(
+  channel: NaverChannel,
+  params: NaverApiParams,
+  credentials: NaverApiCredentials
+) {
+  const config = CHANNEL_CONFIG[channel];
   try {
-    return await callNaverApi("https://openapi.naver.com/v1/search/blog.json", params, credentials);
+    return await callNaverApi(config.endpoint, params, credentials);
   } catch (error) {
-    logApiError("blog", error, params.query);
+    logApiError(channel, error, params.query);
     throw error;
   }
+}
+
+export async function searchBlog(params: NaverApiParams, credentials: NaverApiCredentials) {
+  return searchChannel("blog", params, credentials);
 }
 
 export async function searchCafe(params: NaverApiParams, credentials: NaverApiCredentials) {
-  try {
-    return await callNaverApi("https://openapi.naver.com/v1/search/cafearticle.json", params, credentials);
-  } catch (error) {
-    logApiError("cafe", error, params.query);
-    throw error;
-  }
+  return searchChannel("cafe", params, credentials);
 }
 
 export async function searchKin(params: NaverApiParams, credentials: NaverApiCredentials) {
-  try {
-    return await callNaverApi("https://openapi.naver.com/v1/search/kin.json", params, credentials);
-  } catch (error) {
-    logApiError("kin", error, params.query);
-    throw error;
-  }
+  return searchChannel("kin", params, credentials);
 }
 
 export async function searchNews(params: NaverApiParams, credentials: NaverApiCredentials) {
-  try {
-    return await callNaverApi("https://openapi.naver.com/v1/search/news.json", params, credentials);
-  } catch (error) {
-    logApiError("news", error, params.query);
-    throw error;
-  }
+  return searchChannel("news", params, credentials);
 }
+
+const EMPTY_RESULT = { total: 0, items: [] };
 
 export async function searchAllChannels(
   query: string,
@@ -116,18 +123,19 @@ export async function searchAllChannels(
   const start = (page - 1) * display + 1;
   const params = { query, display, start, sort };
 
-  const [blog, cafe, kin, news] = await Promise.all([
-    searchBlog(params, credentials).catch(() => ({ total: 0, items: [] })),
-    searchCafe(params, credentials).catch(() => ({ total: 0, items: [] })),
-    searchKin(params, credentials).catch(() => ({ total: 0, items: [] })),
-    searchNews(params, credentials).catch(() => ({ total: 0, items: [] })),
-  ]);
+  const results = await Promise.all(
+    NAVER_CHANNELS.map((channel) =>
+      searchChannel(channel, params, credentials).catch(() => EMPTY_RESULT)
+    )
+  );
 
-  return { blog, cafe, kin, news };
+  return Object.fromEntries(
+    NAVER_CHANNELS.map((channel, i) => [channel, results[i]])
+  ) as Record<NaverChannel, typeof EMPTY_RESULT>;
 }
 
 export async function searchSingleChannel(
-  channel: "blog" | "cafe" | "kin" | "news",
+  channel: NaverChannel,
   query: string,
   sort: "sim" | "date",
   page: number,
@@ -137,16 +145,5 @@ export async function searchSingleChannel(
   const start = (page - 1) * display + 1;
   const params = { query, display, start, sort };
 
-  switch (channel) {
-    case "blog":
-      return searchBlog(params, credentials).catch(() => ({ total: 0, items: [] }));
-    case "cafe":
-      return searchCafe(params, credentials).catch(() => ({ total: 0, items: [] }));
-    case "kin":
-      return searchKin(params, credentials).catch(() => ({ total: 0, items: [] }));
-    case "news":
-      return searchNews(params, credentials).catch(() => ({ total: 0, items: [] }));
-    default:
-      return { total: 0, items: [] };
-  }
+  return searchChannel(channel, params, credentials).catch(() => EMPTY_RESULT);
 }
