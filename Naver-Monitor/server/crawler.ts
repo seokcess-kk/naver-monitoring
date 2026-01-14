@@ -212,7 +212,81 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
         }
       }
 
-      // 3. 일반 스마트블록 / 뷰 영역 추출
+      // 3. 리뷰 영역 추출 (Fender 렌더링 구조)
+      const reviewSections = document.querySelectorAll(
+        '[data-meta-ssuid="review"], [data-block-id*="review/"]'
+      );
+
+      if (reviewSections.length > 0) {
+        const reviewPosts: SmartBlockPost[] = [];
+        
+        reviewSections.forEach((section) => {
+          const parentBox = section.closest(".spw_fsolid") || section.closest(".api_subject_bx");
+          if (parentBox) processedElements.add(parentBox);
+
+          // Fender 구조 내부 아이템 추출
+          const items = section.querySelectorAll(
+            '.api_subject_bx, [class*="desktop_mode"]'
+          );
+
+          items.forEach((item) => {
+            try {
+              // 다양한 제목 셀렉터 시도
+              const titleEl =
+                item.querySelector('a[class*="title"]') ||
+                item.querySelector('[class*="headline"]') ||
+                item.querySelector('.tit') ||
+                item.querySelector('a');
+
+              const summaryEl =
+                item.querySelector('[class*="body"]') ||
+                item.querySelector('[class*="desc"]') ||
+                item.querySelector('.dsc');
+
+              const anchorEl = titleEl?.tagName === "A" 
+                ? titleEl 
+                : titleEl?.closest("a") || item.querySelector("a");
+
+              if (anchorEl && (anchorEl as HTMLAnchorElement).href) {
+                const href = (anchorEl as HTMLAnchorElement).href;
+                // 네이버 콘텐츠 링크만 포함 (블로그, 카페, 포스트)
+                const isNaverContent = 
+                  href.includes("blog.naver.com") || 
+                  href.includes("cafe.naver.com") || 
+                  href.includes("post.naver.com");
+                  
+                if (isNaverContent) {
+                  const title = titleEl 
+                    ? (titleEl as HTMLElement).innerText.trim() 
+                    : (anchorEl as HTMLElement).innerText.trim();
+                  
+                  if (title && !reviewPosts.some((p) => p.url === href)) {
+                    reviewPosts.push({
+                      rank: null,
+                      title: title.substring(0, 200),
+                      url: href,
+                      summary: summaryEl ? (summaryEl as HTMLElement).innerText.trim().substring(0, 300) : "",
+                      isPlace: false,
+                    });
+                  }
+                }
+              }
+            } catch (e) {}
+          });
+        });
+
+        if (reviewPosts.length > 0) {
+          reviewPosts.forEach((post, idx) => {
+            post.rank = idx + 1;
+          });
+          results.push({
+            sectionTitle: "리뷰",
+            posts: reviewPosts,
+          });
+        }
+      }
+
+      // 4. 일반 스마트블록 / 뷰 영역 추출
       const boxes = document.querySelectorAll("div.api_subject_bx");
 
       boxes.forEach((box) => {
