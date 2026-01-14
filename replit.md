@@ -1,8 +1,12 @@
-# Naver Integrated Monitoring Platform
+# SEARCH SCOPE
+
+**Slogan:** "See the Share. Shape the Strategy."
 
 ## Overview
 
-A Naver search monitoring service that combines API search and SmartBlock crawling. Users register their own Naver API keys, search keywords, and view real-time results across 4 channels (Blog, Cafe, KnowledgeiN, News) plus SmartBlock sections (Places, News blocks, VIEW). The platform also includes SOV (Share of Voice) analysis for measuring brand exposure across search results.
+**SEARCH SCOPE** is a Naver search monitoring service that combines API search and SmartBlock crawling. Users register their own Naver API keys, search keywords, and view real-time results across 4 channels (Blog, Cafe, KnowledgeiN, News) plus SmartBlock sections (Places, News blocks, VIEW). The platform also includes SOV (Share of Voice) analysis for measuring brand exposure across search results.
+
+점유율을 파악하고 전략을 설계하는 네이버 검색 통합 모니터링 서비스입니다.
 
 **Core Features:**
 - Per-user Naver API key registration with AES-256-GCM encryption

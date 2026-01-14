@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Layers, LogOut, User, Settings } from "lucide-react";
+import { LogOut, User, Settings } from "lucide-react";
 import { Link } from "wouter";
 
 export function Header() {
@@ -24,12 +24,13 @@ export function Header() {
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4 max-w-7xl">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-primary to-violet-600 rounded-xl flex items-center justify-center shadow-sm">
-            <Layers className="w-5 h-5 text-primary-foreground" />
+          <div className="w-9 h-9 bg-gradient-to-br from-primary to-violet-600 rounded-xl flex items-center justify-center shadow-sm relative">
+            <div className="absolute inset-1.5 border-2 border-primary-foreground/80 rounded-full"></div>
+            <div className="w-1.5 h-1.5 bg-primary-foreground rounded-full"></div>
           </div>
           <div className="flex flex-col">
             <span className="text-lg font-bold tracking-tight">
-              네이버 통합 모니터링
+              SEARCH SCOPE
             </span>
           </div>
         </div>

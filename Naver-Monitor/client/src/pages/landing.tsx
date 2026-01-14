@@ -5,7 +5,6 @@ import {
   BarChart3, 
   Shield, 
   Zap, 
-  Layers, 
   Globe, 
   ArrowRight, 
   PieChart,
@@ -14,7 +13,8 @@ import {
   Mail,
   Lock,
   ChevronDown,
-  CheckCircle2
+  CheckCircle2,
+  Layers
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -50,10 +50,11 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 border-b glass-card">
         <div className="container mx-auto px-4 h-14 md:h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 md:gap-3">
-            <div className="w-8 h-8 md:w-9 md:h-9 bg-primary rounded-lg flex items-center justify-center">
-              <Layers className="w-4 h-4 md:w-5 md:h-5 text-primary-foreground" />
+            <div className="w-8 h-8 md:w-9 md:h-9 bg-primary rounded-lg flex items-center justify-center relative">
+              <div className="absolute inset-1.5 border-2 border-primary-foreground/80 rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-primary-foreground rounded-full"></div>
             </div>
-            <span className="text-base md:text-lg font-bold">통합 모니터링</span>
+            <span className="text-base md:text-lg font-bold">SEARCH SCOPE</span>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
@@ -83,14 +84,14 @@ export default function LandingPage() {
                   통합 검색 + SOV 분석
                 </div>
                 <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight leading-tight">
-                  네이버 검색 결과를
+                  See the Share.
                   <br />
-                  <span className="gradient-text">한눈에</span> 파악하세요
+                  <span className="gradient-text">Shape the Strategy.</span>
                 </h1>
                 <p className="text-base md:text-lg text-muted-foreground max-w-lg">
-                  4개 채널 통합 검색부터 브랜드 점유율(SOV) 분석까지.
+                  네이버 4개 채널 통합 검색부터 브랜드 점유율(SOV) 분석까지.
                   <br className="hidden sm:block" />
-                  검색 마케팅에 필요한 인사이트를 실시간으로 확인하세요.
+                  시장 키워드 점유율을 파악하고 전략을 설계하세요.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                   <Button size="lg" className="w-full sm:w-auto group" asChild data-testid="button-get-started">
@@ -385,7 +386,7 @@ export default function LandingPage() {
 
       <footer className="py-6 md:py-8 border-t">
         <div className="container mx-auto px-4 text-center text-xs md:text-sm text-muted-foreground">
-          © 2024 네이버 통합 모니터링. All rights reserved.
+          © 2024 SEARCH SCOPE. All rights reserved.
         </div>
       </footer>
     </div>

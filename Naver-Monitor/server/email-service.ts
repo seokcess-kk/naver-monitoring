@@ -61,17 +61,18 @@ export async function sendRegistrationEmail(toEmail: string, registrationToken: 
   const msg = {
     to: toEmail,
     from: fromEmail,
-    subject: '네이버 통합 모니터링 - 회원가입 인증',
+    subject: 'SEARCH SCOPE - 회원가입 인증',
     html: `
       <div style="font-family: 'Noto Sans KR', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">네이버 통합 모니터링</h1>
+          <h1 style="color: white; margin: 0; font-size: 24px;">SEARCH SCOPE</h1>
+          <p style="color: rgba(255,255,255,0.8); margin: 8px 0 0 0; font-size: 14px;">See the Share. Shape the Strategy.</p>
         </div>
         <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
           <h2 style="color: #333; margin-top: 0;">이메일 인증을 완료해주세요</h2>
           <p style="color: #666; line-height: 1.6;">
             안녕하세요!<br><br>
-            네이버 통합 모니터링 서비스 가입을 위해<br>
+            SEARCH SCOPE 서비스 가입을 위해<br>
             아래 버튼을 클릭하여 이메일 인증을 완료하고 회원가입을 진행해주세요.
           </p>
           <div style="text-align: center; margin: 30px 0;">
@@ -113,11 +114,12 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
   const msg = {
     to: toEmail,
     from: fromEmail,
-    subject: '네이버 통합 모니터링 - 비밀번호 재설정',
+    subject: 'SEARCH SCOPE - 비밀번호 재설정',
     html: `
       <div style="font-family: 'Noto Sans KR', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">네이버 통합 모니터링</h1>
+          <h1 style="color: white; margin: 0; font-size: 24px;">SEARCH SCOPE</h1>
+          <p style="color: rgba(255,255,255,0.8); margin: 8px 0 0 0; font-size: 14px;">See the Share. Shape the Strategy.</p>
         </div>
         <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
           <h2 style="color: #333; margin-top: 0;">비밀번호 재설정</h2>

@@ -1,9 +1,16 @@
-# Design Guidelines: Naver Search Monitoring Platform
+# Design Guidelines: SEARCH SCOPE
+
+**Slogan:** "See the Share. Shape the Strategy."
 
 ## Design Approach: Modern Productivity Dashboard
 
 **Selected Approach:** Design System - inspired by Linear, Notion, and Vercel's productivity-focused aesthetics
 **Rationale:** This is a data-intensive monitoring tool requiring clear information hierarchy, efficient workflows, and professional credibility. Users need to quickly scan multiple data sources and manage their API credentials securely.
+
+## Logo Concept: Scope Target
+- **Symbol:** 원형 타겟(스코프) + 중앙 점(핵심 키워드)
+- **Implementation:** CSS로 구현 - rounded-full border + center dot
+- **Colors:** Primary gradient (violet-600 to primary)
 
 ---
 
