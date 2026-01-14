@@ -105,10 +105,19 @@ Preferred communication style: Simple, everyday language.
 - **Build Command**: `npm run deploy:build --prefix Naver-Monitor` (installs deps + builds)
 - **Run Command**: `npm run deploy:start --prefix Naver-Monitor` (runs migrations + starts server)
 - **Production URL**: https://naver-monitor--inner1.replit.app (set via APP_BASE_URL env var)
-- **Health Check**: `/health` endpoint responds before any middleware for fast health checks
+- **Health Check**: `/health` and `/` endpoints respond immediately before any middleware for fast health checks
+- **Split Build Architecture**: 
+  - `dist/index.cjs` (bootstrap) - Minimal server, starts HTTP listener immediately
+  - `dist/app.cjs` - Heavy initialization (DB, session, routes) loaded asynchronously after server starts
 - **Puppeteer Chrome**: Installed during build via `npx puppeteer browsers install chrome`
 - **drizzle-kit**: Moved to dependencies for runtime migration support
 
 ### Deploy Scripts (Naver-Monitor/package.json)
 - `deploy:build`: `npm install --include=dev && npx drizzle-kit push --config ./drizzle.config.ts && npm run build`
 - `deploy:start`: `NODE_ENV=production node dist/index.cjs`
+
+### Cold Start Optimization
+The server uses a two-phase startup:
+1. **Phase 1 (Immediate)**: HTTP server starts, `/health` and `/` return 200 OK
+2. **Phase 2 (Deferred)**: DB pool, session store, routes, and static files are initialized asynchronously
+This ensures health checks pass within the Replit timeout window even during cold starts.
