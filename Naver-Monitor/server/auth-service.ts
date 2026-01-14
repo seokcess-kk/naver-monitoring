@@ -121,15 +121,19 @@ export async function completeRegistration(
 
   const passwordHash = await hashPassword(password);
 
-  const [user] = await db.insert(users).values({
-    email: tokenRecord.email,
-    passwordHash,
-    firstName,
-    lastName,
-    emailVerified: true,
-  }).returning();
+  const user = await db.transaction(async (tx) => {
+    const [newUser] = await tx.insert(users).values({
+      email: tokenRecord.email!,
+      passwordHash,
+      firstName,
+      lastName,
+      emailVerified: true,
+    }).returning();
 
-  await db.delete(verificationTokens).where(eq(verificationTokens.id, tokenRecord.id));
+    await tx.delete(verificationTokens).where(eq(verificationTokens.id, tokenRecord.id));
+
+    return newUser;
+  });
 
   return user;
 }
@@ -196,13 +200,17 @@ export async function resetPassword(token: string, newPassword: string): Promise
 
   const passwordHash = await hashPassword(newPassword);
 
-  const [user] = await db
-    .update(users)
-    .set({ passwordHash, updatedAt: new Date() })
-    .where(eq(users.id, tokenRecord.userId!))
-    .returning();
+  const user = await db.transaction(async (tx) => {
+    const [updatedUser] = await tx
+      .update(users)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(users.id, tokenRecord.userId!))
+      .returning();
 
-  await db.delete(verificationTokens).where(eq(verificationTokens.id, tokenRecord.id));
+    await tx.delete(verificationTokens).where(eq(verificationTokens.id, tokenRecord.id));
+
+    return updatedUser;
+  });
 
   return user;
 }
