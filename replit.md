@@ -10,6 +10,7 @@ A Naver search monitoring service that combines API search and SmartBlock crawli
 - Puppeteer-based SmartBlock crawling
 - SOV brand exposure analysis with OpenAI embeddings
 - Email/password authentication with SendGrid verification
+- Reusable EmptyState component for consistent empty/error/not-configured states
 
 ## User Preferences
 
