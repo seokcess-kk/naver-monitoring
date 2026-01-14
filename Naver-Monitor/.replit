@@ -14,10 +14,9 @@ externalPort = 80
 PORT = "5000"
 
 [deployment]
-deploymentTarget = "autoscale"
+deploymentTarget = "vm"
 run = ["bash", "-c", "cd Naver-Monitor && node dist/index.cjs"]
 build = ["bash", "-c", "cd Naver-Monitor && npm run build"]
-healthCheckPath = "/health"
 
 [workflows]
 runButton = "Project"
