@@ -112,9 +112,14 @@ export function SovPanel() {
     refetchInterval: pollingRunId ? 3000 : false,
   });
 
-  const { data: selectedResult, isLoading: resultLoading } = useQuery<SovResultResponse>({
+  const selectedRunFromList = runs?.find(r => r.id === selectedRunId);
+  const isSelectedRunCompleted = selectedRunFromList?.status === "completed" || selectedRunFromList?.status === "failed";
+  
+  const { data: selectedResult, isLoading: resultLoading, refetch: refetchResult } = useQuery<SovResultResponse>({
     queryKey: ["/api/sov/result", selectedRunId],
     enabled: !!selectedRunId,
+    staleTime: isSelectedRunCompleted ? 5 * 60 * 1000 : 0,
+    refetchInterval: selectedRunId && !isSelectedRunCompleted ? 3000 : false,
   });
 
   const { data: templates } = useQuery<SovTemplate[]>({
@@ -255,6 +260,12 @@ export function SovPanel() {
       setSelectedRunId(completedRun.id);
     }
   }, [runs, pollingRunId]);
+
+  useEffect(() => {
+    if (selectedRunId) {
+      queryClient.invalidateQueries({ queryKey: ["/api/sov/result", selectedRunId] });
+    }
+  }, [selectedRunId]);
 
   useEffect(() => {
     if (!runsLoading && !hasInitialized) {
