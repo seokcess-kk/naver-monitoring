@@ -96,3 +96,13 @@ Preferred communication style: Simple, everyday language.
 - `openai` - OpenAI API client
 - `lru-cache` - Response caching
 - `p-limit` - Concurrency control
+
+## Deployment Configuration
+
+### Important Notes
+- **Single .replit file**: Only the root `.replit` file is used for deployment. Do NOT create `.replit` files in subdirectories as they will be ignored and cause confusion.
+- **Deployment Type**: VM (Reserved VM) - Always running, no cold start issues
+- **Build/Run Commands**: Defined in root `package.json`, which delegates to `Naver-Monitor/` subdirectory
+- **Production URL**: https://naver-monitor--inner1.replit.app (set via APP_BASE_URL env var)
+- **Health Check**: `/health` endpoint responds before any middleware for fast health checks
+- **Puppeteer Chrome**: Installed during build via `npx puppeteer browsers install chrome`
