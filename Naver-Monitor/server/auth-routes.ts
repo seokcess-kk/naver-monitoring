@@ -11,19 +11,12 @@ import {
   findUserById,
 } from "./auth-service";
 import { startRegistrationSchema, completeRegistrationSchema, loginSchema } from "@shared/schema";
+import { getClientIp, validateRequest } from "./utils/request-helpers";
 
 declare module "express-session" {
   interface SessionData {
     userId?: string;
   }
-}
-
-function getClientIp(req: Request): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string" && forwarded.length > 0) {
-    return forwarded.split(",")[0].trim();
-  }
-  return req.ip || req.socket?.remoteAddress || "unknown";
 }
 
 const authLimiter = rateLimit({
@@ -56,18 +49,12 @@ export function isAuthenticated(req: Request, res: Response, next: NextFunction)
 export function registerAuthRoutes(app: Express) {
   app.post("/api/auth/start-registration", authLimiter, async (req, res) => {
     try {
-      const parseResult = startRegistrationSchema.safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({
-          message: "입력 값이 올바르지 않습니다",
-          errors: parseResult.error.errors.map((e) => ({
-            field: e.path.join("."),
-            message: e.message,
-          })),
-        });
+      const validation = validateRequest(startRegistrationSchema, req.body);
+      if (!validation.success) {
+        return res.status(400).json(validation.error);
       }
 
-      const { email } = parseResult.data;
+      const { email } = validation.data;
 
       await startRegistration(email);
 
@@ -108,18 +95,12 @@ export function registerAuthRoutes(app: Express) {
 
   app.post("/api/auth/complete-registration", authLimiter, async (req, res) => {
     try {
-      const parseResult = completeRegistrationSchema.safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({
-          message: "입력 값이 올바르지 않습니다",
-          errors: parseResult.error.errors.map((e) => ({
-            field: e.path.join("."),
-            message: e.message,
-          })),
-        });
+      const validation = validateRequest(completeRegistrationSchema, req.body);
+      if (!validation.success) {
+        return res.status(400).json(validation.error);
       }
 
-      const { token, password, firstName, lastName } = parseResult.data;
+      const { token, password, firstName, lastName } = validation.data;
 
       const user = await completeRegistration(token, password, firstName, lastName);
 
@@ -168,18 +149,12 @@ export function registerAuthRoutes(app: Express) {
 
   app.post("/api/auth/login", authLimiter, async (req, res) => {
     try {
-      const parseResult = loginSchema.safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({
-          message: "입력 값이 올바르지 않습니다",
-          errors: parseResult.error.errors.map((e) => ({
-            field: e.path.join("."),
-            message: e.message,
-          })),
-        });
+      const validation = validateRequest(loginSchema, req.body);
+      if (!validation.success) {
+        return res.status(400).json(validation.error);
       }
 
-      const { email, password } = parseResult.data;
+      const { email, password } = validation.data;
 
       const user = await loginUser(email, password);
 

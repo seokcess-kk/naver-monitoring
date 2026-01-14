@@ -1,5 +1,5 @@
-import type { Express, Request } from "express";
-import { createServer, type Server } from "http";
+import type { Express } from "express";
+import { type Server } from "http";
 import { storage } from "./storage";
 import { registerAuthRoutes, isAuthenticated } from "./auth-routes";
 import { searchAllChannels, searchSingleChannel } from "./naver-api";
@@ -7,44 +7,14 @@ import { crawlNaverSearch } from "./crawler";
 import { insertApiKeySchema, updateApiKeySchema } from "@shared/schema";
 import { z } from "zod";
 import { rateLimit } from "express-rate-limit";
-import { createSovRun, executeSovRun, getSovRun, getSovResultsByRun, getSovExposuresByRun, getSovResultsByTypeForRun } from "./sov-service";
+import { createSovRun, executeSovRun, getSovResultsByRun, getSovExposuresByRun, getSovResultsByTypeForRun } from "./sov-service";
 import { getKeywordVolume, isConfigured as isNaverAdConfigured } from "./naver-ad-api";
-
-function normalizeIPv6(ip: string): string {
-  if (!ip.includes(":")) return ip;
-  
-  const parts = ip.split(":");
-  if (parts.length < 4) return ip;
-  
-  return parts.slice(0, 4).join(":") + "::/64";
-}
-
-function getClientIp(req: Request): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string" && forwarded.length > 0) {
-    const firstIp = forwarded.split(",")[0].trim();
-    if (firstIp) return normalizeIPv6(firstIp);
-  }
-  
-  const realIp = req.headers["x-real-ip"];
-  if (typeof realIp === "string" && realIp.length > 0) {
-    return normalizeIPv6(realIp);
-  }
-  
-  const socketIp = req.ip || req.socket?.remoteAddress;
-  if (socketIp) return normalizeIPv6(socketIp);
-  
-  return "unknown-" + Date.now();
-}
-
-function generateRateLimitKey(req: Request): string {
-  const authReq = req as any;
-  if (authReq.session?.userId) {
-    return `user:${authReq.session.userId}`;
-  }
-  const ip = getClientIp(req);
-  return `ip:${ip}`;
-}
+import { 
+  generateRateLimitKey, 
+  validateRequest, 
+  assertSovRunAccessible, 
+  toApiKeyPublic 
+} from "./utils/request-helpers";
 
 const searchLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -88,16 +58,12 @@ export async function registerRoutes(
 
   app.get("/api/api-keys", isAuthenticated, apiKeyLimiter, async (req: any, res) => {
     try {
-      const userId = req.session.userId!
+      const userId = req.session.userId!;
       const apiKey = await storage.getApiKeyByUserId(userId);
       if (!apiKey) {
         return res.json(null);
       }
-      res.json({
-        clientId: apiKey.clientId,
-        hasClientSecret: !!apiKey.clientSecret,
-        updatedAt: apiKey.updatedAt,
-      });
+      res.json(toApiKeyPublic(apiKey));
     } catch (error) {
       console.error("Get API key error:", error);
       res.status(500).json({ message: "Failed to fetch API key" });
@@ -106,29 +72,25 @@ export async function registerRoutes(
 
   app.post("/api/api-keys", isAuthenticated, apiKeyLimiter, async (req: any, res) => {
     try {
-      const userId = req.session.userId!
+      const userId = req.session.userId!;
       
       const existing = await storage.getApiKeyByUserId(userId);
       if (existing) {
         return res.status(400).json({ message: "API key already exists. Use PUT to update." });
       }
 
-      const validated = insertApiKeySchema.parse({
+      const validation = validateRequest(insertApiKeySchema, {
         userId,
         clientId: req.body.clientId,
         clientSecret: req.body.clientSecret,
       });
-
-      const apiKey = await storage.createApiKey(validated);
-      res.status(201).json({
-        clientId: apiKey.clientId,
-        hasClientSecret: !!apiKey.clientSecret,
-        updatedAt: apiKey.updatedAt,
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      if (!validation.success) {
+        return res.status(400).json(validation.error);
       }
+
+      const apiKey = await storage.createApiKey(validation.data);
+      res.status(201).json(toApiKeyPublic(apiKey));
+    } catch (error) {
       console.error("Create API key error:", error);
       res.status(500).json({ message: "Failed to create API key" });
     }
@@ -136,26 +98,22 @@ export async function registerRoutes(
 
   app.put("/api/api-keys", isAuthenticated, apiKeyLimiter, async (req: any, res) => {
     try {
-      const userId = req.session.userId!
+      const userId = req.session.userId!;
 
-      const validated = updateApiKeySchema.parse({
+      const validation = validateRequest(updateApiKeySchema, {
         clientId: req.body.clientId,
         clientSecret: req.body.clientSecret,
       });
+      if (!validation.success) {
+        return res.status(400).json(validation.error);
+      }
 
-      const apiKey = await storage.updateApiKey(userId, validated);
+      const apiKey = await storage.updateApiKey(userId, validation.data);
       if (!apiKey) {
         return res.status(404).json({ message: "API key not found" });
       }
-      res.json({
-        clientId: apiKey.clientId,
-        hasClientSecret: !!apiKey.clientSecret,
-        updatedAt: apiKey.updatedAt,
-      });
+      res.json(toApiKeyPublic(apiKey));
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid input", errors: error.errors });
-      }
       console.error("Update API key error:", error);
       res.status(500).json({ message: "Failed to update API key" });
     }
@@ -174,17 +132,14 @@ export async function registerRoutes(
 
   app.get("/api/search", isAuthenticated, searchLimiter, async (req: any, res) => {
     try {
-      const userId = req.session.userId!
+      const userId = req.session.userId!;
       
-      const parseResult = searchQuerySchema.safeParse(req.query);
-      if (!parseResult.success) {
-        return res.status(400).json({ 
-          message: "잘못된 입력입니다", 
-          errors: parseResult.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
-        });
+      const validation = validateRequest(searchQuerySchema, req.query);
+      if (!validation.success) {
+        return res.status(400).json(validation.error);
       }
       
-      const { keyword, sort, page } = parseResult.data;
+      const { keyword, sort, page } = validation.data;
 
       const apiKey = await storage.getApiKeyByUserId(userId);
       if (!apiKey) {
@@ -216,17 +171,14 @@ export async function registerRoutes(
 
   app.get("/api/search/channel", isAuthenticated, searchLimiter, async (req: any, res) => {
     try {
-      const userId = req.session.userId!
+      const userId = req.session.userId!;
       
-      const parseResult = channelSearchQuerySchema.safeParse(req.query);
-      if (!parseResult.success) {
-        return res.status(400).json({ 
-          message: "잘못된 입력입니다", 
-          errors: parseResult.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
-        });
+      const validation = validateRequest(channelSearchQuerySchema, req.query);
+      if (!validation.success) {
+        return res.status(400).json(validation.error);
       }
       
-      const { keyword, channel, sort, page } = parseResult.data;
+      const { keyword, channel, sort, page } = validation.data;
 
       const apiKey = await storage.getApiKeyByUserId(userId);
       if (!apiKey) {
@@ -264,17 +216,14 @@ export async function registerRoutes(
 
   app.post("/api/sov/run", isAuthenticated, sovLimiter, async (req: any, res) => {
     try {
-      const userId = req.session.userId!
+      const userId = req.session.userId!;
       
-      const parseResult = sovRunSchema.safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({ 
-          message: "잘못된 입력입니다", 
-          errors: parseResult.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
-        });
+      const validation = validateRequest(sovRunSchema, req.body);
+      if (!validation.success) {
+        return res.status(400).json(validation.error);
       }
 
-      const { marketKeyword, brands } = parseResult.data;
+      const { marketKeyword, brands } = validation.data;
 
       const run = await createSovRun(userId, marketKeyword, brands);
 
@@ -295,17 +244,14 @@ export async function registerRoutes(
 
   app.get("/api/sov/status/:runId", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.session.userId!
+      const userId = req.session.userId!;
       const { runId } = req.params;
 
-      const run = await getSovRun(runId);
-      if (!run) {
-        return res.status(404).json({ message: "분석 결과를 찾을 수 없습니다." });
+      const access = await assertSovRunAccessible(runId, userId);
+      if (!access.success) {
+        return res.status(access.status).json({ message: access.message });
       }
-
-      if (run.userId !== userId) {
-        return res.status(403).json({ message: "접근 권한이 없습니다." });
-      }
+      const { run } = access;
 
       res.json({
         runId: run.id,
@@ -326,17 +272,14 @@ export async function registerRoutes(
 
   app.get("/api/sov/result/:runId", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.session.userId!
+      const userId = req.session.userId!;
       const { runId } = req.params;
 
-      const run = await getSovRun(runId);
-      if (!run) {
-        return res.status(404).json({ message: "분석 결과를 찾을 수 없습니다." });
+      const access = await assertSovRunAccessible(runId, userId);
+      if (!access.success) {
+        return res.status(access.status).json({ message: access.message });
       }
-
-      if (run.userId !== userId) {
-        return res.status(403).json({ message: "접근 권한이 없습니다." });
-      }
+      const { run } = access;
 
       const results = await getSovResultsByRun(runId);
       const exposures = await getSovExposuresByRun(runId);
@@ -416,15 +359,12 @@ export async function registerRoutes(
         });
       }
 
-      const parseResult = keywordVolumeSchema.safeParse(req.query);
-      if (!parseResult.success) {
-        return res.status(400).json({ 
-          message: "잘못된 입력입니다", 
-          errors: parseResult.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
-        });
+      const validation = validateRequest(keywordVolumeSchema, req.query);
+      if (!validation.success) {
+        return res.status(400).json(validation.error);
       }
 
-      const { keyword } = parseResult.data;
+      const { keyword } = validation.data;
       const volumeData = await getKeywordVolume(keyword);
 
       if (!volumeData) {
