@@ -9,6 +9,9 @@ A Naver search monitoring service that combines API search and SmartBlock crawli
 - Unified search across 4 Naver API channels
 - Puppeteer-based SmartBlock crawling
 - SOV brand exposure analysis with OpenAI embeddings
+- SOV verified/unverified exposure split for accurate SOV calculation
+- User profile page with account info, API key status, and SOV history
+- Keyword template management (save/load frequently used brand+keyword combinations)
 - Email/password authentication with SendGrid verification
 - Reusable EmptyState component for consistent empty/error/not-configured states
 
@@ -37,7 +40,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 - **Database:** PostgreSQL via Drizzle ORM
 - **Schema Location:** `shared/schema.ts` (shared between client/server)
-- **Key Tables:** users, sessions, api_keys, verification_tokens, sov_runs, sov_exposures, sov_scores, sov_results
+- **Key Tables:** users, sessions, api_keys, verification_tokens, sov_runs, sov_exposures, sov_scores, sov_results, sov_templates
 - **Migrations:** Drizzle Kit (`npm run db:push`)
 
 ### Authentication
