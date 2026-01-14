@@ -110,5 +110,5 @@ Preferred communication style: Simple, everyday language.
 - **drizzle-kit**: Moved to dependencies for runtime migration support
 
 ### Deploy Scripts (Naver-Monitor/package.json)
-- `deploy:build`: `npm install --include=dev && npm run build`
-- `deploy:start`: `npx drizzle-kit push --config ./drizzle.config.ts && NODE_ENV=production node dist/index.cjs`
+- `deploy:build`: `npm install --include=dev && npx drizzle-kit push --config ./drizzle.config.ts && npm run build`
+- `deploy:start`: `NODE_ENV=production node dist/index.cjs`
