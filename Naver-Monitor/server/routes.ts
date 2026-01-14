@@ -285,6 +285,11 @@ export async function registerRoutes(
       const exposures = await getSovExposuresByRun(runId);
       const resultsByType = await getSovResultsByTypeForRun(runId);
 
+      const verifiedCount = exposures.filter(
+        (e) => e.extractionStatus?.startsWith("success")
+      ).length;
+      const unverifiedCount = exposures.length - verifiedCount;
+
       res.json({
         run: {
           id: run.id,
@@ -292,6 +297,8 @@ export async function registerRoutes(
           marketKeyword: run.marketKeyword,
           brands: run.brands,
           totalExposures: run.totalExposures,
+          verifiedCount,
+          unverifiedCount,
           errorMessage: run.errorMessage,
           createdAt: run.createdAt,
           completedAt: run.completedAt,
@@ -340,6 +347,63 @@ export async function registerRoutes(
     } catch (error) {
       console.error("SOV runs fetch error:", error);
       res.status(500).json({ message: "분석 목록 조회에 실패했습니다." });
+    }
+  });
+
+  const templateSchema = z.object({
+    name: z.string().min(1, "템플릿 이름은 필수입니다").max(50, "템플릿 이름은 50자 이하여야 합니다"),
+    marketKeyword: z.string().min(1, "시장 키워드는 필수입니다").max(100, "시장 키워드는 100자 이하여야 합니다"),
+    brands: z.array(z.string()).min(1, "최소 1개 브랜드가 필요합니다").max(10, "최대 10개 브랜드까지 가능합니다"),
+  });
+
+  app.get("/api/sov/templates", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId!;
+      const templates = await storage.getSovTemplatesByUser(userId);
+      res.json(templates);
+    } catch (error) {
+      console.error("Templates fetch error:", error);
+      res.status(500).json({ message: "템플릿 조회에 실패했습니다." });
+    }
+  });
+
+  app.post("/api/sov/templates", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId!;
+      const validation = validateRequest(templateSchema, req.body);
+      if (!validation.success) {
+        return res.status(400).json(validation.error);
+      }
+
+      const template = await storage.createSovTemplate({
+        userId,
+        ...validation.data,
+      });
+      res.status(201).json(template);
+    } catch (error) {
+      console.error("Template create error:", error);
+      res.status(500).json({ message: "템플릿 생성에 실패했습니다." });
+    }
+  });
+
+  app.delete("/api/sov/templates/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { id } = req.params;
+
+      const template = await storage.getSovTemplateById(id);
+      if (!template) {
+        return res.status(404).json({ message: "템플릿을 찾을 수 없습니다." });
+      }
+      if (template.userId !== userId) {
+        return res.status(403).json({ message: "템플릿 삭제 권한이 없습니다." });
+      }
+
+      await storage.deleteSovTemplate(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Template delete error:", error);
+      res.status(500).json({ message: "템플릿 삭제에 실패했습니다." });
     }
   });
 

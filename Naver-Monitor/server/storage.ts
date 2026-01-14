@@ -4,6 +4,7 @@ import {
   sovExposures, 
   sovScores, 
   sovResults,
+  sovTemplates,
   type ApiKey, 
   type InsertApiKey, 
   type UpdateApiKey,
@@ -11,6 +12,8 @@ import {
   type SovExposure,
   type SovScore,
   type SovResult,
+  type SovTemplate,
+  type InsertSovTemplate,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
@@ -106,6 +109,28 @@ export class DatabaseStorage implements IStorage {
 
   async getSovResultsByRun(runId: string): Promise<SovResult[]> {
     return db.select().from(sovResults).where(eq(sovResults.runId, runId));
+  }
+
+  async getSovTemplatesByUser(userId: string): Promise<SovTemplate[]> {
+    return db
+      .select()
+      .from(sovTemplates)
+      .where(eq(sovTemplates.userId, userId))
+      .orderBy(desc(sovTemplates.createdAt));
+  }
+
+  async getSovTemplateById(id: string): Promise<SovTemplate | undefined> {
+    const [template] = await db.select().from(sovTemplates).where(eq(sovTemplates.id, id));
+    return template;
+  }
+
+  async createSovTemplate(data: InsertSovTemplate): Promise<SovTemplate> {
+    const [template] = await db.insert(sovTemplates).values(data).returning();
+    return template;
+  }
+
+  async deleteSovTemplate(id: string): Promise<void> {
+    await db.delete(sovTemplates).where(eq(sovTemplates.id, id));
   }
 }
 

@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Layers, LogOut, User, Settings } from "lucide-react";
+import { Link } from "wouter";
 
 export function Header() {
   const { user, logout } = useAuth();
@@ -71,14 +72,18 @@ export function Header() {
                 </div>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem data-testid="menu-item-profile">
-                <User className="mr-2 h-4 w-4" />
-                프로필
-              </DropdownMenuItem>
-              <DropdownMenuItem data-testid="menu-item-settings">
-                <Settings className="mr-2 h-4 w-4" />
-                설정
-              </DropdownMenuItem>
+              <Link href="/profile">
+                <DropdownMenuItem data-testid="menu-item-profile">
+                  <User className="mr-2 h-4 w-4" />
+                  프로필
+                </DropdownMenuItem>
+              </Link>
+              <Link href="/profile">
+                <DropdownMenuItem data-testid="menu-item-settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  설정
+                </DropdownMenuItem>
+              </Link>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => logout()}

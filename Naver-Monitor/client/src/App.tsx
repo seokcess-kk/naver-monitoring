@@ -9,6 +9,7 @@ import Dashboard from "@/pages/dashboard";
 import AuthPage from "@/pages/auth";
 import ResetPasswordPage from "@/pages/reset-password";
 import CompleteSignupPage from "@/pages/complete-signup";
+import ProfilePage from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -29,6 +30,9 @@ function Router() {
     <Switch>
       <Route path="/">
         {isAuthenticated ? <Dashboard /> : <LandingPage />}
+      </Route>
+      <Route path="/profile">
+        {isAuthenticated ? <ProfilePage /> : <AuthPage />}
       </Route>
       <Route path="/auth" component={AuthPage} />
       <Route path="/login" component={AuthPage} />

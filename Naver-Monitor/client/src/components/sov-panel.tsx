@@ -11,6 +11,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { 
   BarChart3, 
   Play, 
@@ -26,7 +35,10 @@ import {
   ChevronDown,
   ChevronUp,
   Edit3,
-  History
+  History,
+  Save,
+  FolderOpen,
+  Trash2
 } from "lucide-react";
 
 interface SovRun {
@@ -36,6 +48,8 @@ interface SovRun {
   brands: string[];
   totalExposures: string;
   processedExposures?: string;
+  verifiedCount?: number;
+  unverifiedCount?: number;
   errorMessage?: string | null;
   createdAt: string;
   completedAt: string | null;
@@ -64,6 +78,14 @@ interface SovExposure {
   extractionStatus: string;
 }
 
+interface SovTemplate {
+  id: string;
+  name: string;
+  marketKeyword: string;
+  brands: string[];
+  createdAt: string;
+}
+
 interface SovResultResponse {
   run: SovRun;
   results: SovResult[];
@@ -78,8 +100,12 @@ export function SovPanel() {
   const [brands, setBrands] = useState<string[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [pollingRunId, setPollingRunId] = useState<string | null>(null);
-  const [inputExpanded, setInputExpanded] = useState<boolean | undefined>(undefined);
+  const [inputExpanded, setInputExpanded] = useState(true);
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
+  const [loadTemplateOpen, setLoadTemplateOpen] = useState(false);
 
   const { data: runs, isLoading: runsLoading } = useQuery<SovRun[]>({
     queryKey: ["/api/sov/runs"],
@@ -90,6 +116,51 @@ export function SovPanel() {
     queryKey: ["/api/sov/result", selectedRunId],
     enabled: !!selectedRunId,
   });
+
+  const { data: templates } = useQuery<SovTemplate[]>({
+    queryKey: ["/api/sov/templates"],
+  });
+
+  const saveTemplateMutation = useMutation({
+    mutationFn: async (data: { name: string; marketKeyword: string; brands: string[] }) => {
+      const response = await apiRequest("POST", "/api/sov/templates", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "템플릿 저장됨", description: "다음에 빠르게 불러올 수 있습니다." });
+      setSaveTemplateOpen(false);
+      setTemplateName("");
+      queryClient.invalidateQueries({ queryKey: ["/api/sov/templates"] });
+    },
+    onError: () => {
+      toast({ title: "저장 실패", description: "잠시 후 다시 시도해주세요.", variant: "destructive" });
+    },
+  });
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/sov/templates/${id}`);
+    },
+    onSuccess: () => {
+      toast({ title: "템플릿 삭제됨" });
+      queryClient.invalidateQueries({ queryKey: ["/api/sov/templates"] });
+    },
+  });
+
+  const handleLoadTemplate = (template: SovTemplate) => {
+    setMarketKeyword(template.marketKeyword);
+    setBrands(template.brands);
+    setLoadTemplateOpen(false);
+    toast({ title: "템플릿 불러오기 완료", description: `"${template.name}" 템플릿이 적용되었습니다.` });
+  };
+
+  const handleSaveTemplate = () => {
+    if (!templateName.trim() || !marketKeyword.trim() || brands.length === 0) {
+      toast({ title: "입력 오류", description: "템플릿 이름, 키워드, 브랜드가 필요합니다.", variant: "destructive" });
+      return;
+    }
+    saveTemplateMutation.mutate({ name: templateName.trim(), marketKeyword: marketKeyword.trim(), brands });
+  };
 
   const startRunMutation = useMutation({
     mutationFn: async (data: { marketKeyword: string; brands: string[] }) => {
@@ -186,7 +257,8 @@ export function SovPanel() {
   }, [runs, pollingRunId]);
 
   useEffect(() => {
-    if (!runsLoading && inputExpanded === undefined) {
+    if (!runsLoading && !hasInitialized) {
+      setHasInitialized(true);
       const hasRuns = runs && runs.length > 0;
       setInputExpanded(!hasRuns);
       if (hasRuns && !selectedRunId) {
@@ -196,7 +268,7 @@ export function SovPanel() {
         }
       }
     }
-  }, [runsLoading, runs, inputExpanded, selectedRunId]);
+  }, [runsLoading, runs, hasInitialized, selectedRunId]);
 
   const lastRun = runs?.[0];
 
@@ -281,8 +353,28 @@ export function SovPanel() {
                       </Card>
                     ))}
                   </div>
-                  <div className="text-xs text-muted-foreground pt-2 border-t">
-                    총 {selectedResult.run.totalExposures}건의 콘텐츠 분석 완료
+                  <div className="text-xs text-muted-foreground pt-2 border-t space-y-1">
+                    <div className="flex items-center gap-3">
+                      <span>총 {selectedResult.run.totalExposures}건 분석</span>
+                      {selectedResult.run.verifiedCount !== undefined && (
+                        <>
+                          <span className="text-green-600">
+                            <CheckCircle2 className="w-3 h-3 inline mr-0.5" />
+                            확인 {selectedResult.run.verifiedCount}건
+                          </span>
+                          {(selectedResult.run.unverifiedCount ?? 0) > 0 && (
+                            <span className="text-amber-600">
+                              미확인 {selectedResult.run.unverifiedCount}건
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {(selectedResult.run.unverifiedCount ?? 0) > 0 && (
+                      <p className="text-[10px] text-muted-foreground/70">
+                        * 점유율은 본문 확인된 콘텐츠 기준으로 계산됩니다
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -293,28 +385,40 @@ export function SovPanel() {
                   </h4>
                   <ScrollArea className="h-[280px] rounded-md border p-3">
                     <div className="space-y-2">
-                      {selectedResult.exposures.map((exposure) => (
-                        <div
-                          key={exposure.id}
-                          className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                        >
-                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                            <Badge variant="outline" className="shrink-0 text-[10px]">
-                              {exposure.blockType}
-                            </Badge>
-                            <span className="truncate text-sm">{exposure.title}</span>
-                          </div>
-                          <a
-                            href={exposure.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="shrink-0 ml-2 p-1 hover:bg-background rounded"
-                            aria-label="외부 링크 열기"
+                      {selectedResult.exposures.map((exposure) => {
+                        const isVerified = exposure.extractionStatus?.startsWith("success");
+                        return (
+                          <div
+                            key={exposure.id}
+                            className={`flex items-center justify-between p-2.5 rounded-lg transition-colors ${
+                              isVerified 
+                                ? 'bg-muted/50 hover:bg-muted' 
+                                : 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900'
+                            }`}
                           >
-                            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
-                          </a>
-                        </div>
-                      ))}
+                            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                              <Badge variant="outline" className="shrink-0 text-[10px]">
+                                {exposure.blockType}
+                              </Badge>
+                              <span className="truncate text-sm">{exposure.title}</span>
+                              {!isVerified && (
+                                <Badge variant="outline" className="shrink-0 text-[10px] text-amber-600 border-amber-300">
+                                  미확인
+                                </Badge>
+                              )}
+                            </div>
+                            <a
+                              href={exposure.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="shrink-0 ml-2 p-1 hover:bg-background rounded"
+                              aria-label="외부 링크 열기"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+                            </a>
+                          </div>
+                        );
+                      })}
                     </div>
                   </ScrollArea>
                 </div>
@@ -417,6 +521,109 @@ export function SovPanel() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              <div className="flex gap-2">
+                <Dialog open={loadTemplateOpen} onOpenChange={setLoadTemplateOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1.5">
+                      <FolderOpen className="w-3.5 h-3.5" />
+                      불러오기
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>템플릿 불러오기</DialogTitle>
+                      <DialogDescription>
+                        저장된 키워드+브랜드 조합을 선택하세요
+                      </DialogDescription>
+                    </DialogHeader>
+                    {templates && templates.length > 0 ? (
+                      <ScrollArea className="max-h-[300px]">
+                        <div className="space-y-2">
+                          {templates.map((template) => (
+                            <div
+                              key={template.id}
+                              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
+                            >
+                              <button
+                                onClick={() => handleLoadTemplate(template)}
+                                className="flex-1 text-left"
+                              >
+                                <p className="font-medium">{template.name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {template.marketKeyword} · {template.brands.length}개 브랜드
+                                </p>
+                              </button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deleteTemplateMutation.mutate(template.id)}
+                                disabled={deleteTemplateMutation.isPending}
+                              >
+                                <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        저장된 템플릿이 없습니다
+                      </p>
+                    )}
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={saveTemplateOpen} onOpenChange={setSaveTemplateOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={!marketKeyword.trim() || brands.length === 0}
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      저장
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>템플릿으로 저장</DialogTitle>
+                      <DialogDescription>
+                        현재 키워드와 브랜드 조합을 저장합니다
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="template-name">템플릿 이름</Label>
+                        <Input
+                          id="template-name"
+                          placeholder="예: 전기차 시장 분석"
+                          value={templateName}
+                          onChange={(e) => setTemplateName(e.target.value)}
+                        />
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <p>키워드: <span className="font-medium">{marketKeyword}</span></p>
+                        <p>브랜드: <span className="font-medium">{brands.join(", ")}</span></p>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        onClick={handleSaveTemplate}
+                        disabled={!templateName.trim() || saveTemplateMutation.isPending}
+                      >
+                        {saveTemplateMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4 mr-2" />
+                        )}
+                        저장
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
 
               <Button

@@ -111,6 +111,27 @@ export const sovResultsByType = pgTable("sov_results_by_type", {
   index("idx_sov_results_by_type_block_type").on(table.blockType),
 ]);
 
+export const sovTemplates = pgTable("sov_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  marketKeyword: text("market_keyword").notNull(),
+  brands: text("brands").array().notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_sov_templates_user_id").on(table.userId),
+]);
+
+export const insertSovTemplateSchema = createInsertSchema(sovTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSovTemplate = z.infer<typeof insertSovTemplateSchema>;
+export type SovTemplate = typeof sovTemplates.$inferSelect;
+
 export const insertSovRunSchema = createInsertSchema(sovRuns).omit({
   id: true,
   status: true,
