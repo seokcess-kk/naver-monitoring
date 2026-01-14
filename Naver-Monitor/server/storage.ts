@@ -61,14 +61,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateApiKey(userId: string, data: UpdateApiKey): Promise<ApiKey | undefined> {
-    const encryptedData = {
-      ...data,
-      clientSecret: encrypt(data.clientSecret),
-      updatedAt: new Date(),
-    };
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    
+    if (data.clientId !== undefined) {
+      updateData.clientId = data.clientId;
+    }
+    if (data.clientSecret !== undefined) {
+      updateData.clientSecret = encrypt(data.clientSecret);
+    }
+    
     const [apiKey] = await db
       .update(apiKeys)
-      .set(encryptedData)
+      .set(updateData)
       .where(eq(apiKeys.userId, userId))
       .returning();
     if (!apiKey) return undefined;

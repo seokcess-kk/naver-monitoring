@@ -25,7 +25,10 @@ export const insertApiKeySchema = createInsertSchema(apiKeys).omit({
 export const updateApiKeySchema = createInsertSchema(apiKeys).pick({
   clientId: true,
   clientSecret: true,
-});
+}).partial().refine(
+  (data) => data.clientId !== undefined || data.clientSecret !== undefined,
+  { message: "clientId 또는 clientSecret 중 하나는 필수입니다" }
+);
 
 export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
 export type UpdateApiKey = z.infer<typeof updateApiKeySchema>;
