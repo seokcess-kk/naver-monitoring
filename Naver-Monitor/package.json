@@ -8,8 +8,7 @@
     "build": "npx puppeteer browsers install chrome && tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
-    "db:push": "drizzle-kit push",
-    "postinstall": "npx puppeteer browsers install chrome"
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
