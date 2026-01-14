@@ -5,6 +5,7 @@ import {
   sovScores, 
   sovResults,
   sovTemplates,
+  searchLogs,
   type ApiKey, 
   type InsertApiKey, 
   type UpdateApiKey,
@@ -14,9 +15,11 @@ import {
   type SovResult,
   type SovTemplate,
   type InsertSovTemplate,
+  type InsertSearchLog,
+  type SearchLog,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, gte, sql } from "drizzle-orm";
 import { encrypt, decrypt, isEncrypted } from "./crypto";
 
 export interface IStorage {
@@ -131,6 +134,56 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSovTemplate(id: string): Promise<void> {
     await db.delete(sovTemplates).where(eq(sovTemplates.id, id));
+  }
+
+  // 검색 로그 관련 메서드
+  async createSearchLog(data: InsertSearchLog): Promise<SearchLog> {
+    const [log] = await db.insert(searchLogs).values(data).returning();
+    return log;
+  }
+
+  async getSearchStats(userId: string): Promise<{
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+    byType: { searchType: string; count: number }[];
+  }> {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfDay);
+    startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [todayResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(searchLogs)
+      .where(and(eq(searchLogs.userId, userId), gte(searchLogs.createdAt, startOfDay)));
+
+    const [weekResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(searchLogs)
+      .where(and(eq(searchLogs.userId, userId), gte(searchLogs.createdAt, startOfWeek)));
+
+    const [monthResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(searchLogs)
+      .where(and(eq(searchLogs.userId, userId), gte(searchLogs.createdAt, startOfMonth)));
+
+    const byTypeResult = await db
+      .select({
+        searchType: searchLogs.searchType,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(searchLogs)
+      .where(and(eq(searchLogs.userId, userId), gte(searchLogs.createdAt, startOfMonth)))
+      .groupBy(searchLogs.searchType);
+
+    return {
+      today: todayResult?.count ?? 0,
+      thisWeek: weekResult?.count ?? 0,
+      thisMonth: monthResult?.count ?? 0,
+      byType: byTypeResult,
+    };
   }
 }
 

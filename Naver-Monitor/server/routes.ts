@@ -159,6 +159,11 @@ export async function registerRoutes(
         searchAllChannels(keyword, sort, page, credentials),
       ]);
 
+      // 검색 로그 기록
+      storage.createSearchLog({ userId, searchType: "unified", keyword }).catch((err) => {
+        console.error("Search log error:", err);
+      });
+
       res.json({
         smartBlock,
         apiResults,
@@ -226,6 +231,11 @@ export async function registerRoutes(
       const { marketKeyword, brands } = validation.data;
 
       const run = await createSovRun(userId, marketKeyword, brands);
+
+      // SOV 분석 로그 기록
+      storage.createSearchLog({ userId, searchType: "sov", keyword: marketKeyword }).catch((err) => {
+        console.error("Search log error:", err);
+      });
 
       executeSovRun(run.id).catch((error) => {
         console.error("[SOV] Background execution failed:", error);
@@ -451,6 +461,18 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Keyword volume fetch error:", error);
       res.status(500).json({ message: "검색량 조회에 실패했습니다." });
+    }
+  });
+
+  // 검색 통계 API
+  app.get("/api/search-stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId!;
+      const stats = await storage.getSearchStats(userId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Search stats error:", error);
+      res.status(500).json({ message: "검색 통계 조회에 실패했습니다." });
     }
   });
 

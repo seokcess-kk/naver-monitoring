@@ -174,3 +174,24 @@ export type InsertSovResult = z.infer<typeof insertSovResultSchema>;
 export type SovResult = typeof sovResults.$inferSelect;
 export type InsertSovResultByType = z.infer<typeof insertSovResultByTypeSchema>;
 export type SovResultByType = typeof sovResultsByType.$inferSelect;
+
+// 검색 로그 테이블 (사용량 추적용)
+export const searchLogs = pgTable("search_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  searchType: varchar("search_type", { length: 20 }).notNull(), // 'unified' | 'sov'
+  keyword: text("keyword").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_search_logs_user_id").on(table.userId),
+  index("idx_search_logs_created_at").on(table.createdAt),
+  index("idx_search_logs_user_created").on(table.userId, table.createdAt),
+]);
+
+export const insertSearchLogSchema = createInsertSchema(searchLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSearchLog = z.infer<typeof insertSearchLogSchema>;
+export type SearchLog = typeof searchLogs.$inferSelect;

@@ -14,7 +14,9 @@ import {
   Calendar,
   CheckCircle2,
   XCircle,
-  ArrowLeft
+  ArrowLeft,
+  Search,
+  TrendingUp
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -32,6 +34,13 @@ interface SovRun {
   createdAt: string;
 }
 
+interface SearchStats {
+  today: number;
+  thisWeek: number;
+  thisMonth: number;
+  byType: { searchType: string; count: number }[];
+}
+
 export default function ProfilePage() {
   const { user } = useAuth();
 
@@ -41,6 +50,10 @@ export default function ProfilePage() {
 
   const { data: sovRuns, isLoading: sovRunsLoading } = useQuery<SovRun[]>({
     queryKey: ["/api/sov/runs"],
+  });
+
+  const { data: searchStats, isLoading: statsLoading } = useQuery<SearchStats>({
+    queryKey: ["/api/search-stats"],
   });
 
   const getInitials = (firstName?: string | null, lastName?: string | null) => {
@@ -174,6 +187,63 @@ export default function ProfilePage() {
                       API 키 등록하기
                     </Button>
                   </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Search className="w-5 h-5" />
+                검색 사용량
+              </CardTitle>
+              <CardDescription>
+                기간별 검색 횟수 통계 (추후 과금 기준)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {statsLoading ? (
+                <Skeleton className="h-24 w-full" />
+              ) : searchStats ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-900">
+                      <p className="text-2xl font-bold text-blue-600">{searchStats.today}</p>
+                      <p className="text-sm text-muted-foreground">오늘</p>
+                    </div>
+                    <div className="text-center p-4 bg-violet-50 dark:bg-violet-950/20 rounded-lg border border-violet-200 dark:border-violet-900">
+                      <p className="text-2xl font-bold text-violet-600">{searchStats.thisWeek}</p>
+                      <p className="text-sm text-muted-foreground">이번 주</p>
+                    </div>
+                    <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/20">
+                      <p className="text-2xl font-bold text-primary">{searchStats.thisMonth}</p>
+                      <p className="text-sm text-muted-foreground">이번 달</p>
+                    </div>
+                  </div>
+                  {searchStats.byType.length > 0 && (
+                    <div className="border-t pt-4">
+                      <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4" />
+                        이번 달 검색 유형별 통계
+                      </h4>
+                      <div className="flex gap-4">
+                        {searchStats.byType.map((item) => (
+                          <div key={item.searchType} className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg">
+                            <Badge variant="outline" className="text-xs">
+                              {item.searchType === "unified" ? "통합검색" : "SOV 분석"}
+                            </Badge>
+                            <span className="font-medium">{item.count}회</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <Search className="w-10 h-10 mx-auto mb-3 text-muted-foreground/50" />
+                  <p className="text-muted-foreground">검색 기록이 없습니다</p>
                 </div>
               )}
             </CardContent>
