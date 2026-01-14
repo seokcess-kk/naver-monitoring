@@ -272,9 +272,22 @@ export default function Dashboard() {
                             </div>
                           </div>
                         ) : keywordVolume?.error ? (
-                          <p className="text-sm text-destructive">검색량 조회 실패</p>
+                          <div className="text-center">
+                            <p className="text-sm text-destructive">검색량 조회 실패</p>
+                            <p className="text-xs text-muted-foreground mt-1">잠시 후 다시 시도해주세요</p>
+                          </div>
                         ) : keywordVolume?.configured === false ? (
-                          <p className="text-sm text-muted-foreground">검색량 API 미설정</p>
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground">검색량 API 미설정</p>
+                            <a 
+                              href="https://searchad.naver.com" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline mt-1 inline-block"
+                            >
+                              네이버 광고 API 설정하기 →
+                            </a>
+                          </div>
                         ) : (
                           <p className="text-sm text-muted-foreground">검색량 데이터 없음</p>
                         )}

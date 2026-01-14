@@ -380,8 +380,13 @@ export function ApiResultsSection({
                     })}
                     {(!channelData?.items ||
                       channelData.items.length === 0) && (
-                      <div className="py-16 text-center text-muted-foreground text-sm">
-                        검색 결과가 없습니다
+                      <div className="py-12 text-center">
+                        <p className="text-sm text-muted-foreground mb-2">
+                          검색 결과가 없습니다
+                        </p>
+                        <p className="text-xs text-muted-foreground/70">
+                          다른 키워드나 정렬 옵션을 시도해보세요
+                        </p>
                       </div>
                     )}
                   </div>

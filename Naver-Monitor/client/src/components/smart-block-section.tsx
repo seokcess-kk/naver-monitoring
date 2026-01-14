@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Layers,
   MapPin,
@@ -98,7 +99,34 @@ export function SmartBlockSection({
   }
 
   if (!results || results.length === 0) {
-    return null;
+    return (
+      <section className="space-y-6">
+        <div className="flex items-center gap-4 pb-4 border-b border-border/50">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 flex items-center justify-center">
+            <Layers className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold tracking-tight">
+              스마트블록 노출 현황
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              실시간 수집된 노출 데이터
+            </p>
+          </div>
+        </div>
+        <Card className="border-border/50">
+          <EmptyState
+            variant="no-results"
+            title="스마트블록 결과가 없습니다"
+            description="해당 키워드에 대한 스마트블록이 검색되지 않았습니다."
+            suggestions={[
+              "다른 키워드로 검색해보세요",
+              "인기 키워드는 더 많은 결과를 보여줍니다"
+            ]}
+          />
+        </Card>
+      </section>
+    );
   }
 
   const gridCols =

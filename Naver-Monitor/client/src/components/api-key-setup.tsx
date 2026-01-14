@@ -129,7 +129,7 @@ export function ApiKeySetup({ existingApiKey, onSave }: ApiKeySetupProps) {
                     <Input
                       id="clientSecret"
                       type={showSecret ? "text" : "password"}
-                      placeholder="네이버 개발자센터 Client Secret"
+                      placeholder={hasExistingKey ? "변경 시에만 입력" : "네이버 개발자센터 Client Secret"}
                       value={clientSecret}
                       onChange={(e) => setClientSecret(e.target.value)}
                       className="font-mono text-sm pr-10 bg-background"
@@ -150,6 +150,11 @@ export function ApiKeySetup({ existingApiKey, onSave }: ApiKeySetupProps) {
                       )}
                     </Button>
                   </div>
+                  {hasExistingKey && (
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      보안상 저장된 Secret은 표시되지 않습니다
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex justify-end">

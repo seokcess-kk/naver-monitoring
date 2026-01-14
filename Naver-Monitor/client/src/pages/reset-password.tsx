@@ -119,7 +119,18 @@ export default function ResetPasswordPage() {
         {error && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>
+              {error}
+              {!token && (
+                <Button 
+                  variant="ghost" 
+                  className="h-auto p-0 ml-2 text-destructive-foreground underline hover:bg-transparent"
+                  onClick={() => navigate("/auth")}
+                >
+                  비밀번호 재설정 다시 요청하기
+                </Button>
+              )}
+            </AlertDescription>
           </Alert>
         )}
 

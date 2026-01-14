@@ -332,7 +332,11 @@ export default function AuthPage() {
           </Card>
         ) : (
           <Card>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs value={activeTab} onValueChange={(value) => {
+              setActiveTab(value);
+              setError(null);
+              setSuccess(null);
+            }}>
               <CardHeader>
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="login">로그인</TabsTrigger>

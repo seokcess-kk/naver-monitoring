@@ -41,8 +41,8 @@ export default function LandingPage() {
                   <Button size="lg" asChild data-testid="button-get-started">
                     <a href="/auth">무료로 시작하기</a>
                   </Button>
-                  <Button size="lg" variant="outline" data-testid="button-learn-more">
-                    자세히 알아보기
+                  <Button size="lg" variant="outline" asChild data-testid="button-learn-more">
+                    <a href="#features">자세히 알아보기</a>
                   </Button>
                 </div>
                 <div className="flex items-center gap-6 text-sm text-muted-foreground">
@@ -109,7 +109,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="py-20 bg-card/50">
+        <section id="features" className="py-20 bg-card/50 scroll-mt-20">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold mb-4">주요 기능</h2>
