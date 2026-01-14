@@ -1,6 +1,7 @@
 import puppeteer from "puppeteer";
 import pLimit from "p-limit";
 import LRUCache from "lru-cache";
+import { execSync } from "child_process";
 
 interface SmartBlockPost {
   rank: number | null;
@@ -30,7 +31,6 @@ function getChromiumPath(): string | undefined {
     return process.env.PUPPETEER_EXECUTABLE_PATH;
   }
   
-  const { execSync } = require('child_process');
   try {
     const path = execSync('which chromium', { encoding: 'utf8' }).trim();
     if (path) {
