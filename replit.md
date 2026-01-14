@@ -40,7 +40,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 - **Database:** PostgreSQL via Drizzle ORM
 - **Schema Location:** `shared/schema.ts` (shared between client/server)
-- **Key Tables:** users, sessions, api_keys, verification_tokens, sov_runs, sov_exposures, sov_scores, sov_results, sov_templates
+- **Key Tables:** users, sessions, api_keys, verification_tokens, sov_runs, sov_exposures, sov_scores, sov_results, sov_templates, search_logs
 - **Migrations:** Drizzle Kit (`npm run db:push`)
 
 ### Authentication
