@@ -8,6 +8,7 @@ import { requestIdMiddleware, requestLoggerMiddleware, errorLoggerMiddleware } f
 import { pool } from "./db";
 
 const app = express();
+app.set("trust proxy", 1);
 const httpServer = createServer(app);
 
 declare module "http" {
