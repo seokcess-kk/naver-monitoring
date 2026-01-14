@@ -407,25 +407,22 @@ export function SovPanel() {
                                 : 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900'
                             }`}
                           >
-                            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                            <a
+                              href={exposure.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2.5 flex-1 min-w-0 hover:text-primary transition-colors group"
+                            >
                               <Badge variant="outline" className="shrink-0 text-[10px]">
                                 {exposure.blockType}
                               </Badge>
-                              <span className="truncate text-sm">{exposure.title}</span>
+                              <span className="truncate text-sm group-hover:underline">{exposure.title}</span>
+                              <ExternalLink className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
                               {!isVerified && (
                                 <Badge variant="outline" className="shrink-0 text-[10px] text-amber-600 border-amber-300">
                                   미확인
                                 </Badge>
                               )}
-                            </div>
-                            <a
-                              href={exposure.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="shrink-0 ml-2 p-1 hover:bg-background rounded"
-                              aria-label="외부 링크 열기"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
                             </a>
                           </div>
                         );
