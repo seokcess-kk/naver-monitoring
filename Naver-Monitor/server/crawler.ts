@@ -25,12 +25,42 @@ const crawlCache = new LRUCache<string, SmartBlockSection[]>({
   ttl: 5 * 60 * 1000,
 });
 
+function getChromiumPath(): string | undefined {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+  
+  const { execSync } = require('child_process');
+  try {
+    const path = execSync('which chromium', { encoding: 'utf8' }).trim();
+    if (path) {
+      console.log('[Crawler] Using system Chromium:', path);
+      return path;
+    }
+  } catch {
+  }
+  
+  try {
+    const puppeteerPath = puppeteer.executablePath();
+    if (puppeteerPath) {
+      console.log('[Crawler] Using Puppeteer bundled Chromium:', puppeteerPath);
+      return puppeteerPath;
+    }
+  } catch {
+  }
+  
+  console.log('[Crawler] No Chromium found, using Puppeteer default');
+  return undefined;
+}
+
 async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
   let browser = null;
 
   try {
+    const executablePath = getChromiumPath();
     browser = await puppeteer.launch({
       headless: true,
+      executablePath,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
