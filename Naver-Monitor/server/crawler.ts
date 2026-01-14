@@ -249,13 +249,12 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
 
               if (anchorEl && (anchorEl as HTMLAnchorElement).href) {
                 const href = (anchorEl as HTMLAnchorElement).href;
-                // 네이버 콘텐츠 링크만 포함 (블로그, 카페, 포스트)
-                const isNaverContent = 
-                  href.includes("blog.naver.com") || 
-                  href.includes("cafe.naver.com") || 
-                  href.includes("post.naver.com");
+                // 네이버 내부 검색 링크 제외 (실제 콘텐츠 링크만 수집)
+                const isInternalSearch = 
+                  href.includes("search.naver.com") || 
+                  href.includes("naver.com/search");
                   
-                if (isNaverContent) {
+                if (!isInternalSearch && href.startsWith("http")) {
                   const title = titleEl 
                     ? (titleEl as HTMLElement).innerText.trim() 
                     : (anchorEl as HTMLElement).innerText.trim();
