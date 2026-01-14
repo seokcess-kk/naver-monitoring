@@ -117,8 +117,9 @@ Preferred communication style: Simple, everyday language.
 - **drizzle-kit**: Moved to dependencies for runtime migration support
 
 ### Deploy Scripts (Naver-Monitor/package.json)
-- `deploy:build`: `npm install --include=dev && npx drizzle-kit push --config ./drizzle.config.ts && npm run build`
+- `deploy:build`: `npm install --include=dev && npm run build` (DB migration removed from build to avoid timeout)
 - `deploy:start`: `NODE_ENV=production node dist/index.cjs`
+- Note: DB migrations are handled by Replit's deployment platform automatically
 
 ### Cold Start Optimization
 The server uses a two-phase startup:
