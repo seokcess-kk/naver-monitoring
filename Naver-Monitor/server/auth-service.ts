@@ -19,6 +19,36 @@ function generateToken(): string {
   return crypto.randomBytes(32).toString('hex');
 }
 
+async function createAndSendRegistrationToken(email: string): Promise<void> {
+  await db.delete(verificationTokens).where(
+    and(
+      eq(verificationTokens.email, email),
+      eq(verificationTokens.type, 'registration')
+    )
+  );
+
+  const token = generateToken();
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  await db.insert(verificationTokens).values({
+    email,
+    token,
+    type: 'registration',
+    expiresAt,
+  });
+
+  try {
+    await sendRegistrationEmail(email, token);
+  } catch (emailError: any) {
+    await db.delete(verificationTokens).where(eq(verificationTokens.token, token));
+    
+    if (emailError.code === 403) {
+      throw new Error('이메일 발송 서비스 설정이 필요합니다. 관리자에게 문의해주세요.');
+    }
+    throw new Error('이메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+  }
+}
+
 export async function findUserByEmail(email: string): Promise<User | undefined> {
   const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
   return user;
@@ -37,33 +67,7 @@ export async function startRegistration(email: string): Promise<void> {
     throw new Error('이미 등록된 이메일입니다');
   }
 
-  await db.delete(verificationTokens).where(
-    and(
-      eq(verificationTokens.email, normalizedEmail),
-      eq(verificationTokens.type, 'registration')
-    )
-  );
-
-  const token = generateToken();
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-  await db.insert(verificationTokens).values({
-    email: normalizedEmail,
-    token,
-    type: 'registration',
-    expiresAt,
-  });
-
-  try {
-    await sendRegistrationEmail(normalizedEmail, token);
-  } catch (emailError: any) {
-    await db.delete(verificationTokens).where(eq(verificationTokens.token, token));
-    
-    if (emailError.code === 403) {
-      throw new Error('이메일 발송 서비스 설정이 필요합니다. 관리자에게 문의해주세요.');
-    }
-    throw new Error('이메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
-  }
+  await createAndSendRegistrationToken(normalizedEmail);
 }
 
 export async function verifyRegistrationToken(token: string): Promise<{ email: string; valid: boolean }> {
@@ -223,31 +227,5 @@ export async function resendRegistrationEmail(email: string): Promise<void> {
     throw new Error('이미 등록된 이메일입니다');
   }
 
-  await db.delete(verificationTokens).where(
-    and(
-      eq(verificationTokens.email, normalizedEmail),
-      eq(verificationTokens.type, 'registration')
-    )
-  );
-
-  const token = generateToken();
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-  await db.insert(verificationTokens).values({
-    email: normalizedEmail,
-    token,
-    type: 'registration',
-    expiresAt,
-  });
-
-  try {
-    await sendRegistrationEmail(normalizedEmail, token);
-  } catch (emailError: any) {
-    await db.delete(verificationTokens).where(eq(verificationTokens.token, token));
-    
-    if (emailError.code === 403) {
-      throw new Error('이메일 발송 서비스 설정이 필요합니다. 관리자에게 문의해주세요.');
-    }
-    throw new Error('이메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
-  }
+  await createAndSendRegistrationToken(normalizedEmail);
 }
