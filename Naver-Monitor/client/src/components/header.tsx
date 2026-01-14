@@ -39,6 +39,7 @@ export function Header() {
                 variant="ghost"
                 className="relative h-9 w-9 rounded-full ring-2 ring-border/50 hover:ring-primary/30 transition-all"
                 data-testid="button-user-menu"
+                aria-label="사용자 메뉴"
               >
                 <Avatar className="h-9 w-9">
                   <AvatarImage

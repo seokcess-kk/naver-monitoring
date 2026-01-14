@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/header";
@@ -102,11 +102,20 @@ export default function Dashboard() {
   const [currentSort, setCurrentSort] = useState<"sim" | "date">("sim");
   const [keywordVolume, setKeywordVolume] = useState<KeywordVolumeData | null>(null);
   const [isLoadingVolume, setIsLoadingVolume] = useState(false);
+  const [apiKeySetupOpen, setApiKeySetupOpen] = useState<boolean | undefined>(undefined);
 
   const { data: apiKey, isLoading: apiKeyLoading, refetch: refetchApiKey } = useQuery<ApiKeyPublic>({
     queryKey: ["/api/api-keys"],
     enabled: !!user,
   });
+
+  const hasApiKey = !!apiKey?.hasClientSecret;
+
+  useEffect(() => {
+    if (!apiKeyLoading && apiKeySetupOpen === undefined) {
+      setApiKeySetupOpen(!hasApiKey);
+    }
+  }, [apiKeyLoading, hasApiKey, apiKeySetupOpen]);
 
   const fetchKeywordVolume = async (keyword: string) => {
     setIsLoadingVolume(true);
@@ -208,28 +217,30 @@ export default function Dashboard() {
         <div className="space-y-6 md:space-y-8">
           <ApiKeySetup 
             existingApiKey={apiKey} 
-            onSave={() => refetchApiKey()} 
+            onSave={() => refetchApiKey()}
+            isOpen={apiKeySetupOpen}
+            onOpenChange={setApiKeySetupOpen}
           />
 
-          {apiKey?.hasClientSecret && (
-            <Tabs defaultValue="search" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4 md:mb-6">
-                <TabsTrigger value="search" className="gap-1.5 md:gap-2 text-sm" data-testid="tab-search">
-                  <Search className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                  <span className="hidden sm:inline">통합</span> 검색
-                </TabsTrigger>
-                <TabsTrigger value="sov" className="gap-1.5 md:gap-2 text-sm" data-testid="tab-sov">
-                  <BarChart3 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                  SOV 분석
-                </TabsTrigger>
-              </TabsList>
+          <Tabs defaultValue="search" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4 md:mb-6">
+              <TabsTrigger value="search" className="gap-1.5 md:gap-2 text-sm" data-testid="tab-search">
+                <Search className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">통합</span> 검색
+              </TabsTrigger>
+              <TabsTrigger value="sov" className="gap-1.5 md:gap-2 text-sm" data-testid="tab-sov" disabled={!hasApiKey}>
+                <BarChart3 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                SOV 분석
+              </TabsTrigger>
+            </TabsList>
 
-              <TabsContent value="search" className="space-y-4 md:space-y-8 animate-fade-in">
-                <SearchPanel 
-                  onSearch={handleSearch} 
-                  isSearching={isSearching}
-                  hasApiKey={!!apiKey.hasClientSecret}
-                />
+            <TabsContent value="search" className="space-y-4 md:space-y-8 animate-fade-in">
+              <SearchPanel 
+                onSearch={handleSearch} 
+                isSearching={isSearching}
+                hasApiKey={hasApiKey}
+                onOpenApiKeySetup={() => setApiKeySetupOpen(true)}
+              />
 
                 {currentKeyword && (
                   <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-background glass-card animate-scale-in">
@@ -251,30 +262,41 @@ export default function Dashboard() {
                             <Skeleton className="h-10 md:h-12 w-20 md:w-24" />
                           </div>
                         ) : keywordVolume?.available ? (
-                          <div className="flex gap-3 md:gap-6">
-                            <div className="text-center px-3 md:px-4 py-1.5 md:py-2 rounded-lg bg-background border flex-1 sm:flex-initial">
-                              <div className="flex items-center justify-center gap-1.5 md:gap-2 text-muted-foreground mb-0.5 md:mb-1">
-                                <Monitor className="w-3 h-3 md:w-4 md:h-4" />
-                                <span className="text-[10px] md:text-xs font-medium">PC</span>
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="flex gap-3 md:gap-6">
+                              <div className="text-center px-3 md:px-4 py-1.5 md:py-2 rounded-lg bg-background border flex-1 sm:flex-initial">
+                                <div className="flex items-center justify-center gap-1.5 md:gap-2 text-muted-foreground mb-0.5 md:mb-1">
+                                  <Monitor className="w-3 h-3 md:w-4 md:h-4" />
+                                  <span className="text-[10px] md:text-xs font-medium">PC</span>
+                                </div>
+                                <p className="text-lg md:text-xl font-bold text-foreground">
+                                  {keywordVolume.monthlyPcQcCnt?.toLocaleString() ?? "-"}
+                                </p>
                               </div>
-                              <p className="text-lg md:text-xl font-bold text-foreground">
-                                {keywordVolume.monthlyPcQcCnt?.toLocaleString() ?? "-"}
-                              </p>
-                            </div>
-                            <div className="text-center px-3 md:px-4 py-1.5 md:py-2 rounded-lg bg-background border flex-1 sm:flex-initial">
-                              <div className="flex items-center justify-center gap-1.5 md:gap-2 text-muted-foreground mb-0.5 md:mb-1">
-                                <Smartphone className="w-3 h-3 md:w-4 md:h-4" />
-                                <span className="text-[10px] md:text-xs font-medium">Mobile</span>
+                              <div className="text-center px-3 md:px-4 py-1.5 md:py-2 rounded-lg bg-background border flex-1 sm:flex-initial">
+                                <div className="flex items-center justify-center gap-1.5 md:gap-2 text-muted-foreground mb-0.5 md:mb-1">
+                                  <Smartphone className="w-3 h-3 md:w-4 md:h-4" />
+                                  <span className="text-[10px] md:text-xs font-medium">Mobile</span>
+                                </div>
+                                <p className="text-lg md:text-xl font-bold text-foreground">
+                                  {keywordVolume.monthlyMobileQcCnt?.toLocaleString() ?? "-"}
+                                </p>
                               </div>
-                              <p className="text-lg md:text-xl font-bold text-foreground">
-                                {keywordVolume.monthlyMobileQcCnt?.toLocaleString() ?? "-"}
-                              </p>
                             </div>
+                            <p className="text-[9px] md:text-[10px] text-muted-foreground/70">
+                              출처: 네이버 광고 API
+                            </p>
                           </div>
                         ) : keywordVolume?.error ? (
-                          <div className="text-center sm:text-right">
+                          <div className="text-center sm:text-right flex flex-col items-end gap-1.5">
                             <p className="text-xs md:text-sm text-destructive">검색량 조회 실패</p>
-                            <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5">잠시 후 다시 시도해주세요</p>
+                            <button
+                              type="button"
+                              onClick={() => fetchKeywordVolume(currentKeyword)}
+                              className="text-[10px] md:text-xs text-primary hover:underline"
+                            >
+                              다시 시도 →
+                            </button>
                           </div>
                         ) : keywordVolume?.configured === false ? (
                           <div className="text-center sm:text-right">
@@ -314,11 +336,10 @@ export default function Dashboard() {
                 )}
               </TabsContent>
 
-              <TabsContent value="sov" className="animate-fade-in">
-                <SovPanel />
-              </TabsContent>
-            </Tabs>
-          )}
+            <TabsContent value="sov" className="animate-fade-in">
+              <SovPanel />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>

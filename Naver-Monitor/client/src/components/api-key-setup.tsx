@@ -10,18 +10,29 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Key, ChevronDown, Check, Loader2, Eye, EyeOff, Shield } from "lucide-react";
+import { Key, ChevronDown, Check, Loader2, Eye, EyeOff, Shield, ExternalLink } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { ApiKeyPublic } from "@shared/schema";
 
 interface ApiKeySetupProps {
   existingApiKey: ApiKeyPublic | undefined;
   onSave: () => void;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function ApiKeySetup({ existingApiKey, onSave }: ApiKeySetupProps) {
+export function ApiKeySetup({ existingApiKey, onSave, isOpen: controlledOpen, onOpenChange }: ApiKeySetupProps) {
   const hasExistingKey = !!existingApiKey?.hasClientSecret;
-  const [isOpen, setIsOpen] = useState(!hasExistingKey);
+  const [internalOpen, setInternalOpen] = useState(!hasExistingKey);
+  
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setIsOpen = (open: boolean) => {
+    if (onOpenChange) {
+      onOpenChange(open);
+    } else {
+      setInternalOpen(open);
+    }
+  };
   const [clientId, setClientId] = useState(existingApiKey?.clientId || "");
   const [clientSecret, setClientSecret] = useState("");
   const [showSecret, setShowSecret] = useState(false);
@@ -106,6 +117,38 @@ export function ApiKeySetup({ existingApiKey, onSave }: ApiKeySetupProps) {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="pt-0 pb-4 md:pb-6 px-4 md:px-6">
+            {!hasExistingKey && (
+              <div className="mb-4 md:mb-5 p-3 md:p-4 rounded-xl bg-gradient-to-r from-primary/5 to-violet-500/5 border border-primary/10">
+                <p className="text-xs md:text-sm font-semibold text-foreground/90 mb-3">API 키 발급 3단계</p>
+                <div className="space-y-2 md:space-y-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-[10px] md:text-xs font-bold text-primary">1</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs md:text-sm text-foreground/80">
+                        <a 
+                          href="https://developers.naver.com/apps/#/register?api=search" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          네이버 개발자센터
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                        에서 애플리케이션 등록
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-[10px] md:text-xs font-bold text-primary">2</div>
+                    <p className="text-xs md:text-sm text-foreground/80">발급받은 Client ID와 Secret을 아래에 입력</p>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-[10px] md:text-xs font-bold text-primary">3</div>
+                    <p className="text-xs md:text-sm text-foreground/80">저장 후 바로 검색 시작!</p>
+                  </div>
+                </div>
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
               <div className="grid sm:grid-cols-2 gap-3 md:gap-4 p-3 md:p-5 bg-muted/30 rounded-xl border border-border/30">
                 <div className="space-y-1.5 md:space-y-2">

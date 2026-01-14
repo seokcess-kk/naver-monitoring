@@ -215,12 +215,14 @@ function ChannelCard({
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage <= 1 || isChannelLoading}
             data-testid={`button-prev-page-${channel.key}`}
+            aria-label="이전 페이지"
           >
             <ChevronLeft className="h-4 w-4" />
+            <span className="sr-only">이전 페이지</span>
           </Button>
-          <span className="text-xs font-medium text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground" aria-live="polite">
             {isChannelLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" aria-label="로딩 중" />
             ) : (
               <>
                 <span className="text-foreground font-bold">{currentPage}</span>
@@ -236,8 +238,10 @@ function ChannelCard({
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage >= maxPage || isChannelLoading}
             data-testid={`button-next-page-${channel.key}`}
+            aria-label="다음 페이지"
           >
             <ChevronRight className="h-4 w-4" />
+            <span className="sr-only">다음 페이지</span>
           </Button>
         </div>
       </CardHeader>
