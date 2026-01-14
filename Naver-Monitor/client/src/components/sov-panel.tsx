@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { 
   BarChart3, 
@@ -20,7 +22,11 @@ import {
   ExternalLink,
   Plus,
   X,
-  RefreshCw
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  Edit3,
+  History
 } from "lucide-react";
 
 interface SovRun {
@@ -72,6 +78,8 @@ export function SovPanel() {
   const [brands, setBrands] = useState<string[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [pollingRunId, setPollingRunId] = useState<string | null>(null);
+  const [inputExpanded, setInputExpanded] = useState<boolean | undefined>(undefined);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
 
   const { data: runs, isLoading: runsLoading } = useQuery<SovRun[]>({
     queryKey: ["/api/sov/runs"],
@@ -94,8 +102,10 @@ export function SovPanel() {
         description: "분석이 백그라운드에서 실행 중입니다.",
       });
       setPollingRunId(data.runId);
+      setSelectedRunId(data.runId);
       setMarketKeyword("");
       setBrands([]);
+      setInputExpanded(false);
       queryClient.invalidateQueries({ queryKey: ["/api/sov/runs"] });
     },
     onError: () => {
@@ -171,182 +181,51 @@ export function SovPanel() {
     const completedRun = runs?.find((r) => r.id === pollingRunId && r.status === "completed");
     if (completedRun && pollingRunId) {
       setPollingRunId(null);
+      setSelectedRunId(completedRun.id);
     }
   }, [runs, pollingRunId]);
 
-  return (
-    <div className="space-y-6">
-      <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-primary" />
-            SOV (Share of Voice) 분석
-          </CardTitle>
-          <CardDescription>
-            시장 키워드에서 브랜드별 노출 점유율을 분석합니다.
-            네이버 검색 스마트블록(뉴스, VIEW, 블로그)의 콘텐츠를 분석하여 브랜드 관련성을 계산합니다.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="market-keyword">시장 키워드</Label>
-            <Input
-              id="market-keyword"
-              data-testid="input-market-keyword"
-              placeholder="예: 전기차, 커피머신, 노트북"
-              value={marketKeyword}
-              onChange={(e) => setMarketKeyword(e.target.value)}
-            />
-          </div>
+  useEffect(() => {
+    if (!runsLoading && inputExpanded === undefined) {
+      const hasRuns = runs && runs.length > 0;
+      setInputExpanded(!hasRuns);
+      if (hasRuns && !selectedRunId) {
+        const latestCompleted = runs.find(r => r.status === "completed");
+        if (latestCompleted) {
+          setSelectedRunId(latestCompleted.id);
+        }
+      }
+    }
+  }, [runsLoading, runs, inputExpanded, selectedRunId]);
 
-          <div className="space-y-2">
-            <Label htmlFor="brand-input">분석할 브랜드 (최대 10개)</Label>
-            <div className="flex gap-2">
-              <Input
-                id="brand-input"
-                data-testid="input-brand"
-                placeholder="브랜드명 입력"
-                value={brandInput}
-                onChange={(e) => setBrandInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddBrand();
-                  }
-                }}
-              />
+  const lastRun = runs?.[0];
+
+  return (
+    <div className="space-y-4">
+      {/* 1. 분석 결과 - 최상단 배치 (결과가 있을 때) */}
+      {selectedRunId && (
+        <Card className="border-2 border-primary/20">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-primary" />
+                분석 결과
+                {selectedResult?.run && (
+                  <Badge variant="outline" className="ml-2 font-normal">
+                    {selectedResult.run.marketKeyword}
+                  </Badge>
+                )}
+              </CardTitle>
               <Button
-                type="button"
                 variant="outline"
-                size="icon"
-                onClick={handleAddBrand}
-                disabled={!brandInput.trim() || brands.length >= 10}
-                data-testid="button-add-brand"
+                size="sm"
+                onClick={() => setInputExpanded(true)}
+                className="gap-1.5"
               >
-                <Plus className="w-4 h-4" />
+                <Edit3 className="w-3.5 h-3.5" />
+                새 분석
               </Button>
             </div>
-            {brands.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {brands.map((brand) => (
-                  <Badge key={brand} variant="secondary" className="gap-1">
-                    {brand}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveBrand(brand)}
-                      className="ml-1 hover:text-destructive"
-                      data-testid={`button-remove-brand-${brand}`}
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <Button
-            onClick={handleStartRun}
-            disabled={!marketKeyword.trim() || brands.length === 0 || startRunMutation.isPending}
-            className="w-full"
-            data-testid="button-start-sov"
-          >
-            {startRunMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                분석 시작 중...
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4 mr-2" />
-                SOV 분석 시작
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              분석 기록
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sov/runs"] })}
-              data-testid="button-refresh-runs"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {runsLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-            </div>
-          ) : !runs || runs.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              아직 분석 기록이 없습니다. 위에서 새 분석을 시작해보세요.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {runs.map((run) => (
-                <div
-                  key={run.id}
-                  className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                    selectedRunId === run.id
-                      ? "border-primary bg-primary/5"
-                      : "hover:border-primary/50 hover-elevate"
-                  }`}
-                  onClick={() => setSelectedRunId(run.id)}
-                  data-testid={`card-sov-run-${run.id}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {getStatusIcon(run.status)}
-                      <div>
-                        <p className="font-medium">{run.marketKeyword}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {run.brands.join(", ")}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant="outline">{getStatusLabel(run.status)}</Badge>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(run.createdAt).toLocaleDateString("ko-KR")}
-                      </p>
-                    </div>
-                  </div>
-                  {(run.status === "crawling" || run.status === "extracting" || run.status === "analyzing") && (
-                    <Progress
-                      value={
-                        run.processedExposures && run.totalExposures
-                          ? (parseInt(run.processedExposures) / parseInt(run.totalExposures)) * 100
-                          : 0
-                      }
-                      className="mt-3 h-2"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {selectedRunId && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5" />
-              분석 결과
-            </CardTitle>
           </CardHeader>
           <CardContent>
             {resultLoading ? (
@@ -376,60 +255,302 @@ export function SovPanel() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {selectedResult.results.map((result) => (
-                    <Card key={result.brand} className="bg-gradient-to-br from-card to-muted/20">
-                      <CardContent className="pt-4">
-                        <div className="text-center">
-                          <p className="text-sm text-muted-foreground mb-1">
-                            {result.brand}
-                          </p>
-                          <p className="text-3xl font-bold text-primary">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* 왼쪽: SOV 요약 지표 */}
+                <div className="space-y-4">
+                  <h4 className="font-medium text-sm text-muted-foreground">브랜드별 점유율</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {selectedResult.results.map((result, idx) => (
+                      <Card key={result.brand} className={`bg-gradient-to-br ${idx === 0 ? 'from-primary/10 to-primary/5 border-primary/30' : 'from-card to-muted/20'}`}>
+                        <CardContent className="py-3 px-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium truncate">{result.brand}</span>
+                            {idx === 0 && <Badge className="text-[10px] px-1.5 py-0">1위</Badge>}
+                          </div>
+                          <p className="text-2xl font-bold text-primary">
                             {result.sovPercentage.toFixed(1)}%
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {result.exposureCount}건 / {selectedResult.run.totalExposures}건
+                          <p className="text-xs text-muted-foreground">
+                            {result.exposureCount}건 노출
                           </p>
-                        </div>
-                        <Progress
-                          value={result.sovPercentage}
-                          className="mt-3 h-2"
-                        />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-
-                <div>
-                  <h4 className="font-medium mb-3">분석된 콘텐츠 ({selectedResult.exposures.length}건)</h4>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {selectedResult.exposures.map((exposure) => (
-                      <div
-                        key={exposure.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <Badge variant="outline" className="shrink-0">
-                            {exposure.blockType}
-                          </Badge>
-                          <span className="truncate text-sm">{exposure.title}</span>
-                        </div>
-                        <a
-                          href={exposure.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="shrink-0 ml-2"
-                          data-testid={`link-exposure-${exposure.id}`}
-                        >
-                          <ExternalLink className="w-4 h-4 text-muted-foreground hover:text-primary" />
-                        </a>
-                      </div>
+                          <Progress
+                            value={result.sovPercentage}
+                            className="mt-2 h-1.5"
+                          />
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
+                  <div className="text-xs text-muted-foreground pt-2 border-t">
+                    총 {selectedResult.run.totalExposures}건의 콘텐츠 분석 완료
+                  </div>
+                </div>
+
+                {/* 오른쪽: 노출 목록 (스크롤 영역) */}
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm text-muted-foreground">
+                    분석된 콘텐츠 ({selectedResult.exposures.length}건)
+                  </h4>
+                  <ScrollArea className="h-[280px] rounded-md border p-3">
+                    <div className="space-y-2">
+                      {selectedResult.exposures.map((exposure) => (
+                        <div
+                          key={exposure.id}
+                          className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                            <Badge variant="outline" className="shrink-0 text-[10px]">
+                              {exposure.blockType}
+                            </Badge>
+                            <span className="truncate text-sm">{exposure.title}</span>
+                          </div>
+                          <a
+                            href={exposure.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 ml-2 p-1 hover:bg-background rounded"
+                            aria-label="외부 링크 열기"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 2. 입력 영역 - 접기/펼치기 가능 */}
+      <Collapsible open={inputExpanded} onOpenChange={setInputExpanded}>
+        <Card className={`border-2 transition-colors ${inputExpanded ? 'border-primary/20 bg-gradient-to-br from-primary/5 to-transparent' : 'border-muted'}`}>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <BarChart3 className="w-5 h-5 text-primary" />
+                  {inputExpanded ? 'SOV 분석 설정' : '새 SOV 분석 시작'}
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {!inputExpanded && brands.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {brands.length}개 브랜드
+                    </Badge>
+                  )}
+                  {inputExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </div>
+              </div>
+              {!inputExpanded && (
+                <CardDescription className="mt-1">
+                  클릭하여 새 분석을 시작하거나 검색 조건을 수정하세요
+                </CardDescription>
+              )}
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-4 pt-0">
+              <CardDescription className="pb-2">
+                시장 키워드에서 브랜드별 노출 점유율을 분석합니다.
+                네이버 검색 스마트블록의 콘텐츠를 분석하여 브랜드 관련성을 계산합니다.
+              </CardDescription>
+              <div className="space-y-2">
+                <Label htmlFor="market-keyword">시장 키워드</Label>
+                <Input
+                  id="market-keyword"
+                  data-testid="input-market-keyword"
+                  placeholder="예: 전기차, 커피머신, 노트북"
+                  value={marketKeyword}
+                  onChange={(e) => setMarketKeyword(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="brand-input">분석할 브랜드 (최대 10개)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="brand-input"
+                    data-testid="input-brand"
+                    placeholder="브랜드명 입력"
+                    value={brandInput}
+                    onChange={(e) => setBrandInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddBrand();
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleAddBrand}
+                    disabled={!brandInput.trim() || brands.length >= 10}
+                    data-testid="button-add-brand"
+                    aria-label="브랜드 추가"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                {brands.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {brands.map((brand) => (
+                      <Badge key={brand} variant="secondary" className="gap-1">
+                        {brand}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveBrand(brand)}
+                          className="ml-1 hover:text-destructive"
+                          data-testid={`button-remove-brand-${brand}`}
+                          aria-label={`${brand} 삭제`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <Button
+                onClick={handleStartRun}
+                disabled={!marketKeyword.trim() || brands.length === 0 || startRunMutation.isPending}
+                className="w-full"
+                data-testid="button-start-sov"
+              >
+                {startRunMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    분석 시작 중...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 mr-2" />
+                    SOV 분석 시작
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* 3. 분석 기록 - 접기/펼치기 가능 */}
+      {runs && runs.length > 0 && (
+        <Collapsible open={historyExpanded} onOpenChange={setHistoryExpanded}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors py-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <History className="w-4 h-4" />
+                    분석 기록
+                    <Badge variant="secondary" className="text-xs ml-1">
+                      {runs.length}건
+                    </Badge>
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    {lastRun && !historyExpanded && (
+                      <span className="text-xs text-muted-foreground hidden sm:inline">
+                        최근: {lastRun.marketKeyword} ({getStatusLabel(lastRun.status)})
+                      </span>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        queryClient.invalidateQueries({ queryKey: ["/api/sov/runs"] });
+                      }}
+                      data-testid="button-refresh-runs"
+                      aria-label="새로고침"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </Button>
+                    {historyExpanded ? (
+                      <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0">
+                {runsLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {runs.map((run) => (
+                      <div
+                        key={run.id}
+                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedRunId === run.id
+                            ? "border-primary bg-primary/5"
+                            : "hover:border-primary/50 hover:bg-muted/30"
+                        }`}
+                        onClick={() => setSelectedRunId(run.id)}
+                        data-testid={`card-sov-run-${run.id}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {getStatusIcon(run.status)}
+                            <div>
+                              <p className="font-medium text-sm">{run.marketKeyword}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {run.brands.join(", ")}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <Badge variant="outline" className="text-[10px]">{getStatusLabel(run.status)}</Badge>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              {new Date(run.createdAt).toLocaleDateString("ko-KR")}
+                            </p>
+                          </div>
+                        </div>
+                        {(run.status === "crawling" || run.status === "extracting" || run.status === "analyzing") && (
+                          <Progress
+                            value={
+                              run.processedExposures && run.totalExposures
+                                ? (parseInt(run.processedExposures) / parseInt(run.totalExposures)) * 100
+                                : 0
+                            }
+                            className="mt-2 h-1.5"
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
+
+      {/* 분석 기록이 없을 때 안내 */}
+      {!runsLoading && (!runs || runs.length === 0) && !selectedRunId && (
+        <Card className="border-dashed">
+          <CardContent className="py-8 text-center">
+            <TrendingUp className="w-10 h-10 mx-auto mb-3 text-muted-foreground/50" />
+            <p className="text-muted-foreground">
+              아직 분석 기록이 없습니다.
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              위에서 시장 키워드와 브랜드를 입력하고 분석을 시작해보세요.
+            </p>
           </CardContent>
         </Card>
       )}
