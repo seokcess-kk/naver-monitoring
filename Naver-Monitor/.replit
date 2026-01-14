@@ -15,8 +15,8 @@ PORT = "5000"
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["node", "./dist/index.cjs"]
-build = ["npm", "run", "build"]
+run = ["bash", "-c", "cd Naver-Monitor && node dist/index.cjs"]
+build = ["bash", "-c", "cd Naver-Monitor && npm run build"]
 healthCheckPath = "/health"
 
 [workflows]
