@@ -132,5 +132,34 @@
 - `npm run dev` - 개발 서버 실행
 - `npm run db:push` - 데이터베이스 스키마 동기화
 
+## 개발/배포 전 체크리스트
+
+기능 변경 시 반드시 아래 항목들을 확인하세요:
+
+### 환경 설정
+- [ ] Puppeteer Chrome 브라우저 설치 확인 (`npx puppeteer browsers install chrome`)
+- [ ] 워크플로우 재시작 및 서버 정상 동작 확인
+- [ ] 콘솔 로그에 에러 없는지 확인
+
+### 핵심 기능 테스트
+- [ ] 스마트블록 크롤링 정상 동작 (검색 시 smartBlock 결과 확인)
+- [ ] API 결과 4채널(블로그, 카페, 지식iN, 뉴스) 정상 표시
+- [ ] 키워드 검색량(PC/MO) 표시 확인
+- [ ] SOV 분석 기능 동작 확인 (필요시)
+
+### UI/UX
+- [ ] 모바일 반응형 레이아웃 정상 동작
+- [ ] 데스크톱 레이아웃 정상 동작
+- [ ] 탭/그리드 전환이 md 브레이크포인트에서 올바르게 동작
+
+### 인증
+- [ ] 로그인/로그아웃 정상 동작
+- [ ] 이메일 인증 흐름 정상 동작 (신규 가입 시)
+
+### 배포 전 (프로덕션)
+- [ ] `npm run build` 성공 확인
+- [ ] 빌드 시 Chrome 자동 설치 확인
+- [ ] 환경 변수 설정 확인 (DATABASE_URL, SESSION_SECRET 등)
+
 ## Architecture Documentation
 자세한 아키텍처 문서는 [ARCHITECTURE.md](./ARCHITECTURE.md)를 참조하세요.
