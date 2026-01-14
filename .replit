@@ -38,7 +38,7 @@ externalPort = 80
 [deployment]
 deploymentTarget = "vm"
 run = ["bash", "-c", "cd Naver-Monitor && NODE_ENV=production node dist/index.cjs"]
-build = ["bash", "-c", "cd Naver-Monitor && npm install && npx drizzle-kit push && npm run build"]
+build = ["bash", "-c", "cd Naver-Monitor && npm install --include=dev && npx drizzle-kit push --config ./drizzle.config.ts && npm run build"]
 
 [userenv]
 
