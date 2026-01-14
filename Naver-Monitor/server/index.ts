@@ -11,6 +11,11 @@ const app = express();
 app.set("trust proxy", 1);
 const httpServer = createServer(app);
 
+// Health check endpoint - must be before all middleware for fast response
+app.get("/health", (_req, res) => {
+  res.status(200).send("OK");
+});
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
