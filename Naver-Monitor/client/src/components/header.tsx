@@ -27,8 +27,9 @@ export function Header() {
             <Layers className="w-5 h-5 text-primary-foreground" />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-bold tracking-tight">네이버 통합 모니터링</span>
-            <span className="text-[10px] text-muted-foreground -mt-0.5 hidden sm:block">SmartBlock + API Search</span>
+            <span className="text-lg font-bold tracking-tight">
+              네이버 통합 모니터링
+            </span>
           </div>
         </div>
 
