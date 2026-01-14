@@ -49,79 +49,82 @@ export function SearchPanel({
   };
 
   return (
-    <Card className="border-border/50 shadow-sm overflow-hidden">
+    <Card className="border-border/50 shadow-sm overflow-hidden glass-card">
       <div className="h-1 bg-gradient-to-r from-primary via-violet-500 to-sky-500" />
-      <CardContent className="p-6">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-primary" />
+      <CardContent className="p-4 md:p-6">
+        <div className="flex items-center gap-2.5 md:gap-3 mb-4 md:mb-5">
+          <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-lg font-bold tracking-tight">통합검색</h2>
+            <h2 className="text-base md:text-lg font-bold tracking-tight">통합검색</h2>
           </div>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="flex flex-col md:flex-row gap-4 items-end"
+          className="flex flex-col md:flex-row gap-3 md:gap-4 items-end"
         >
           <div className="flex-1 w-full">
-            <label className="block text-sm font-semibold mb-2 text-foreground/80">
+            <label className="block text-xs md:text-sm font-semibold mb-1.5 md:mb-2 text-foreground/80">
               모니터링 키워드
             </label>
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/60" />
+              <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground/60" />
               <Input
                 type="search"
-                placeholder="예: 강남 맛집, 임플란트 가격, 다이어트한의원"
+                placeholder="예: 강남 맛집, 다이어트한의원"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                className="pl-12 h-12 text-base bg-muted/30 border-border/50 focus:bg-background transition-colors"
+                className="pl-10 md:pl-12 h-10 md:h-12 text-sm md:text-base bg-muted/30 border-border/50 focus:bg-background transition-colors"
                 data-testid="input-search-keyword"
               />
             </div>
           </div>
 
-          <div className="w-full md:w-44">
-            <label className="block text-sm font-semibold mb-2 text-foreground/80">
-              API 정렬 기준
-            </label>
-            <Select
-              value={sortType}
-              onValueChange={(v) => setSortType(v as "sim" | "date")}
-            >
-              <SelectTrigger
-                className="h-12 bg-muted/30 border-border/50"
-                data-testid="select-sort-type"
+          <div className="flex gap-3 w-full md:w-auto">
+            <div className="flex-1 md:w-36 lg:w-44">
+              <label className="block text-xs md:text-sm font-semibold mb-1.5 md:mb-2 text-foreground/80">
+                정렬
+              </label>
+              <Select
+                value={sortType}
+                onValueChange={(v) => setSortType(v as "sim" | "date")}
               >
-                <SelectValue placeholder="정렬 기준" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sim">정확도순</SelectItem>
-                <SelectItem value="date">최신순</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+                <SelectTrigger
+                  className="h-10 md:h-12 bg-muted/30 border-border/50 text-sm"
+                  data-testid="select-sort-type"
+                >
+                  <SelectValue placeholder="정렬" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sim">정확도순</SelectItem>
+                  <SelectItem value="date">최신순</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <Button
-            type="submit"
-            size="lg"
-            disabled={isSearching || !hasApiKey}
-            className="w-full md:w-auto h-12 px-8 font-semibold shadow-sm"
-            data-testid="button-search"
-          >
-            {isSearching ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                검색 중...
-              </>
-            ) : (
-              <>
-                <Search className="mr-2 h-5 w-5" />
-                검색
-              </>
-            )}
-          </Button>
+            <Button
+              type="submit"
+              size="lg"
+              disabled={isSearching || !hasApiKey}
+              className="flex-1 md:flex-initial h-10 md:h-12 px-4 md:px-8 font-semibold shadow-sm self-end text-sm md:text-base"
+              data-testid="button-search"
+            >
+              {isSearching ? (
+                <>
+                  <Loader2 className="mr-1.5 md:mr-2 h-4 w-4 md:h-5 md:w-5 animate-spin" />
+                  <span className="hidden sm:inline">검색 중...</span>
+                  <span className="sm:hidden">검색</span>
+                </>
+              ) : (
+                <>
+                  <Search className="mr-1.5 md:mr-2 h-4 w-4 md:h-5 md:w-5" />
+                  검색
+                </>
+              )}
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>

@@ -67,48 +67,49 @@ export function ApiKeySetup({ existingApiKey, onSave }: ApiKeySetupProps) {
   };
 
   return (
-    <Card className="border-border/50 shadow-sm overflow-hidden">
+    <Card className="border-border/50 shadow-sm overflow-hidden glass-card">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+          <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors p-4 md:p-6">
+            <div className="flex items-center justify-between gap-3 md:gap-4">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center ${
                   hasExistingKey 
                     ? "bg-gradient-to-br from-emerald-500/20 to-emerald-500/5" 
                     : "bg-gradient-to-br from-amber-500/20 to-amber-500/5"
                 }`}>
                   {hasExistingKey ? (
-                    <Shield className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                    <Shield className="w-4 h-4 md:w-5 md:h-5 text-emerald-600 dark:text-emerald-400" />
                   ) : (
-                    <Key className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                    <Key className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-amber-400" />
                   )}
                 </div>
                 <div>
-                  <CardTitle className="text-base font-bold">API 키 설정</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-0.5">
+                  <CardTitle className="text-sm md:text-base font-bold">API 키 설정</CardTitle>
+                  <p className="text-xs md:text-sm text-muted-foreground mt-0.5 hidden sm:block">
                     {hasExistingKey ? "네이버 검색 API 키가 등록되어 있습니다" : "네이버 검색 API 키를 등록하세요"}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 md:gap-3">
                 {hasExistingKey && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
-                    <Check className="w-3.5 h-3.5" />
-                    등록 완료
+                  <div className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] md:text-xs font-semibold">
+                    <Check className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                    <span className="hidden sm:inline">등록 완료</span>
+                    <span className="sm:hidden">완료</span>
                   </div>
                 )}
-                <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-4 h-4 md:w-5 md:h-5 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
               </div>
             </div>
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <CardContent className="pt-0 pb-6">
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="grid sm:grid-cols-2 gap-4 p-5 bg-muted/30 rounded-xl border border-border/30">
-                <div className="space-y-2">
-                  <Label htmlFor="clientId" className="text-sm font-semibold text-foreground/80">
+          <CardContent className="pt-0 pb-4 md:pb-6 px-4 md:px-6">
+            <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
+              <div className="grid sm:grid-cols-2 gap-3 md:gap-4 p-3 md:p-5 bg-muted/30 rounded-xl border border-border/30">
+                <div className="space-y-1.5 md:space-y-2">
+                  <Label htmlFor="clientId" className="text-xs md:text-sm font-semibold text-foreground/80">
                     Client ID
                   </Label>
                   <Input
@@ -117,22 +118,22 @@ export function ApiKeySetup({ existingApiKey, onSave }: ApiKeySetupProps) {
                     placeholder="네이버 개발자센터 Client ID"
                     value={clientId}
                     onChange={(e) => setClientId(e.target.value)}
-                    className="font-mono text-sm bg-background"
+                    className="font-mono text-xs md:text-sm bg-background h-9 md:h-10"
                     data-testid="input-client-id"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="clientSecret" className="text-sm font-semibold text-foreground/80">
+                <div className="space-y-1.5 md:space-y-2">
+                  <Label htmlFor="clientSecret" className="text-xs md:text-sm font-semibold text-foreground/80">
                     Client Secret
                   </Label>
                   <div className="relative">
                     <Input
                       id="clientSecret"
                       type={showSecret ? "text" : "password"}
-                      placeholder={hasExistingKey ? "변경 시에만 입력" : "네이버 개발자센터 Client Secret"}
+                      placeholder={hasExistingKey ? "변경 시에만 입력" : "Client Secret"}
                       value={clientSecret}
                       onChange={(e) => setClientSecret(e.target.value)}
-                      className="font-mono text-sm pr-10 bg-background"
+                      className="font-mono text-xs md:text-sm pr-10 bg-background h-9 md:h-10"
                       data-testid="input-client-secret"
                     />
                     <Button
@@ -151,7 +152,7 @@ export function ApiKeySetup({ existingApiKey, onSave }: ApiKeySetupProps) {
                     </Button>
                   </div>
                   {hasExistingKey && (
-                    <p className="text-xs text-muted-foreground mt-1.5">
+                    <p className="text-[10px] md:text-xs text-muted-foreground mt-1 md:mt-1.5">
                       보안상 저장된 Secret은 표시되지 않습니다
                     </p>
                   )}
@@ -161,17 +162,17 @@ export function ApiKeySetup({ existingApiKey, onSave }: ApiKeySetupProps) {
                 <Button
                   type="submit"
                   disabled={saveMutation.isPending}
-                  className="font-semibold shadow-sm"
+                  className="font-semibold shadow-sm text-sm h-9 md:h-10"
                   data-testid="button-save-api-key"
                 >
                   {saveMutation.isPending ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-1.5 md:mr-2 h-4 w-4 animate-spin" />
                       저장 중...
                     </>
                   ) : (
                     <>
-                      <Check className="mr-2 h-4 w-4" />
+                      <Check className="mr-1.5 md:mr-2 h-4 w-4" />
                       {hasExistingKey ? "수정하기" : "저장하기"}
                     </>
                   )}

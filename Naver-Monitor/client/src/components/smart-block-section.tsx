@@ -35,12 +35,12 @@ interface SmartBlockSectionProps {
 
 function getSectionIcon(title: string) {
   if (title.includes("플레이스") || title.includes("지도")) {
-    return <MapPin className="w-4 h-4" />;
+    return <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4" />;
   }
   if (title.includes("뉴스")) {
-    return <Newspaper className="w-4 h-4" />;
+    return <Newspaper className="w-3.5 h-3.5 md:w-4 md:h-4" />;
   }
-  return <FileText className="w-4 h-4" />;
+  return <FileText className="w-3.5 h-3.5 md:w-4 md:h-4" />;
 }
 
 function getSectionStyle(title: string): {
@@ -75,24 +75,24 @@ export function SmartBlockSection({
 }: SmartBlockSectionProps) {
   if (isLoading) {
     return (
-      <section className="space-y-6">
-        <div className="flex items-center gap-4 pb-4 border-b border-border/50">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 flex items-center justify-center">
-            <Layers className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+      <section className="space-y-4 md:space-y-6">
+        <div className="flex items-center gap-3 md:gap-4 pb-3 md:pb-4 border-b border-border/50">
+          <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 flex items-center justify-center">
+            <Layers className="w-4 h-4 md:w-5 md:h-5 text-violet-600 dark:text-violet-400" />
           </div>
           <div>
-            <h2 className="text-xl font-bold tracking-tight">
+            <h2 className="text-lg md:text-xl font-bold tracking-tight">
               스마트블록 노출 현황
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs md:text-sm text-muted-foreground">
               키워드를 검색 중입니다...
             </p>
           </div>
         </div>
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          <Skeleton className="h-72 rounded-xl" />
-          <Skeleton className="h-72 rounded-xl" />
-          <Skeleton className="h-72 rounded-xl" />
+        <div className="mobile-horizontal-scroll md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-5">
+          <Skeleton className="h-64 md:h-72 w-[280px] md:w-auto rounded-xl shrink-0" />
+          <Skeleton className="h-64 md:h-72 w-[280px] md:w-auto rounded-xl shrink-0" />
+          <Skeleton className="h-64 md:h-72 w-[280px] md:w-auto rounded-xl shrink-0" />
         </div>
       </section>
     );
@@ -100,16 +100,16 @@ export function SmartBlockSection({
 
   if (!results || results.length === 0) {
     return (
-      <section className="space-y-6">
-        <div className="flex items-center gap-4 pb-4 border-b border-border/50">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 flex items-center justify-center">
-            <Layers className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+      <section className="space-y-4 md:space-y-6">
+        <div className="flex items-center gap-3 md:gap-4 pb-3 md:pb-4 border-b border-border/50">
+          <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 flex items-center justify-center">
+            <Layers className="w-4 h-4 md:w-5 md:h-5 text-violet-600 dark:text-violet-400" />
           </div>
           <div>
-            <h2 className="text-xl font-bold tracking-tight">
+            <h2 className="text-lg md:text-xl font-bold tracking-tight">
               스마트블록 노출 현황
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs md:text-sm text-muted-foreground">
               실시간 수집된 노출 데이터
             </p>
           </div>
@@ -129,82 +129,73 @@ export function SmartBlockSection({
     );
   }
 
-  const gridCols =
-    results.length === 1
-      ? "grid-cols-1 max-w-2xl"
-      : results.length === 2
-        ? "grid-cols-1 md:grid-cols-2"
-        : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3";
-
   return (
-    <section className="space-y-6">
-      <div className="flex items-center justify-between gap-4 pb-4 border-b border-border/50 flex-wrap">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 flex items-center justify-center">
-            <Layers className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+    <section className="space-y-4 md:space-y-6 animate-fade-in">
+      <div className="flex items-center justify-between gap-3 md:gap-4 pb-3 md:pb-4 border-b border-border/50 flex-wrap">
+        <div className="flex items-center gap-3 md:gap-4">
+          <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 flex items-center justify-center">
+            <Layers className="w-4 h-4 md:w-5 md:h-5 text-violet-600 dark:text-violet-400" />
           </div>
           <div>
-            <h2 className="text-xl font-bold tracking-tight">
+            <h2 className="text-lg md:text-xl font-bold tracking-tight">
               스마트블록 노출 현황
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs md:text-sm text-muted-foreground">
               실시간 수집된 노출 데이터
             </p>
           </div>
         </div>
         <Badge
           variant="outline"
-          className="text-xs font-medium bg-violet-500/5 text-violet-600 dark:text-violet-400 border-violet-500/20"
+          className="text-[10px] md:text-xs font-medium bg-violet-500/5 text-violet-600 dark:text-violet-400 border-violet-500/20"
         >
-          <Zap className="w-3 h-3 mr-1.5" />
+          <Zap className="w-2.5 h-2.5 md:w-3 md:h-3 mr-1 md:mr-1.5" />
           Live Crawling
         </Badge>
       </div>
 
-      <div className={`grid gap-5 ${gridCols}`}>
+      <div className="mobile-horizontal-scroll md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-5">
         {results.map((section, idx) => {
           const style = getSectionStyle(section.sectionTitle);
           return (
             <Card
               key={idx}
-              className="overflow-hidden border-border/50 shadow-sm"
+              className="overflow-hidden border-border/50 shadow-sm w-[300px] md:w-auto shrink-0 hover-lift"
             >
-              <CardHeader
-                className={`pb-3 ${style.bg} border-b border-border/30`}
-              >
-                <div className="flex items-center gap-3">
+              <CardHeader className={`pb-2.5 md:pb-3 ${style.bg} border-b border-border/30`}>
+                <div className="flex items-center gap-2.5 md:gap-3">
                   <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center ${style.bg} ${style.text}`}
+                    className={`w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center ${style.bg} ${style.text}`}
                   >
                     {getSectionIcon(section.sectionTitle)}
                   </div>
-                  <CardTitle className="text-sm font-bold flex-1">
+                  <CardTitle className="text-xs md:text-sm font-bold flex-1 truncate">
                     {section.sectionTitle}
                   </CardTitle>
                   <Badge
                     variant="outline"
-                    className={`text-[10px] font-semibold ${style.text} ${style.border}`}
+                    className={`text-[9px] md:text-[10px] font-semibold ${style.text} ${style.border}`}
                   >
                     {section.posts.length}건
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <ScrollArea className="h-80">
-                  <div className="p-4 space-y-2">
+                <ScrollArea className="h-60 md:h-80">
+                  <div className="p-3 md:p-4 space-y-1.5 md:space-y-2">
                     {section.posts.map((post, postIdx) => (
                       <a
                         key={postIdx}
                         href={post.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group block p-3 rounded-lg hover:bg-muted/60 transition-all duration-200 border border-transparent hover:border-border/50"
+                        className="group block p-2.5 md:p-3 rounded-lg hover:bg-muted/60 transition-all duration-200 border border-transparent hover:border-border/50"
                         data-testid={`link-smartblock-item-${idx}-${postIdx}`}
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-2.5 md:gap-3">
                           {post.rank && (
                             <div
-                              className={`w-7 h-7 rounded-lg ${style.bg} ${style.text} flex items-center justify-center text-xs font-bold shrink-0`}
+                              className={`w-6 h-6 md:w-7 md:h-7 rounded-lg ${style.bg} ${style.text} flex items-center justify-center text-[10px] md:text-xs font-bold shrink-0`}
                             >
                               {post.rank}
                             </div>
@@ -212,26 +203,20 @@ export function SmartBlockSection({
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <h4
-                                className="text-sm font-medium leading-snug line-clamp-1 group-hover:text-primary transition-colors"
+                                className="text-xs md:text-sm font-medium leading-snug line-clamp-1 group-hover:text-primary transition-colors"
                                 dangerouslySetInnerHTML={{ __html: post.title }}
                               />
                               <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                             </div>
                             {post.summary && (
                               <p
-                                className="text-xs text-muted-foreground/80 line-clamp-2 mt-1.5 leading-relaxed"
-                                dangerouslySetInnerHTML={{
-                                  __html: post.summary,
-                                }}
+                                className="text-[10px] md:text-xs text-muted-foreground/80 line-clamp-2 mt-1 md:mt-1.5 leading-relaxed"
+                                dangerouslySetInnerHTML={{ __html: post.summary }}
                               />
                             )}
                             {post.isNews && (post.press || post.date) && (
-                              <div className="flex items-center gap-2 mt-2 text-[11px] text-muted-foreground/70">
-                                {post.press && (
-                                  <span className="font-medium">
-                                    {post.press}
-                                  </span>
-                                )}
+                              <div className="flex items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2 text-[10px] md:text-[11px] text-muted-foreground/70">
+                                {post.press && <span className="font-medium">{post.press}</span>}
                                 {post.press && post.date && <span>·</span>}
                                 {post.date && <span>{post.date}</span>}
                               </div>
