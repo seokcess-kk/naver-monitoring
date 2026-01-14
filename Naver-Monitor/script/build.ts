@@ -54,8 +54,25 @@ async function buildAll() {
     ...esmOnlyPackages,
   ];
 
+  // Build the main app bundle (heavy initialization)
   await esbuild({
-    entryPoints: ["server/index.ts"],
+    entryPoints: ["server/app.ts"],
+    platform: "node",
+    bundle: true,
+    format: "cjs",
+    outfile: "dist/app.cjs",
+    define: {
+      "process.env.NODE_ENV": '"production"',
+    },
+    minify: true,
+    external: externals,
+    logLevel: "info",
+  });
+
+  // Build the bootstrap (minimal, fast startup)
+  // Mark ./app.cjs as external so the require stays intact at runtime
+  await esbuild({
+    entryPoints: ["server/bootstrap.ts"],
     platform: "node",
     bundle: true,
     format: "cjs",
@@ -64,7 +81,7 @@ async function buildAll() {
       "process.env.NODE_ENV": '"production"',
     },
     minify: true,
-    external: externals,
+    external: [...externals, "./app.cjs", "./app"],
     logLevel: "info",
   });
 }
