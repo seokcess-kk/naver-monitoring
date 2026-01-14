@@ -102,7 +102,13 @@ Preferred communication style: Simple, everyday language.
 ### Important Notes
 - **Single .replit file**: Only the root `.replit` file is used for deployment. Do NOT create `.replit` files in subdirectories as they will be ignored and cause confusion.
 - **Deployment Type**: VM (Reserved VM) - Always running, no cold start issues
-- **Build/Run Commands**: Defined in root `package.json`, which delegates to `Naver-Monitor/` subdirectory
+- **Build Command**: `npm run deploy:build --prefix Naver-Monitor` (installs deps + builds)
+- **Run Command**: `npm run deploy:start --prefix Naver-Monitor` (runs migrations + starts server)
 - **Production URL**: https://naver-monitor--inner1.replit.app (set via APP_BASE_URL env var)
 - **Health Check**: `/health` endpoint responds before any middleware for fast health checks
 - **Puppeteer Chrome**: Installed during build via `npx puppeteer browsers install chrome`
+- **drizzle-kit**: Moved to dependencies for runtime migration support
+
+### Deploy Scripts (Naver-Monitor/package.json)
+- `deploy:build`: `npm install --include=dev && npm run build`
+- `deploy:start`: `npx drizzle-kit push --config ./drizzle.config.ts && NODE_ENV=production node dist/index.cjs`
