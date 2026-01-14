@@ -212,9 +212,10 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
         }
       }
 
-      // 3. 리뷰 영역 추출 (Fender 렌더링 구조)
+      // 3. 리뷰/웹 영역 추출 (Fender 렌더링 구조)
+      // review 섹션 및 웹 검색 결과 블록 모두 수집
       const reviewSections = document.querySelectorAll(
-        '[data-meta-ssuid="review"], [data-block-id*="review/"]'
+        '[data-meta-ssuid="review"], [data-block-id*="review/"], [data-meta-ssuid="web"][data-block-id*="web/"], [data-meta-area="urB_boR"]'
       );
 
       if (reviewSections.length > 0) {
@@ -223,10 +224,11 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
         reviewSections.forEach((section) => {
           const parentBox = section.closest(".spw_fsolid") || section.closest(".api_subject_bx");
           if (parentBox) processedElements.add(parentBox);
+          processedElements.add(section);
 
-          // Fender 구조 내부 아이템 추출
+          // Fender 구조 내부 아이템 추출 (웹 블록용 셀렉터 추가)
           const items = section.querySelectorAll(
-            '.api_subject_bx, [class*="desktop_mode"]'
+            '.api_subject_bx, [class*="desktop_mode"], .fds-web-doc-root, [data-template-id="layout"]'
           );
 
           items.forEach((item) => {
