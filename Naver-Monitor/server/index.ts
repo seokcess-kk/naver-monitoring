@@ -11,9 +11,19 @@ const app = express();
 app.set("trust proxy", 1);
 const httpServer = createServer(app);
 
-// Health check endpoint - must be before all middleware for fast response
+// Health check endpoints - must be before all middleware for fast response
+// Replit checks "/" for health, so we need to respond quickly
 app.get("/health", (_req, res) => {
   res.status(200).send("OK");
+});
+
+// Fast response for health check on root (checks if it's not a browser request)
+app.use((req, res, next) => {
+  // If it's a health check (no Accept header or not expecting HTML)
+  if (req.path === "/" && !req.headers.accept?.includes("text/html")) {
+    return res.status(200).send("OK");
+  }
+  next();
 });
 
 declare module "http" {
