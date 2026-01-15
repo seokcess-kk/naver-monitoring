@@ -366,8 +366,13 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
     });
 
     return sections;
-  } catch (error) {
-    console.error("Crawling error:", error);
+  } catch (error: any) {
+    const errorMessage = error?.message || String(error);
+    if (errorMessage.includes('Browser was not found') || errorMessage.includes('executablePath')) {
+      console.error("[Crawler] Chrome browser not found. SmartBlock crawling disabled. Run 'npx puppeteer browsers install chrome' to fix.");
+    } else {
+      console.error("Crawling error:", error);
+    }
     return [];
   } finally {
     if (browser) {

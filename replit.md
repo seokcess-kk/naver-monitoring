@@ -122,8 +122,10 @@ Preferred communication style: Simple, everyday language.
 
 ### Deploy Scripts (Naver-Monitor/package.json)
 - `deploy:build`: `npm install --include=dev && npm run build` (DB migration removed from build to avoid timeout)
-- `deploy:start`: `NODE_ENV=production node dist/index.cjs`
+- `deploy:start`: `(npx puppeteer browsers install chrome || echo 'Warning') && NODE_ENV=production node dist/index.cjs`
 - Note: DB migrations are handled by Replit's deployment platform automatically
+- Note: Chrome browser is installed at startup to ensure SmartBlock crawling works in production
+- Note: If Chrome install fails, server still starts but SmartBlock crawling returns empty results gracefully
 
 ### Cold Start Optimization
 The server uses a two-phase startup:

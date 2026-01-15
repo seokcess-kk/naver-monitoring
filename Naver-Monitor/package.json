@@ -10,7 +10,7 @@
     "check": "tsc",
     "db:push": "drizzle-kit push --config ./drizzle.config.ts",
     "deploy:build": "npm install --include=dev && npm run build",
-    "deploy:start": "NODE_ENV=production node dist/index.cjs"
+    "deploy:start": "(npx puppeteer browsers install chrome || echo '[Warning] Chrome install failed, SmartBlock crawling may be disabled') && NODE_ENV=production node dist/index.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
