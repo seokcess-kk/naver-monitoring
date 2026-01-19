@@ -1,0 +1,163 @@
+"""
+브랜드 분석기 - OpenAI GPT-4o 기반
+텍스트 + 이미지 통합 분석
+"""
+import os
+import json
+from dataclasses import dataclass
+from openai import OpenAI
+
+
+@dataclass
+class BrandAnalysisResult:
+    brand: str
+    mentioned: bool
+    sentiment: str  # Positive, Negative, Neutral
+    context: str    # 추천, 비교, 리뷰, 광고, 단순언급
+    summary: str
+    confidence: float
+
+
+def get_openai_client() -> OpenAI:
+    api_key = os.getenv("AI_INTEGRATIONS_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+    base_url = os.getenv("AI_INTEGRATIONS_OPENAI_BASE_URL")
+    
+    if not api_key:
+        raise ValueError("OpenAI API key is required")
+    
+    kwargs = {"api_key": api_key}
+    if base_url:
+        kwargs["base_url"] = base_url
+    
+    return OpenAI(**kwargs)
+
+
+def analyze_brand_in_content(
+    text: str,
+    brand: str,
+    image_urls: list[str] | None = None
+) -> BrandAnalysisResult:
+    """텍스트 + 이미지에서 브랜드 언급 분석"""
+    
+    client = get_openai_client()
+    
+    system_prompt = """당신은 브랜드 마케팅 분석 전문가입니다.
+주어진 콘텐츠에서 특정 브랜드에 대한 언급을 분석합니다.
+
+분석 기준:
+1. mentioned: 브랜드가 직접 언급되었거나 명확히 식별 가능한 경우 true
+2. sentiment: 브랜드에 대한 감정 (Positive/Negative/Neutral)
+3. context: 언급 맥락
+   - 추천: 브랜드를 긍정적으로 추천
+   - 비교: 다른 브랜드와 비교
+   - 리뷰: 사용 경험 공유
+   - 광고: 광고성 콘텐츠
+   - 단순언급: 단순 정보 전달
+4. summary: 브랜드 관련 내용 요약 (1-2문장)
+5. confidence: 분석 확신도 (0.0~1.0)
+
+반드시 JSON 형식으로만 응답하세요."""
+
+    # 메시지 구성
+    user_content = []
+    
+    # 텍스트 분석 요청
+    user_content.append({
+        "type": "text",
+        "text": f"""아래 콘텐츠에서 '{brand}' 브랜드에 대한 언급을 분석해주세요.
+
+[콘텐츠]
+{text[:6000]}
+
+JSON 형식으로 응답:
+{{
+    "mentioned": true/false,
+    "sentiment": "Positive" 또는 "Negative" 또는 "Neutral",
+    "context": "추천/비교/리뷰/광고/단순언급",
+    "summary": "브랜드 관련 내용 요약",
+    "confidence": 0.0~1.0
+}}"""
+    })
+    
+    # 이미지 분석 추가 (있는 경우)
+    if image_urls:
+        user_content.append({
+            "type": "text",
+            "text": "\n\n아래 이미지들도 함께 분석해주세요. 이미지에 브랜드 로고, 제품, 관련 내용이 있는지 확인하세요:"
+        })
+        for img_url in image_urls[:3]:  # 최대 3개 이미지
+            user_content.append({
+                "type": "image_url",
+                "image_url": {"url": img_url, "detail": "low"}
+            })
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.1,
+            max_tokens=500
+        )
+        
+        data = json.loads(response.choices[0].message.content)
+        
+        return BrandAnalysisResult(
+            brand=brand,
+            mentioned=data.get("mentioned", False),
+            sentiment=data.get("sentiment", "Neutral"),
+            context=data.get("context", "단순언급"),
+            summary=data.get("summary", ""),
+            confidence=data.get("confidence", 0.5)
+        )
+        
+    except Exception as e:
+        print(f"Brand analysis error: {e}")
+        # Fallback: 규칙 기반 분석
+        return _fallback_analysis(text, brand)
+
+
+def _fallback_analysis(text: str, brand: str) -> BrandAnalysisResult:
+    """API 실패 시 규칙 기반 분석"""
+    text_lower = text.lower()
+    brand_lower = brand.lower()
+    
+    mentioned = brand_lower in text_lower
+    
+    positive_words = ["좋", "추천", "최고", "만족", "훌륭"]
+    negative_words = ["별로", "나쁘", "실망", "비추", "안좋"]
+    
+    pos_count = sum(1 for w in positive_words if w in text)
+    neg_count = sum(1 for w in negative_words if w in text)
+    
+    if pos_count > neg_count:
+        sentiment = "Positive"
+    elif neg_count > pos_count:
+        sentiment = "Negative"
+    else:
+        sentiment = "Neutral"
+    
+    return BrandAnalysisResult(
+        brand=brand,
+        mentioned=mentioned,
+        sentiment=sentiment if mentioned else "Neutral",
+        context="단순언급" if mentioned else "",
+        summary=f"규칙 기반 분석: {'언급됨' if mentioned else '언급 없음'}",
+        confidence=0.3
+    )
+
+
+def analyze_multiple_brands(
+    text: str,
+    brands: list[str],
+    image_urls: list[str] | None = None
+) -> list[BrandAnalysisResult]:
+    """여러 브랜드 동시 분석"""
+    results = []
+    for brand in brands:
+        result = analyze_brand_in_content(text, brand, image_urls)
+        results.append(result)
+    return results

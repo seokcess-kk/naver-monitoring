@@ -1,0 +1,93 @@
+"""
+콘텐츠 추출기 - Playwright 기반
+텍스트 + 이미지 URL 추출
+"""
+import asyncio
+from dataclasses import dataclass
+from playwright.async_api import async_playwright
+
+
+@dataclass
+class ExtractedContent:
+    url: str
+    title: str
+    text: str
+    image_urls: list[str]
+
+
+async def extract_content(url: str, max_images: int = 5) -> ExtractedContent | None:
+    """페이지에서 텍스트와 이미지 URL 추출"""
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-setuid-sandbox"]
+            )
+            page = await browser.new_page()
+            await page.set_viewport_size({"width": 1280, "height": 1080})
+            
+            await page.goto(url, wait_until="networkidle", timeout=30000)
+            await asyncio.sleep(1)
+            
+            # 제목 추출
+            title = await page.title()
+            
+            # 본문 텍스트 추출 (주요 콘텐츠 영역)
+            text = await page.evaluate("""
+                () => {
+                    // 불필요한 요소 제거
+                    const removeSelectors = ['script', 'style', 'nav', 'header', 'footer', 'aside', 'iframe'];
+                    removeSelectors.forEach(sel => {
+                        document.querySelectorAll(sel).forEach(el => el.remove());
+                    });
+                    
+                    // 주요 콘텐츠 영역 찾기
+                    const contentSelectors = [
+                        'article', 'main', '.content', '.post-content', 
+                        '.entry-content', '.article-body', '#content'
+                    ];
+                    
+                    for (const sel of contentSelectors) {
+                        const el = document.querySelector(sel);
+                        if (el && el.innerText.length > 100) {
+                            return el.innerText.trim();
+                        }
+                    }
+                    
+                    // fallback: body 전체
+                    return document.body.innerText.trim();
+                }
+            """)
+            
+            # 이미지 URL 추출 (본문 내 주요 이미지만)
+            image_urls = await page.evaluate(f"""
+                () => {{
+                    const images = [];
+                    const seen = new Set();
+                    
+                    document.querySelectorAll('img').forEach(img => {{
+                        const src = img.src || img.dataset.src || img.dataset.lazySrc;
+                        if (!src || seen.has(src)) return;
+                        if (src.startsWith('data:')) return;
+                        if (img.width < 100 || img.height < 100) return;
+                        
+                        seen.add(src);
+                        images.push(src);
+                    }});
+                    
+                    return images.slice(0, {max_images});
+                }}
+            """)
+            
+            await browser.close()
+            
+            return ExtractedContent(
+                url=url,
+                title=title,
+                text=text[:8000],  # 토큰 제한 고려
+                image_urls=image_urls
+            )
+            
+    except Exception as e:
+        print(f"Content extraction error: {e}")
+        return None

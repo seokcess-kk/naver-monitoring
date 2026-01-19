@@ -1,5 +1,4 @@
 import OpenAI from "openai";
-import axios from "axios";
 import { db } from "./db";
 import {
   sovRuns,
@@ -15,15 +14,20 @@ import { eq } from "drizzle-orm";
 import { crawlNaverSearch } from "./crawler";
 import puppeteer from "puppeteer";
 import pLimit from "p-limit";
+import { 
+  extractContent as extractContentNew, 
+  logExtractionSummary, 
+  resetExtractionStats,
+  type ExtractionResult 
+} from "./content-extractor";
 
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const RELEVANCE_THRESHOLD = 0.72;
 const RULE_WEIGHT = 0.4;
 const SEMANTIC_WEIGHT = 0.6;
 
-const contentExtractionLimit = pLimit(2);
+const contentExtractionLimit = pLimit(3);
 
 interface FlatSmartBlockItem {
   blockType: string;
@@ -32,494 +36,7 @@ interface FlatSmartBlockItem {
   description: string;
 }
 
-async function extractContentWithHttp(url: string): Promise<string | null> {
-  try {
-    const response = await axios.get(url, {
-      timeout: 10000,
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
-      },
-      maxRedirects: 5,
-    });
 
-    if (response.status >= 400) {
-      return null;
-    }
-
-    const html = response.data as string;
-    const textContent = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    if (textContent.length < 500) {
-      return null;
-    }
-
-    return textContent.slice(0, 5000);
-  } catch (error) {
-    const axiosError = error as any;
-    if (axiosError?.response?.status === 403 || 
-        axiosError?.response?.status === 429 || 
-        axiosError?.response?.status >= 500) {
-      return null;
-    }
-    return null;
-  }
-}
-
-function getUrlType(url: string): "blog" | "view" | "news" | "cafe" | "other" {
-  if (url.includes("blog.naver.com")) {
-    return "blog";
-  }
-  if (url.includes("in.naver.com") || url.includes("post.naver.com")) {
-    return "view";
-  }
-  if (url.includes("news.naver.com") || url.includes("n.news.naver.com")) {
-    return "news";
-  }
-  if (url.includes("cafe.naver.com")) {
-    return "cafe";
-  }
-  return "other";
-}
-
-function convertBlogUrlToMobile(url: string): string {
-  try {
-    const urlObj = new URL(url);
-    
-    if (urlObj.hostname === "blog.naver.com" || urlObj.hostname === "m.blog.naver.com") {
-      let blogId: string | null = urlObj.searchParams.get("blogId");
-      let logNo: string | null = urlObj.searchParams.get("logNo");
-      
-      if (!blogId || !logNo) {
-        const isPostViewPath = urlObj.pathname.includes("PostView.naver") || 
-                               urlObj.pathname.includes("PostView.nhn");
-        
-        if (!isPostViewPath) {
-          const pathParts = urlObj.pathname.split("/").filter(Boolean);
-          
-          if (pathParts.length >= 1 && !blogId) {
-            blogId = pathParts[0];
-          }
-          
-          if (pathParts.length >= 2 && /^\d+$/.test(pathParts[1]) && !logNo) {
-            logNo = pathParts[1];
-          }
-        }
-      }
-      
-      if (blogId && logNo) {
-        console.log(`[SOV] Converted blog URL: blogId=${blogId}, logNo=${logNo}`);
-        return `https://m.blog.naver.com/PostView.naver?blogId=${blogId}&logNo=${logNo}`;
-      }
-      
-      if (blogId) {
-        return `https://m.blog.naver.com/${blogId}`;
-      }
-    }
-    
-    return url;
-  } catch (error) {
-    console.error("[SOV] Blog URL conversion error:", error);
-    return url;
-  }
-}
-
-function convertCafeUrlToMobile(url: string): string {
-  try {
-    const urlObj = new URL(url);
-    
-    if (urlObj.hostname === "cafe.naver.com" || urlObj.hostname === "m.cafe.naver.com") {
-      const pathParts = urlObj.pathname.split("/").filter(Boolean);
-      
-      if (pathParts.length >= 2) {
-        const cafeName = pathParts[0];
-        const articleId = pathParts[1];
-        
-        if (/^\d+$/.test(articleId)) {
-          console.log(`[SOV] Converted cafe URL: cafe=${cafeName}, article=${articleId}`);
-          return `https://m.cafe.naver.com/${cafeName}/${articleId}`;
-        }
-      }
-      
-      if (urlObj.pathname.includes("ArticleRead")) {
-        const clubId = urlObj.searchParams.get("clubid");
-        const articleId = urlObj.searchParams.get("articleid");
-        if (clubId && articleId) {
-          return `https://m.cafe.naver.com/ca-fe/web/cafes/${clubId}/articles/${articleId}`;
-        }
-      }
-    }
-    
-    return url.replace("cafe.naver.com", "m.cafe.naver.com");
-  } catch (error) {
-    console.error("[SOV] Cafe URL conversion error:", error);
-    return url;
-  }
-}
-
-function convertNewsUrlToMobile(url: string): string | null {
-  try {
-    const urlObj = new URL(url);
-    const hostname = urlObj.hostname;
-    
-    if (hostname.startsWith("m.")) {
-      return null;
-    }
-    
-    const mobileHostMappings: Record<string, string> = {
-      "news.naver.com": "m.news.naver.com",
-      "n.news.naver.com": "m.news.naver.com",
-      "sports.news.naver.com": "m.sports.naver.com",
-      "entertain.naver.com": "m.entertain.naver.com",
-      "entertainment.naver.com": "m.entertain.naver.com",
-    };
-    
-    const mobileHost = mobileHostMappings[hostname];
-    if (mobileHost) {
-      return url.replace(hostname, mobileHost);
-    }
-    
-    return null;
-  } catch (error) {
-    console.error("[SOV] News URL conversion error:", error);
-    return null;
-  }
-}
-
-function convertViewUrlToMobile(url: string): string {
-  try {
-    if (url.includes("in.naver.com") || url.includes("post.naver.com")) {
-      return url;
-    }
-    return url;
-  } catch (error) {
-    console.error("[SOV] View URL conversion error:", error);
-    return url;
-  }
-}
-
-async function extractBlogContent(url: string): Promise<string | null> {
-  let browser = null;
-  try {
-    const mobileUrl = convertBlogUrlToMobile(url);
-    console.log(`[SOV] Extracting blog content from: ${mobileUrl}`);
-
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    });
-
-    const page = await browser.newPage();
-    await page.setUserAgent(
-      "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
-    );
-    
-    await page.goto(mobileUrl, { waitUntil: "networkidle2", timeout: 20000 });
-    await page.waitForSelector(".se-main-container, .post-view, .se_component_wrap, #postViewArea, .post_ct", { timeout: 10000 }).catch(() => {});
-
-    const textContent = await page.evaluate(() => {
-      const selectors = [
-        ".se-main-container",
-        ".post-view",
-        ".se_component_wrap", 
-        "#postViewArea",
-        ".post_ct",
-        ".se_textarea",
-        "article",
-        ".post-body"
-      ];
-      
-      for (const selector of selectors) {
-        const el = document.querySelector(selector);
-        if (el && el.textContent && el.textContent.trim().length > 100) {
-          return el.textContent.trim();
-        }
-      }
-      
-      const scripts = document.querySelectorAll("script, style, noscript, header, nav, footer");
-      scripts.forEach((el) => el.remove());
-      return document.body?.innerText || "";
-    });
-
-    const cleaned = textContent.replace(/\s+/g, " ").trim();
-    console.log(`[SOV] Blog content extracted: ${cleaned.length} chars`);
-    return cleaned.length > 100 ? cleaned.slice(0, 5000) : null;
-  } catch (error) {
-    console.error("[SOV] Blog extraction failed:", error);
-    return null;
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
-  }
-}
-
-async function extractViewContent(url: string): Promise<string | null> {
-  let browser = null;
-  try {
-    console.log(`[SOV] Extracting VIEW content from: ${url}`);
-
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    });
-
-    const page = await browser.newPage();
-    await page.setUserAgent(
-      "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
-    );
-    
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 20000 });
-    await page.waitForSelector(".se-main-container, .post_ct, article, .content_view", { timeout: 10000 }).catch(() => {});
-
-    const textContent = await page.evaluate(() => {
-      const selectors = [
-        ".se-main-container",
-        ".post_ct",
-        ".content_view",
-        "article",
-        ".post-body",
-        ".se_component_wrap"
-      ];
-      
-      for (const selector of selectors) {
-        const el = document.querySelector(selector);
-        if (el && el.textContent && el.textContent.trim().length > 100) {
-          return el.textContent.trim();
-        }
-      }
-      
-      const scripts = document.querySelectorAll("script, style, noscript, header, nav, footer");
-      scripts.forEach((el) => el.remove());
-      return document.body?.innerText || "";
-    });
-
-    const cleaned = textContent.replace(/\s+/g, " ").trim();
-    console.log(`[SOV] VIEW content extracted: ${cleaned.length} chars`);
-    return cleaned.length > 100 ? cleaned.slice(0, 5000) : null;
-  } catch (error) {
-    console.error("[SOV] VIEW extraction failed:", error);
-    return null;
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
-  }
-}
-
-async function extractCafeContentMobile(url: string): Promise<string | null> {
-  let browser = null;
-  try {
-    const mobileUrl = convertCafeUrlToMobile(url);
-    console.log(`[SOV] Extracting cafe content (mobile): ${mobileUrl}`);
-    
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    });
-
-    const page = await browser.newPage();
-    await page.setUserAgent(
-      "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
-    );
-    await page.setViewport({ width: 390, height: 844 });
-    
-    await page.setExtraHTTPHeaders({
-      "Referer": "https://m.search.naver.com/search.naver?where=m_cafe",
-      "Accept-Language": "ko-KR,ko;q=0.9",
-    });
-    
-    await page.goto(mobileUrl, { waitUntil: "networkidle2", timeout: 25000 });
-    await new Promise(r => setTimeout(r, 2000));
-    
-    const textContent = await page.evaluate(() => {
-      const selectors = [
-        ".se-main-container",
-        ".article_container",
-        ".ArticleContentBox",
-        ".post_article",
-        ".article_viewer",
-        ".ContentRenderer",
-        "#ct",
-        ".content_area",
-        "article",
-        ".se-component-content"
-      ];
-      
-      for (const selector of selectors) {
-        const el = document.querySelector(selector);
-        if (el && el.textContent && el.textContent.trim().length > 100) {
-          return el.textContent.trim();
-        }
-      }
-      
-      const scripts = document.querySelectorAll("script, style, noscript, header, nav, footer, .gnb, .lnb, .cafe_header");
-      scripts.forEach((el) => el.remove());
-      return document.body?.innerText || "";
-    });
-
-    const cleaned = textContent.replace(/\s+/g, " ").trim();
-    console.log(`[SOV] Cafe mobile content extracted: ${cleaned.length} chars`);
-    return cleaned.length > 100 ? cleaned.slice(0, 5000) : null;
-  } catch (error) {
-    console.error("[SOV] Cafe mobile extraction failed:", error);
-    return null;
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
-  }
-}
-
-async function extractCafeContentPC(url: string): Promise<string | null> {
-  let browser = null;
-  try {
-    console.log(`[SOV] Extracting cafe content (PC fallback): ${url}`);
-    
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    });
-
-    const page = await browser.newPage();
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    );
-    
-    await page.setExtraHTTPHeaders({
-      "Referer": "https://search.naver.com/search.naver?where=article&query=cafe",
-    });
-    
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 25000 });
-    await new Promise(r => setTimeout(r, 3000));
-    
-    const iframeSrc = await page.evaluate(() => {
-      const iframe = document.querySelector('iframe#cafe_main') as HTMLIFrameElement;
-      return iframe?.getAttribute('src') || '';
-    });
-    
-    if (iframeSrc) {
-      const fullIframeSrc = iframeSrc.startsWith('//') 
-        ? `https:${iframeSrc}` 
-        : iframeSrc.startsWith('http') 
-          ? iframeSrc 
-          : `https://cafe.naver.com${iframeSrc}`;
-      
-      console.log(`[SOV] Navigating to cafe iframe: ${fullIframeSrc}`);
-      
-      await page.setExtraHTTPHeaders({
-        "Referer": "https://search.naver.com/search.naver?where=article&query=cafe",
-      });
-      
-      await page.goto(fullIframeSrc, { waitUntil: "networkidle2", timeout: 25000 });
-      await new Promise(r => setTimeout(r, 2000));
-    }
-    
-    const textContent = await page.evaluate(() => {
-      const selectors = [
-        ".se-main-container",
-        ".article_container",
-        ".ArticleContentBox",
-        "#tbody",
-        ".content",
-        ".ContentRenderer",
-        "article"
-      ];
-      
-      for (const selector of selectors) {
-        const el = document.querySelector(selector);
-        if (el && el.textContent && el.textContent.trim().length > 100) {
-          return el.textContent.trim();
-        }
-      }
-      
-      const scripts = document.querySelectorAll("script, style, noscript, header, nav, footer, .gnb, .lnb");
-      scripts.forEach((el) => el.remove());
-      return document.body?.innerText || "";
-    });
-
-    const cleaned = textContent.replace(/\s+/g, " ").trim();
-    console.log(`[SOV] Cafe PC content extracted: ${cleaned.length} chars`);
-    return cleaned.length > 100 ? cleaned.slice(0, 5000) : null;
-  } catch (error) {
-    console.error("[SOV] Cafe PC extraction failed:", error);
-    return null;
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
-  }
-}
-
-async function extractCafeContent(url: string): Promise<string | null> {
-  let content = await extractCafeContentMobile(url);
-  if (content) {
-    return content;
-  }
-  
-  console.log(`[SOV] Mobile cafe extraction failed, trying PC version...`);
-  content = await extractCafeContentPC(url);
-  return content;
-}
-
-async function extractContentWithPuppeteer(url: string): Promise<string | null> {
-  let browser = null;
-  try {
-    console.log(`[SOV] Extracting content with Puppeteer from: ${url}`);
-    
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    });
-
-    const page = await browser.newPage();
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    );
-    
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 20000 });
-
-    const textContent = await page.evaluate(() => {
-      const articleSelectors = [
-        "article",
-        ".article_body",
-        ".news_end",
-        "#articleBodyContents",
-        ".newsct_article",
-        "#dic_area",
-        ".content"
-      ];
-      
-      for (const selector of articleSelectors) {
-        const el = document.querySelector(selector);
-        if (el && el.textContent && el.textContent.trim().length > 100) {
-          return el.textContent.trim();
-        }
-      }
-      
-      const scripts = document.querySelectorAll("script, style, noscript");
-      scripts.forEach((el) => el.remove());
-      return document.body?.innerText || "";
-    });
-
-    const cleaned = textContent.replace(/\s+/g, " ").trim();
-    console.log(`[SOV] Puppeteer content extracted: ${cleaned.length} chars`);
-    return cleaned.length > 100 ? cleaned.slice(0, 5000) : null;
-  } catch (error) {
-    console.error("[SOV] Puppeteer extraction failed:", error);
-    return null;
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
-  }
-}
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
   return Promise.race([
@@ -646,93 +163,29 @@ async function extractContent(
   url: string, 
   apiDescription?: string
 ): Promise<{ content: string | null; status: string; urlType: string }> {
-  const urlType = getUrlType(url);
-  console.log(`[SOV] Extracting content for URL type: ${urlType}, URL: ${url}`);
+  const result = await extractContentNew(url, apiDescription);
   
-  try {
-    let textContent: string | null = null;
-    
-    if (urlType === "blog") {
-      textContent = await withTimeout(extractBlogContent(url), 35000, null);
-      if (textContent) {
-        return { content: textContent, status: "success", urlType };
-      }
-    } else if (urlType === "view") {
-      textContent = await withTimeout(extractViewContent(url), 35000, null);
-      if (textContent) {
-        return { content: textContent, status: "success", urlType };
-      }
-    } else if (urlType === "cafe") {
-      textContent = await withTimeout(extractCafeContent(url), 50000, null);
-      if (textContent) {
-        return { content: textContent, status: "success", urlType };
-      }
-      
-      if (apiDescription && apiDescription.length > 50) {
-        console.log(`[SOV] Cafe crawling failed, using API description: ${apiDescription.length} chars`);
-        return { content: apiDescription, status: "success_api", urlType };
-      }
-    } else if (urlType === "news") {
-      const mobileNewsUrl = convertNewsUrlToMobile(url);
-      
-      if (mobileNewsUrl) {
-        textContent = await withTimeout(extractContentWithHttp(mobileNewsUrl), 15000, null);
-        if (textContent) {
-          return { content: textContent, status: "success", urlType };
-        }
-        
-        textContent = await withTimeout(extractContentWithPuppeteer(mobileNewsUrl), 30000, null);
-        if (textContent) {
-          return { content: textContent, status: "success", urlType };
-        }
-      }
-      
-      textContent = await withTimeout(extractContentWithHttp(url), 15000, null);
-      if (textContent) {
-        return { content: textContent, status: "success", urlType };
-      }
-      
-      textContent = await withTimeout(extractContentWithPuppeteer(url), 30000, null);
-      if (textContent) {
-        return { content: textContent, status: "success", urlType };
-      }
-    } else {
-      textContent = await withTimeout(extractContentWithHttp(url), 15000, null);
-      if (textContent) {
-        return { content: textContent, status: "success", urlType };
-      }
-
-      textContent = await withTimeout(extractContentWithPuppeteer(url), 30000, null);
-      if (textContent) {
-        return { content: textContent, status: "success", urlType };
-      }
-    }
-
+  if (result.content) {
+    return { content: result.content, status: result.status, urlType: result.urlType };
+  }
+  
+  if (result.status === "failed") {
     console.log(`[SOV] Text extraction failed, trying image OCR for: ${url}`);
     const imageUrls = await withTimeout(extractImagesFromPage(url), 25000, []);
     if (imageUrls.length > 0) {
       const imageText = await withTimeout(extractTextFromImages(imageUrls), 30000, null);
       if (imageText) {
-        return { content: imageText, status: "success_ocr", urlType };
+        return { content: imageText, status: "success_ocr", urlType: result.urlType };
       }
     }
     
     if (apiDescription && apiDescription.length > 30) {
       console.log(`[SOV] All extraction failed, using API description fallback: ${apiDescription.length} chars`);
-      return { content: apiDescription, status: "success_api", urlType };
+      return { content: apiDescription, status: "success_api", urlType: result.urlType };
     }
-
-    console.log(`[SOV] Content extraction failed for: ${url}`);
-    return { content: null, status: "failed", urlType };
-  } catch (error) {
-    console.error("[SOV] Content extraction error:", error);
-    
-    if (apiDescription && apiDescription.length > 30) {
-      return { content: apiDescription, status: "success_api", urlType };
-    }
-    
-    return { content: null, status: "failed", urlType };
   }
+  
+  return { content: result.content, status: result.status, urlType: result.urlType };
 }
 
 async function getEmbedding(text: string): Promise<number[]> {
@@ -857,6 +310,7 @@ export async function executeSovRun(runId: string): Promise<void> {
       throw new Error("Run not found");
     }
 
+    resetExtractionStats();
     await updateRunStatus(runId, "crawling");
 
     const smartBlockSections = await crawlNaverSearch(run.marketKeyword);
@@ -1036,9 +490,11 @@ export async function executeSovRun(runId: string): Promise<void> {
       }
     }
 
+    logExtractionSummary();
     await updateRunStatus(runId, "completed", totalExposures, totalExposures);
   } catch (error) {
     console.error("[SOV] Run execution failed:", error);
+    logExtractionSummary();
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     await updateRunStatus(runId, "failed", undefined, undefined, errorMessage);
   }
