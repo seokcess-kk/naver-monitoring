@@ -14,6 +14,7 @@ interface ExtractionStats {
   cafe: { success: number; failed: number };
   news: { success: number; failed: number };
   view: { success: number; failed: number };
+  ad: { success: number; failed: number };
   other: { success: number; failed: number };
 }
 
@@ -22,6 +23,7 @@ const extractionStats: ExtractionStats = {
   cafe: { success: 0, failed: 0 },
   news: { success: 0, failed: 0 },
   view: { success: 0, failed: 0 },
+  ad: { success: 0, failed: 0 },
   other: { success: 0, failed: 0 },
 };
 
@@ -102,8 +104,9 @@ const VIEW_SELECTORS = [
 const MOBILE_USER_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1";
 const DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-export function getUrlType(url: string): "blog" | "view" | "news" | "cafe" | "other" {
+export function getUrlType(url: string): "blog" | "view" | "news" | "cafe" | "ad" | "other" {
   const lowerUrl = url.toLowerCase();
+  if (lowerUrl.includes("ader.naver.com")) return "ad";
   if (lowerUrl.includes("blog.naver.com")) return "blog";
   if (lowerUrl.includes("in.naver.com") || lowerUrl.includes("post.naver.com")) return "view";
   if (lowerUrl.includes("news.naver.com") || lowerUrl.includes("n.news.naver.com") || 
@@ -258,6 +261,98 @@ async function launchBrowser(): Promise<Browser> {
       "--no-first-run",
       "--no-zygote",
     ],
+  });
+}
+
+interface AdRedirectResult {
+  finalUrl: string;
+  content: string | null;
+  sponsorName: string | null;
+}
+
+async function resolveAdFinalUrl(url: string): Promise<string | null> {
+  try {
+    const response = await axios.get(url, {
+      maxRedirects: 10,
+      timeout: 15000,
+      headers: { "User-Agent": DESKTOP_USER_AGENT },
+      validateStatus: () => true,
+    });
+    
+    const finalUrl = response.request?.res?.responseUrl || response.config?.url;
+    if (finalUrl && finalUrl !== url) {
+      console.log(`[Extractor] HTTP redirect resolved: ${finalUrl}`);
+      return finalUrl;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function followAdRedirect(url: string): Promise<AdRedirectResult | null> {
+  const httpFinalUrl = await resolveAdFinalUrl(url);
+  if (httpFinalUrl && !httpFinalUrl.includes("ader.naver.com")) {
+    console.log(`[Extractor] Ad HTTP resolved to: ${httpFinalUrl}`);
+    return { finalUrl: httpFinalUrl, content: null, sponsorName: null };
+  }
+  
+  return browserLimit(async () => {
+    let browser: Browser | null = null;
+    try {
+      console.log(`[Extractor] Following ad redirect with Puppeteer: ${url}`);
+      browser = await launchBrowser();
+      const page = await browser.newPage();
+      await page.setUserAgent(DESKTOP_USER_AGENT);
+      
+      await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+      
+      let previousUrl = page.url();
+      for (let i = 0; i < 5; i++) {
+        await delay(1000);
+        const currentUrl = page.url();
+        if (currentUrl !== previousUrl) {
+          console.log(`[Extractor] JS redirect detected: ${currentUrl}`);
+          previousUrl = currentUrl;
+        } else if (!currentUrl.includes("ader.naver.com")) {
+          break;
+        }
+      }
+      
+      const finalUrl = page.url();
+      console.log(`[Extractor] Ad final URL: ${finalUrl}`);
+      
+      let sponsorName: string | null = null;
+      try {
+        sponsorName = await page.evaluate(() => {
+          const sponsorSelectors = [
+            ".sponsor_name",
+            ".advertiser_name", 
+            ".ad_sponsor",
+            "[class*='sponsor']",
+            "[class*='advertiser']",
+            ".brand_name",
+            ".company_name",
+          ];
+          for (const sel of sponsorSelectors) {
+            const el = document.querySelector(sel);
+            if (el && el.textContent && el.textContent.trim().length > 1) {
+              return el.textContent.trim();
+            }
+          }
+          return null;
+        });
+      } catch {
+        sponsorName = null;
+      }
+      
+      return { finalUrl, content: null, sponsorName };
+    } catch (error) {
+      console.error("[Extractor] Ad redirect failed:", error);
+      return null;
+    } finally {
+      if (browser) await browser.close();
+    }
   });
 }
 
@@ -548,6 +643,69 @@ export async function extractContent(
   try {
     let textContent: string | null = null;
     let method: string = "";
+    
+    if (urlType === "ad") {
+      const adResult = await withTimeout(followAdRedirect(url), 45000, null);
+      if (adResult && adResult.finalUrl) {
+        console.log(`[Extractor] Ad resolved to: ${adResult.finalUrl}`);
+        if (adResult.sponsorName) {
+          console.log(`[Extractor] Ad sponsor: ${adResult.sponsorName}`);
+        }
+        
+        const finalUrlType = getUrlType(adResult.finalUrl);
+        let extractedContent: string | null = null;
+        let extractMethod = "ad_redirect";
+        
+        if (finalUrlType === "blog") {
+          extractedContent = await retryWithBackoff(
+            () => withTimeout(extractBlogContent(adResult.finalUrl), 40000, null),
+            2, 1000
+          );
+          extractMethod = "ad_to_blog";
+        } else if (finalUrlType === "view") {
+          extractedContent = await retryWithBackoff(
+            () => withTimeout(extractViewContent(adResult.finalUrl), 40000, null),
+            2, 1000
+          );
+          extractMethod = "ad_to_view";
+        } else if (finalUrlType === "cafe") {
+          extractedContent = await retryWithBackoff(
+            () => withTimeout(extractCafeContent(adResult.finalUrl), 60000, null),
+            2, 1500
+          );
+          extractMethod = "ad_to_cafe";
+        } else if (finalUrlType === "news") {
+          extractedContent = await withTimeout(extractNewsContent(adResult.finalUrl), 35000, null);
+          extractMethod = "ad_to_news";
+        } else {
+          extractedContent = await withTimeout(extractGenericContent(adResult.finalUrl), 20000, null);
+          if (!extractedContent) {
+            extractedContent = await withTimeout(extractWithPuppeteer(adResult.finalUrl), 35000, null);
+          }
+          extractMethod = "ad_to_generic";
+        }
+        
+        if (extractedContent && extractedContent.length > 100) {
+          let enhancedContent = extractedContent;
+          if (adResult.sponsorName) {
+            enhancedContent = `[광고주: ${adResult.sponsorName}] ${enhancedContent}`;
+          }
+          updateStats("ad", true);
+          console.log(`[Extractor] Success - Type: ad, Method: ${extractMethod}, Final: ${adResult.finalUrl}, Chars: ${enhancedContent.length}`);
+          return { content: enhancedContent, status: "success", urlType: "ad", method: extractMethod };
+        }
+      }
+      
+      if (apiDescription && apiDescription.length > 50) {
+        updateStats("ad", true);
+        console.log(`[Extractor] Ad using API description fallback: ${apiDescription.length} chars`);
+        return { content: apiDescription, status: "success_api", urlType: "ad", method: "api_fallback" };
+      }
+      
+      updateStats("ad", false);
+      console.log(`[Extractor] Failed - Type: ad, URL: ${url}`);
+      return { content: null, status: "failed", urlType: "ad" };
+    }
     
     if (urlType === "blog") {
       textContent = await retryWithBackoff(
