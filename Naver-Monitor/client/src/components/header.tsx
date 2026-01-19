@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Settings } from "lucide-react";
+import { LogOut, User, Settings, Shield } from "lucide-react";
 import { Link } from "wouter";
 
 export function Header() {
@@ -85,6 +85,14 @@ export function Header() {
                   설정
                 </DropdownMenuItem>
               </Link>
+              {(user?.role === "admin" || user?.role === "superadmin") && (
+                <Link href="/admin">
+                  <DropdownMenuItem data-testid="menu-item-admin">
+                    <Shield className="mr-2 h-4 w-4" />
+                    관리자
+                  </DropdownMenuItem>
+                </Link>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => logout()}
