@@ -67,6 +67,20 @@ const CAFE_SELECTORS = [
   ".article-body",
 ];
 
+const CAFE_COMMENT_SELECTORS = [
+  ".CommentItem",
+  ".comment_list",
+  ".CommentBox",
+  ".comment_text",
+  ".comment_inbox",
+  ".ReplyArea",
+  ".CommentWriter",
+  ".comment_area",
+  ".cmt_list",
+  ".u_cbox_list",
+  ".u_cbox_text_wrap",
+];
+
 const NEWS_SELECTORS = [
   "#dic_area",
   "#newsct_article",
@@ -427,11 +441,22 @@ async function extractCafeContentMobile(url: string): Promise<string | null> {
       await page.goto(mobileUrl, { waitUntil: "networkidle2", timeout: 30000 });
       await delay(2500);
       
-      const textContent = await extractWithSelectors(page, CAFE_SELECTORS);
-      if (textContent && textContent.length > 100) {
-        const cleaned = textContent.replace(/\s+/g, " ").trim();
-        console.log(`[Extractor] Cafe mobile success: ${cleaned.length} chars`);
-        return cleaned.slice(0, 6000);
+      const articleContent = await extractWithSelectors(page, CAFE_SELECTORS);
+      const commentContent = await extractWithSelectors(page, CAFE_COMMENT_SELECTORS);
+      
+      let combinedContent = "";
+      if (articleContent && articleContent.length > 50) {
+        combinedContent += articleContent;
+      }
+      if (commentContent && commentContent.length > 20) {
+        combinedContent += " [댓글] " + commentContent;
+        console.log(`[Extractor] Cafe comments found: ${commentContent.length} chars`);
+      }
+      
+      if (combinedContent.length > 100) {
+        const cleaned = combinedContent.replace(/\s+/g, " ").trim();
+        console.log(`[Extractor] Cafe mobile success: ${cleaned.length} chars (with comments)`);
+        return cleaned.slice(0, 8000);
       }
       
       return null;
@@ -478,11 +503,22 @@ async function extractCafeContentPC(url: string): Promise<string | null> {
         await delay(2000);
       }
       
-      const textContent = await extractWithSelectors(page, CAFE_SELECTORS);
-      if (textContent && textContent.length > 100) {
-        const cleaned = textContent.replace(/\s+/g, " ").trim();
-        console.log(`[Extractor] Cafe PC success: ${cleaned.length} chars`);
-        return cleaned.slice(0, 6000);
+      const articleContent = await extractWithSelectors(page, CAFE_SELECTORS);
+      const commentContent = await extractWithSelectors(page, CAFE_COMMENT_SELECTORS);
+      
+      let combinedContent = "";
+      if (articleContent && articleContent.length > 50) {
+        combinedContent += articleContent;
+      }
+      if (commentContent && commentContent.length > 20) {
+        combinedContent += " [댓글] " + commentContent;
+        console.log(`[Extractor] Cafe PC comments found: ${commentContent.length} chars`);
+      }
+      
+      if (combinedContent.length > 100) {
+        const cleaned = combinedContent.replace(/\s+/g, " ").trim();
+        console.log(`[Extractor] Cafe PC success: ${cleaned.length} chars (with comments)`);
+        return cleaned.slice(0, 8000);
       }
       
       return null;
