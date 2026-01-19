@@ -268,6 +268,13 @@ export function SovPanel() {
   }, [selectedRunId]);
 
   useEffect(() => {
+    if (selectedRunId && selectedRunFromList?.status === "completed" && 
+        selectedResult?.run?.status && selectedResult.run.status !== "completed") {
+      queryClient.invalidateQueries({ queryKey: ["/api/sov/result", selectedRunId] });
+    }
+  }, [selectedRunId, selectedRunFromList?.status, selectedResult?.run?.status]);
+
+  useEffect(() => {
     if (!runsLoading && !hasInitialized) {
       setHasInitialized(true);
       const hasRuns = runs && runs.length > 0;
