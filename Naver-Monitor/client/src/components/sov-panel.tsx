@@ -350,7 +350,7 @@ export function SovPanel() {
                 <div className="space-y-4">
                   <h4 className="font-medium text-sm text-muted-foreground">브랜드별 점유율</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {selectedResult.results.map((result, idx) => (
+                    {[...selectedResult.results].sort((a, b) => b.sovPercentage - a.sovPercentage).map((result, idx) => (
                       <Card key={result.brand} className={`bg-gradient-to-br ${idx === 0 ? 'from-primary/10 to-primary/5 border-primary/30' : 'from-card to-muted/20'}`}>
                         <CardContent className="py-3 px-4">
                           <div className="flex items-center justify-between mb-2">
