@@ -18,6 +18,8 @@
 - Keyword template management (save/load frequently used brand+keyword combinations)
 - Email/password authentication with SendGrid verification
 - Reusable EmptyState component for consistent empty/error/not-configured states
+- **Admin Console** with role-based access control (user/admin/superadmin)
+- Admin features: user management, SOV run/search log monitoring, API key management, audit logging
 
 ## User Preferences
 
@@ -44,7 +46,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 - **Database:** PostgreSQL via Drizzle ORM
 - **Schema Location:** `shared/schema.ts` (shared between client/server)
-- **Key Tables:** users, sessions, api_keys, verification_tokens, sov_runs, sov_exposures, sov_scores, sov_results, sov_templates, search_logs
+- **Key Tables:** users, sessions, api_keys, verification_tokens, sov_runs, sov_exposures, sov_scores, sov_results, sov_templates, search_logs, solutions, user_solutions, audit_logs
 - **Migrations:** Drizzle Kit (`npm run db:push`)
 
 ### Authentication

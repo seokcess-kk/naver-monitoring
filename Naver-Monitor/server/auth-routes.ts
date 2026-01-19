@@ -214,6 +214,8 @@ export function registerAuthRoutes(app: Express) {
         lastName: user.lastName,
         emailVerified: user.emailVerified,
         profileImageUrl: user.profileImageUrl,
+        role: user.role,
+        status: user.status,
       });
     } catch (error) {
       console.error("[Auth] Get user error:", error);

@@ -7,6 +7,8 @@ export interface User {
   lastName: string | null;
   emailVerified: boolean;
   profileImageUrl: string | null;
+  role: "user" | "admin" | "superadmin";
+  status: "active" | "suspended" | "pending";
 }
 
 async function fetchUser(): Promise<User | null> {

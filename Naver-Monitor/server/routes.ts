@@ -1,7 +1,8 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
 import { registerAuthRoutes, isAuthenticated } from "./auth-routes";
+import { findUserById } from "./auth-service";
 import { searchAllChannels, searchSingleChannel } from "./naver-api";
 import { crawlNaverSearch } from "./crawler";
 import { insertApiKeySchema, updateApiKeySchema } from "@shared/schema";
@@ -15,6 +16,7 @@ import {
   assertSovRunAccessible, 
   toApiKeyPublic 
 } from "./utils/request-helpers";
+import adminRoutes from "./admin-routes";
 
 const searchLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -46,11 +48,27 @@ const channelSearchQuerySchema = searchQuerySchema.extend({
   channel: z.enum(["blog", "cafe", "kin", "news"], { message: "유효한 채널이 아닙니다 (blog, cafe, kin, news)" }),
 });
 
+async function attachUserToRequest(req: any, res: Response, next: NextFunction) {
+  if (req.session?.userId) {
+    try {
+      const user = await findUserById(req.session.userId);
+      if (user) {
+        req.user = user;
+      }
+    } catch (error) {
+      console.error("Failed to attach user to request:", error);
+    }
+  }
+  next();
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   registerAuthRoutes(app);
+
+  app.use("/api/admin", isAuthenticated, attachUserToRequest, adminRoutes);
 
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });

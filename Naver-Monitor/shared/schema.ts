@@ -3,6 +3,7 @@ import { pgTable, text, varchar, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+import { users } from "./models/auth";
 export * from "./models/auth";
 
 export const apiKeys = pgTable("api_keys", {
@@ -195,3 +196,75 @@ export const insertSearchLogSchema = createInsertSchema(searchLogs).omit({
 
 export type InsertSearchLog = z.infer<typeof insertSearchLogSchema>;
 export type SearchLog = typeof searchLogs.$inferSelect;
+
+// 솔루션(기능 모듈) 관리 테이블
+export const solutions = pgTable("solutions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: varchar("code", { length: 50 }).unique().notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isActive: varchar("is_active", { length: 5 }).default("true").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_solutions_code").on(table.code),
+  index("idx_solutions_is_active").on(table.isActive),
+]);
+
+export const userSolutions = pgTable("user_solutions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  solutionId: varchar("solution_id").notNull().references(() => solutions.id, { onDelete: "cascade" }),
+  isEnabled: varchar("is_enabled", { length: 5 }).default("true").notNull(),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_user_solutions_user_id").on(table.userId),
+  index("idx_user_solutions_solution_id").on(table.solutionId),
+]);
+
+// 관리자 감사 로그 테이블
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminId: varchar("admin_id").notNull().references(() => users.id),
+  action: varchar("action", { length: 50 }).notNull(),
+  targetType: varchar("target_type", { length: 50 }).notNull(),
+  targetId: varchar("target_id"),
+  details: text("details"),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_audit_logs_admin_id").on(table.adminId),
+  index("idx_audit_logs_action").on(table.action),
+  index("idx_audit_logs_target_type").on(table.targetType),
+  index("idx_audit_logs_created_at").on(table.createdAt),
+]);
+
+export const insertSolutionSchema = createInsertSchema(solutions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserSolutionSchema = createInsertSchema(userSolutions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSolution = z.infer<typeof insertSolutionSchema>;
+export type Solution = typeof solutions.$inferSelect;
+export type InsertUserSolution = z.infer<typeof insertUserSolutionSchema>;
+export type UserSolution = typeof userSolutions.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
+
+// User role types
+export type UserRole = "user" | "admin" | "superadmin";
+export type UserStatus = "active" | "suspended" | "pending";

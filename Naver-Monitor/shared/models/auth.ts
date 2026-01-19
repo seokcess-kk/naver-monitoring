@@ -21,9 +21,14 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   emailVerified: boolean("email_verified").default(false).notNull(),
+  role: varchar("role", { length: 20 }).default("user").notNull(),
+  status: varchar("status", { length: 20 }).default("active").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_users_role").on(table.role),
+  index("idx_users_status").on(table.status),
+]);
 
 export const verificationTokens = pgTable("verification_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

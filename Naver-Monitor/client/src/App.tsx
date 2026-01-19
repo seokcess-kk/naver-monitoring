@@ -10,6 +10,7 @@ import AuthPage from "@/pages/auth";
 import ResetPasswordPage from "@/pages/reset-password";
 import CompleteSignupPage from "@/pages/complete-signup";
 import ProfilePage from "@/pages/profile";
+import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -38,6 +39,7 @@ function Router() {
       <Route path="/login" component={AuthPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/complete-signup" component={CompleteSignupPage} />
+      <Route path="/admin" component={AdminPage} />
       <Route component={NotFound} />
     </Switch>
   );
