@@ -43,6 +43,8 @@ export async function initializeApp(app: Express, httpServer: Server) {
       secret: process.env.SESSION_SECRET || "naver-monitor-session-secret-key-2024",
       resave: false,
       saveUninitialized: false,
+      name: "naver_monitor_sid",
+      proxy: process.env.NODE_ENV === "production",
       cookie: {
         secure: process.env.NODE_ENV === "production",
         httpOnly: true,
