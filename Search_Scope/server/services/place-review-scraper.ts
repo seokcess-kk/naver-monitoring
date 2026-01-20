@@ -136,6 +136,8 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
       reviewElements = Array.from(allTextElements);
     }
 
+    let debugSampleCount = 0;
+    
     reviewElements.forEach((el) => {
       const textSelectors = [
         ".pui__xtsQN-",
@@ -170,28 +172,52 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
         "[class*='ago']",
         "[class*='Date']",
         "[class*='when']",
+        "span[class]",
       ];
 
       let date = "";
-      for (const sel of dateSelectors) {
-        const dateEl = el.querySelector(sel);
-        if (dateEl && dateEl.textContent) {
-          const txt = dateEl.textContent.trim();
-          if (txt === "오늘" || txt === "어제" || txt === "방금") {
-            date = txt;
-            break;
-          }
-          if (txt.match(/\d/) && (txt.includes("전") || txt.includes(".") || txt.includes("/") || txt.includes("월") || txt.includes("년"))) {
-            date = txt;
+      
+      const timeEl = el.querySelector("time");
+      if (timeEl) {
+        const datetime = timeEl.getAttribute("datetime") || timeEl.getAttribute("data-date");
+        if (datetime) {
+          date = datetime;
+        }
+      }
+      
+      if (!date) {
+        const allElements = el.querySelectorAll("*");
+        for (const child of Array.from(allElements)) {
+          const dataDate = child.getAttribute("data-date") || 
+                          child.getAttribute("datetime") || 
+                          child.getAttribute("data-time") ||
+                          child.getAttribute("data-created");
+          if (dataDate) {
+            date = dataDate;
             break;
           }
         }
       }
       
       if (!date) {
-        const headerArea = el.querySelector("[class*='header'], [class*='info'], [class*='meta'], [class*='user']");
-        const searchText = headerArea ? (headerArea.textContent || "") : (el.textContent || "").slice(0, 200);
-        
+        for (const sel of dateSelectors) {
+          const dateEl = el.querySelector(sel);
+          if (dateEl && dateEl.textContent) {
+            const txt = dateEl.textContent.trim();
+            if (txt === "오늘" || txt === "어제" || txt === "방금") {
+              date = txt;
+              break;
+            }
+            if (txt.length < 30 && txt.match(/\d/) && (txt.includes("전") || txt.includes(".") || txt.includes("/") || txt.includes("월") || txt.includes("년"))) {
+              date = txt;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (!date) {
+        const fullText = el.textContent || "";
         const datePatterns = [
           /오늘|어제|방금/,
           /(\d+)\s*(분|시간|일|주|개월|년)\s*전/,
@@ -200,12 +226,17 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
           /\d{1,2}월\s*\d{1,2}일/,
         ];
         for (const pattern of datePatterns) {
-          const match = searchText.match(pattern);
+          const match = fullText.match(pattern);
           if (match) {
             date = match[0];
             break;
           }
         }
+      }
+      
+      if (!date && debugSampleCount < 2) {
+        debugSampleCount++;
+        console.log("[DEBUG] Sample review HTML (first 1000 chars):", el.outerHTML.slice(0, 1000));
       }
 
       const authorSelectors = [
