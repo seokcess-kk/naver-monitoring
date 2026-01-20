@@ -12,11 +12,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Monitor, Smartphone, TrendingUp, Clock, Sparkles, FileText, MessageSquare, HelpCircle, Newspaper, X, Highlighter, Download } from "lucide-react";
+import { Search, Monitor, Smartphone, TrendingUp, Clock, Sparkles, FileText, MessageSquare, HelpCircle, Newspaper, X, Highlighter } from "lucide-react";
 import type { ApiKeyPublic } from "@shared/schema";
 
 const RECENT_SEARCHES_KEY = "search-scope-recent-searches";
 const MAX_RECENT_SEARCHES = 5;
+const SEARCH_RESULTS_KEY = "search-scope-search-results";
+const SEARCH_STATE_KEY = "search-scope-search-state";
 
 interface KeywordVolumeData {
   keyword: string;
@@ -111,34 +113,93 @@ function removeRecentSearch(keyword: string) {
   } catch {}
 }
 
+function getSavedSearchResults(): SearchResult | null {
+  try {
+    const stored = sessionStorage.getItem(SEARCH_RESULTS_KEY);
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSearchResults(results: SearchResult | null) {
+  try {
+    if (results) {
+      sessionStorage.setItem(SEARCH_RESULTS_KEY, JSON.stringify(results));
+    } else {
+      sessionStorage.removeItem(SEARCH_RESULTS_KEY);
+    }
+  } catch {}
+}
+
+interface SearchState {
+  keyword: string;
+  sort: "sim" | "date";
+  channelPages: ChannelPages;
+  keywordVolume: KeywordVolumeData | null;
+  highlightTerm: string;
+}
+
+function getSavedSearchState(): SearchState | null {
+  try {
+    const stored = sessionStorage.getItem(SEARCH_STATE_KEY);
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSearchState(state: SearchState) {
+  try {
+    sessionStorage.setItem(SEARCH_STATE_KEY, JSON.stringify(state));
+  } catch {}
+}
+
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
-  const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
+  
+  const savedState = getSavedSearchState();
+  const savedResults = getSavedSearchResults();
+  
+  const [searchResults, setSearchResults] = useState<SearchResult | null>(savedResults);
   const [isSearching, setIsSearching] = useState(false);
-  const [channelPages, setChannelPages] = useState<ChannelPages>({
-    blog: 1,
-    cafe: 1,
-    kin: 1,
-    news: 1,
-  });
+  const [channelPages, setChannelPages] = useState<ChannelPages>(
+    savedState?.channelPages ?? { blog: 1, cafe: 1, kin: 1, news: 1 }
+  );
   const [channelLoading, setChannelLoading] = useState<ChannelLoadingState>({
     blog: false,
     cafe: false,
     kin: false,
     news: false,
   });
-  const [currentKeyword, setCurrentKeyword] = useState("");
-  const [currentSort, setCurrentSort] = useState<"sim" | "date">("sim");
-  const [keywordVolume, setKeywordVolume] = useState<KeywordVolumeData | null>(null);
+  const [currentKeyword, setCurrentKeyword] = useState(savedState?.keyword ?? "");
+  const [currentSort, setCurrentSort] = useState<"sim" | "date">(savedState?.sort ?? "sim");
+  const [keywordVolume, setKeywordVolume] = useState<KeywordVolumeData | null>(savedState?.keywordVolume ?? null);
   const [isLoadingVolume, setIsLoadingVolume] = useState(false);
   const [apiKeySetupOpen, setApiKeySetupOpen] = useState<boolean | undefined>(undefined);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const [highlightTerm, setHighlightTerm] = useState("");
+  const [highlightTerm, setHighlightTerm] = useState(savedState?.highlightTerm ?? "");
 
   useEffect(() => {
     setRecentSearches(getRecentSearches());
   }, []);
+
+  useEffect(() => {
+    saveSearchResults(searchResults);
+  }, [searchResults]);
+
+  useEffect(() => {
+    if (currentKeyword) {
+      saveSearchState({
+        keyword: currentKeyword,
+        sort: currentSort,
+        channelPages,
+        keywordVolume,
+        highlightTerm,
+      });
+    }
+  }, [currentKeyword, currentSort, channelPages, keywordVolume, highlightTerm]);
 
   const { data: apiKey, isLoading: apiKeyLoading, refetch: refetchApiKey } = useQuery<ApiKeyPublic>({
     queryKey: ["/api/api-keys"],
@@ -397,25 +458,19 @@ export default function Dashboard() {
 
                 {searchResults ? (
                   <>
-                    <Card className="p-3 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-                      <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
-                        <Highlighter className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <Input
-                          placeholder="브랜드/URL 하이라이트 (2글자 이상)"
-                          value={highlightTerm}
-                          onChange={(e) => setHighlightTerm(e.target.value)}
-                          className="h-9 text-sm max-w-xs"
-                        />
-                        {highlightTerm && (
-                          <Button variant="ghost" size="sm" className="h-9 px-2" onClick={() => setHighlightTerm("")}>
-                            <X className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                      <Button variant="outline" size="sm" onClick={exportSearchToCSV}>
-                        <Download className="w-4 h-4 mr-2" />
-                        CSV 내보내기
-                      </Button>
+                    <Card className="p-3 flex items-center gap-2">
+                      <Highlighter className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <Input
+                        placeholder="브랜드/URL 하이라이트 (2글자 이상)"
+                        value={highlightTerm}
+                        onChange={(e) => setHighlightTerm(e.target.value)}
+                        className="h-9 text-sm max-w-xs"
+                      />
+                      {highlightTerm && (
+                        <Button variant="ghost" size="sm" className="h-9 px-2" onClick={() => setHighlightTerm("")}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
                     </Card>
                     <SmartBlockSection 
                       results={searchResults.smartBlock} 
@@ -429,6 +484,7 @@ export default function Dashboard() {
                       onChannelPageChange={handleChannelPageChange}
                       isLoading={isSearching}
                       highlightTerm={highlightTerm}
+                      onExportCSV={exportSearchToCSV}
                     />
                   </>
                 ) : !isSearching && hasApiKey && (

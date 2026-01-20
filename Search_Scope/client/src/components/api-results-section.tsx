@@ -16,6 +16,7 @@ import {
   ExternalLink,
   Check,
   Loader2,
+  Download,
 } from "lucide-react";
 
 interface ApiItem {
@@ -79,6 +80,7 @@ interface ApiResultsSectionProps {
   onChannelPageChange: (channel: ChannelKey, page: number) => void;
   isLoading: boolean;
   highlightTerm?: string;
+  onExportCSV?: () => void;
 }
 
 function highlightText(html: string, term: string): string {
@@ -351,6 +353,7 @@ export function ApiResultsSection({
   onChannelPageChange,
   isLoading,
   highlightTerm,
+  onExportCSV,
 }: ApiResultsSectionProps) {
   const [activeTab, setActiveTab] = useState<ChannelKey>("blog");
 
@@ -381,16 +384,25 @@ export function ApiResultsSection({
 
   return (
     <section className="space-y-4 md:space-y-6 mt-6 md:mt-10 animate-fade-in">
-      <div className="flex items-center gap-3 md:gap-4 pb-3 md:pb-4 border-b border-border/50">
-        <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 flex items-center justify-center">
-          <Server className="w-4 h-4 md:w-5 md:h-5 text-emerald-600 dark:text-emerald-400" />
+      <div className="flex items-center justify-between gap-3 md:gap-4 pb-3 md:pb-4 border-b border-border/50">
+        <div className="flex items-center gap-3 md:gap-4">
+          <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 flex items-center justify-center">
+            <Server className="w-4 h-4 md:w-5 md:h-5 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <h2 className="text-lg md:text-xl font-bold tracking-tight">채널별 상세 순위</h2>
+            <p className="text-xs md:text-sm text-muted-foreground">
+              블로그, 카페, 지식iN, 뉴스 각 채널별 노출 현황
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg md:text-xl font-bold tracking-tight">채널별 상세 순위</h2>
-          <p className="text-xs md:text-sm text-muted-foreground">
-            블로그, 카페, 지식iN, 뉴스 각 채널별 노출 현황
-          </p>
-        </div>
+        {onExportCSV && (
+          <Button variant="outline" size="sm" onClick={onExportCSV} className="shrink-0">
+            <Download className="w-4 h-4 mr-2" />
+            <span className="hidden sm:inline">CSV 내보내기</span>
+            <span className="sm:hidden">CSV</span>
+          </Button>
+        )}
       </div>
 
       <div className="md:hidden">
