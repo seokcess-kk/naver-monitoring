@@ -45,8 +45,8 @@ externalPort = 3000
 
 [deployment]
 deploymentTarget = "vm"
-run = ["npm", "run", "deploy:start", "--prefix", "Naver-Monitor"]
-build = ["npm", "run", "deploy:build", "--prefix", "Naver-Monitor"]
+run = ["npm", "run", "deploy:start", "--prefix", "Search_Scope"]
+build = ["npm", "run", "deploy:build", "--prefix", "Search_Scope"]
 
 [userenv]
 
