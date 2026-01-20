@@ -138,7 +138,7 @@ function parseKoreanDate(dateStr: string): Date | null {
 async function extractReviews(page: Page): Promise<ScrapedReview[]> {
   const reviews: ScrapedReview[] = [];
 
-  const reviewData = await page.evaluate(() => {
+  const { items: reviewData, usedSelector, totalElements, datesFoundCount } = await page.evaluate(() => {
     const items: Array<{ text: string; date: string; author: string; rating: string }> = [];
 
     const reviewSelectors = [
@@ -154,10 +154,12 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
     ];
 
     let reviewElements: Element[] = [];
+    let usedSelector = "fallback";
     for (const selector of reviewSelectors) {
       const elements = document.querySelectorAll(selector);
       if (elements.length > 0) {
         reviewElements = Array.from(elements);
+        usedSelector = selector;
         break;
       }
     }
@@ -165,8 +167,10 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
     if (reviewElements.length === 0) {
       const allTextElements = document.querySelectorAll("[class*='review'], [class*='Review']");
       reviewElements = Array.from(allTextElements);
+      usedSelector = "[class*='review']";
     }
-
+    
+    let datesFoundCount = 0;
     reviewElements.forEach((el) => {
       const textSelectors = [
         ".pui__xtsQN-",
@@ -194,6 +198,7 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
       const timeEl = el.querySelector('time[aria-hidden="true"]') || el.querySelector('time');
       if (timeEl && timeEl.textContent) {
         date = timeEl.textContent.trim();
+        datesFoundCount++;
       }
       
       if (!date) {
@@ -260,13 +265,19 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
       }
     });
 
-    return items;
+    return { items, usedSelector, totalElements: reviewElements.length, datesFoundCount };
   });
 
+  console.log(`[PlaceReviewScraper] Selector: "${usedSelector}" | Elements: ${totalElements} | Time elements found: ${datesFoundCount}`);
   console.log(`[PlaceReviewScraper] Extracted ${reviewData.length} raw review items`);
   
+  const dateSamples: string[] = [];
   for (const item of reviewData) {
     const parsedDate = parseKoreanDate(item.date);
+    
+    if (dateSamples.length < 5) {
+      dateSamples.push(`"${item.date}" -> ${parsedDate ? parsedDate.toISOString().split('T')[0] : 'null'}`);
+    }
     
     reviews.push({
       text: item.text.slice(0, 2000),
@@ -276,7 +287,11 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
     });
   }
 
-  console.log(`[PlaceReviewScraper] Reviews with valid dates: ${reviews.filter(r => r.date !== null).length}/${reviews.length}`);
+  const validCount = reviews.filter(r => r.date !== null).length;
+  console.log(`[PlaceReviewScraper] Reviews with valid dates: ${validCount}/${reviews.length} (${Math.round(validCount/reviews.length*100)}%)`);
+  if (dateSamples.length > 0) {
+    console.log(`[PlaceReviewScraper] Date samples: ${dateSamples.join(' | ')}`);
+  }
   return reviews;
 }
 
