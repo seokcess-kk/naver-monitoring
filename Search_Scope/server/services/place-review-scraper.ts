@@ -189,34 +189,35 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
         text = el.textContent.trim();
       }
 
-      const dateSelectors = [
-        ".pui__gfuUIT time",
-        ".pui__blind + span",
-        "[class*='time_'] time",
-        "[class*='_date']",
-        ".review_date",
-        "[class*='date']",
-        "time",
-        "[class*='time']",
-        "[class*='ago']",
-        "[class*='Date']",
-        "[class*='when']",
-        "span[class]",
-      ];
-
       let date = "";
       
-      for (const sel of dateSelectors) {
-        const dateEl = el.querySelector(sel);
-        if (dateEl && dateEl.textContent) {
-          const txt = dateEl.textContent.trim();
-          if (txt === "오늘" || txt === "어제" || txt === "방금") {
-            date = txt;
-            break;
-          }
-          if (txt.length < 30 && txt.match(/\d/) && (txt.includes("전") || txt.includes(".") || txt.includes("/") || txt.includes("월") || txt.includes("년"))) {
-            date = txt;
-            break;
+      const timeEl = el.querySelector('time[aria-hidden="true"]') || el.querySelector('time');
+      if (timeEl && timeEl.textContent) {
+        date = timeEl.textContent.trim();
+      }
+      
+      if (!date) {
+        const dateSelectors = [
+          ".pui__gfuUIT time",
+          "[class*='time_'] time",
+          "[class*='_date']",
+          ".review_date",
+          "[class*='date']",
+          "[class*='time']",
+        ];
+        
+        for (const sel of dateSelectors) {
+          const dateEl = el.querySelector(sel);
+          if (dateEl && dateEl.textContent) {
+            const txt = dateEl.textContent.trim();
+            if (txt === "오늘" || txt === "어제" || txt === "방금") {
+              date = txt;
+              break;
+            }
+            if (txt.length < 30 && txt.match(/\d/) && (txt.includes("전") || txt.includes(".") || txt.includes("/") || txt.includes("월") || txt.includes("년"))) {
+              date = txt;
+              break;
+            }
           }
         }
       }
