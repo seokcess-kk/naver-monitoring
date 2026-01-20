@@ -32,6 +32,14 @@
 - SOV Analysis: Redesigned UX - New analysis form always first and expanded, paginated history table (10 per page with search/filter), progress card shows independently of result selection
 - Reusable results-skeleton.tsx component with variants (StatCards, ReviewCard, Chart, InsightCard, Table, AspectBars)
 
+**SOV Analysis Improvements (January 2026):**
+- Enhanced cafe comment extraction with 22 selectors covering Naver's current comment structure
+- `extractAllComments()` function collects ALL matching comment elements (not just first)
+- Korean-friendly brand matching using substring matching instead of `\b` word boundaries
+- Simplified relevance logic: if brand appears once in content, it's relevant (no score threshold required)
+- Lowered minimum text length from 100 to 20 characters for cafe/short content
+- Metadata fallback uses same Korean-friendly matching for consistent detection
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
