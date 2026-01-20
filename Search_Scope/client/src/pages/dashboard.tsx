@@ -475,6 +475,7 @@ export default function Dashboard() {
                     <SmartBlockSection 
                       results={searchResults.smartBlock} 
                       isLoading={isSearching}
+                      highlightTerm={highlightTerm}
                     />
                     <ApiResultsSection 
                       results={searchResults.apiResults}

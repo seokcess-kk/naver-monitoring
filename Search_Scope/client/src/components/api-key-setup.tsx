@@ -78,39 +78,38 @@ export function ApiKeySetup({ existingApiKey, onSave, isOpen: controlledOpen, on
   };
 
   return (
-    <Card className="border-border/50 shadow-sm overflow-hidden glass-card">
+    <Card className="border-border/50 shadow-sm overflow-hidden">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors p-4 md:p-6">
-            <div className="flex items-center justify-between gap-3 md:gap-4">
-              <div className="flex items-center gap-3 md:gap-4">
-                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center ${
+          <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors p-3 md:p-4">
+            <div className="flex items-center justify-between gap-2 md:gap-3">
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className={`w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center ${
                   hasExistingKey 
-                    ? "bg-gradient-to-br from-emerald-500/20 to-emerald-500/5" 
-                    : "bg-gradient-to-br from-amber-500/20 to-amber-500/5"
+                    ? "bg-emerald-500/10" 
+                    : "bg-amber-500/10"
                 }`}>
                   {hasExistingKey ? (
-                    <Shield className="w-4 h-4 md:w-5 md:h-5 text-emerald-600 dark:text-emerald-400" />
+                    <Shield className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-600 dark:text-emerald-400" />
                   ) : (
-                    <Key className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-amber-400" />
+                    <Key className="w-3.5 h-3.5 md:w-4 md:h-4 text-amber-600 dark:text-amber-400" />
                   )}
                 </div>
                 <div>
-                  <CardTitle className="text-sm md:text-base font-bold">API 키 설정</CardTitle>
-                  <p className="text-xs md:text-sm text-muted-foreground mt-0.5 hidden sm:block">
-                    {hasExistingKey ? "네이버 검색 API 키가 등록되어 있습니다" : "네이버 검색 API 키를 등록하세요"}
+                  <CardTitle className="text-xs md:text-sm font-semibold">API 키 설정</CardTitle>
+                  <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 hidden sm:block">
+                    {hasExistingKey ? "네이버 검색 API 등록됨" : "네이버 검색 API 키 필요"}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 md:gap-3">
+              <div className="flex items-center gap-2">
                 {hasExistingKey && (
-                  <div className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] md:text-xs font-semibold">
-                    <Check className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                    <span className="hidden sm:inline">등록 완료</span>
-                    <span className="sm:hidden">완료</span>
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium">
+                    <Check className="w-3 h-3" />
+                    <span className="hidden sm:inline">완료</span>
                   </div>
                 )}
-                <ChevronDown className={`w-4 h-4 md:w-5 md:h-5 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
               </div>
             </div>
           </CardHeader>

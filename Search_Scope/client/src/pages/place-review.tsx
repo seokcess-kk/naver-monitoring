@@ -549,7 +549,23 @@ function JobList({
               </div>
             </div>
             {job.status === "processing" && (
-              <Progress value={parseInt(job.progress)} className="h-2 mb-2" />
+              <>
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                  <span className="flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    분석 진행 중
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-muted-foreground/70">
+                      {parseInt(job.totalReviews) > 0 && parseInt(job.progress) > 0
+                        ? `예상: 약 ${Math.ceil((parseInt(job.totalReviews) - parseInt(job.analyzedReviews)) * 0.5)}초`
+                        : "예상: 계산 중..."}
+                    </span>
+                    <span className="font-medium">{job.progress}%</span>
+                  </span>
+                </div>
+                <Progress value={parseInt(job.progress)} className="h-2 mb-2" />
+              </>
             )}
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span>리뷰: {job.totalReviews}</span>

@@ -715,6 +715,19 @@ export function SovPanel() {
               </div>
               {activeRun.processedExposures && activeRun.totalExposures && (
                 <div className="mt-6">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                    <span>{activeRun.processedExposures} / {activeRun.totalExposures} 처리됨</span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-muted-foreground/70">
+                        {parseInt(activeRun.totalExposures) > parseInt(activeRun.processedExposures)
+                          ? `예상: 약 ${Math.ceil((parseInt(activeRun.totalExposures) - parseInt(activeRun.processedExposures)) * 3)}초`
+                          : "예상: 거의 완료"}
+                      </span>
+                      <span className="font-medium">
+                        {Math.round((parseInt(activeRun.processedExposures) / parseInt(activeRun.totalExposures)) * 100)}%
+                      </span>
+                    </span>
+                  </div>
                   <Progress
                     value={
                       (parseInt(activeRun.processedExposures) /
@@ -723,10 +736,6 @@ export function SovPanel() {
                     }
                     className="h-2"
                   />
-                  <p className="text-xs text-center text-muted-foreground mt-2">
-                    {activeRun.processedExposures} / {activeRun.totalExposures}{" "}
-                    처리됨
-                  </p>
                 </div>
               )}
             </div>

@@ -36,31 +36,38 @@ export function Header() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4 max-w-7xl">
         <div className="flex items-center gap-6">
           <Link href="/">
-            <div className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity">
-              <svg className="w-8 h-8" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <div className="flex items-center cursor-pointer hover:opacity-80 transition-opacity">
+              <svg className="w-10 h-10" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="224" cy="224" r="120" stroke="#1D4ED8" strokeWidth="24" />
                 <circle cx="224" cy="224" r="72" stroke="#22D3EE" strokeWidth="16" />
                 <path d="M318 318L408 408" stroke="#1D4ED8" strokeWidth="28" strokeLinecap="round" />
                 <path d="M344 92C396 122 432 176 432 240" stroke="#22D3EE" strokeWidth="16" strokeLinecap="round" />
               </svg>
-              <span className="text-lg font-semibold tracking-tight" style={{ fontFamily: "'Inter', sans-serif", color: '#1D4ED8', letterSpacing: '-0.02em' }}>
-                SEARCH Scope
-              </span>
+              <div className="flex flex-col items-end relative" style={{ top: '3px' }}>
+                <span className="text-xl font-bold tracking-tight leading-none" style={{ fontFamily: "'Inter', sans-serif", color: '#1D4ED8', letterSpacing: '-0.8px' }}>
+                  Search<span style={{ color: '#22D3EE' }}>Brand</span>
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium leading-none mt-0.5" style={{ fontFamily: "'Inter', sans-serif" }}>
+                  powered by Glitzy
+                </span>
+              </div>
             </div>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-1 bg-muted/50 rounded-lg p-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
               return (
                 <Link key={item.href} href={item.href}>
                   <Button
-                    variant={isActive ? "secondary" : "ghost"}
+                    variant={isActive ? "default" : "ghost"}
                     size="sm"
                     className={cn(
-                      "gap-2 font-medium transition-all",
-                      isActive && "bg-primary/10 text-primary hover:bg-primary/15"
+                      "gap-2 font-medium transition-all px-4",
+                      isActive 
+                        ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90" 
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     )}
                   >
                     <Icon className="w-4 h-4" />
@@ -81,14 +88,21 @@ export function Header() {
             </SheetTrigger>
             <SheetContent side="left" className="w-72">
               <div className="flex flex-col gap-4 mt-6">
-                <div className="flex items-center gap-2.5 px-2 mb-4">
-                  <svg className="w-7 h-7" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <div className="flex items-center px-2 mb-4">
+                  <svg className="w-9 h-9" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="224" cy="224" r="120" stroke="#1D4ED8" strokeWidth="24" />
                     <circle cx="224" cy="224" r="72" stroke="#22D3EE" strokeWidth="16" />
                     <path d="M318 318L408 408" stroke="#1D4ED8" strokeWidth="28" strokeLinecap="round" />
                     <path d="M344 92C396 122 432 176 432 240" stroke="#22D3EE" strokeWidth="16" strokeLinecap="round" />
                   </svg>
-                  <span className="font-semibold" style={{ fontFamily: "'Inter', sans-serif", color: '#1D4ED8', letterSpacing: '-0.02em' }}>SEARCH Scope</span>
+                  <div className="flex flex-col items-end relative" style={{ top: '2px' }}>
+                    <span className="text-lg font-bold tracking-tight leading-none" style={{ fontFamily: "'Inter', sans-serif", color: '#1D4ED8', letterSpacing: '-0.8px' }}>
+                      Search<span style={{ color: '#22D3EE' }}>Brand</span>
+                    </span>
+                    <span className="text-[9px] text-slate-400 font-medium leading-none mt-0.5" style={{ fontFamily: "'Inter', sans-serif" }}>
+                      powered by Glitzy
+                    </span>
+                  </div>
                 </div>
                 <nav className="flex flex-col gap-1">
                   {navItems.map((item) => {

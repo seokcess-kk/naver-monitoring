@@ -1,7 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -27,7 +28,44 @@ export function SearchPanel({
   const [keyword, setKeyword] = useState("");
   const [sortType, setSortType] = useState<"sim" | "date">("sim");
   const [keywordError, setKeywordError] = useState("");
+  const [searchProgress, setSearchProgress] = useState(0);
+  const [estimatedRemaining, setEstimatedRemaining] = useState<string>("");
+  const searchStartTimeRef = useRef<number | null>(null);
   const keywordInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isSearching) {
+      const startTime = Date.now();
+      searchStartTimeRef.current = startTime;
+      setSearchProgress(0);
+      const estimatedTotal = 4000;
+      
+      const interval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const newProgress = Math.min(90, (elapsed / estimatedTotal) * 100);
+        setSearchProgress(newProgress);
+        
+        const remaining = Math.max(0, estimatedTotal - elapsed);
+        if (remaining > 1000) {
+          setEstimatedRemaining(`약 ${Math.ceil(remaining / 1000)}초 남음`);
+        } else if (remaining > 0) {
+          setEstimatedRemaining("거의 완료");
+        }
+      }, 100);
+      return () => clearInterval(interval);
+    } else {
+      if (searchStartTimeRef.current) {
+        setSearchProgress(100);
+        setEstimatedRemaining("완료!");
+        const timeout = setTimeout(() => {
+          setSearchProgress(0);
+          setEstimatedRemaining("");
+          searchStartTimeRef.current = null;
+        }, 500);
+        return () => clearTimeout(timeout);
+      }
+    }
+  }, [isSearching]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +83,7 @@ export function SearchPanel({
   };
 
   return (
-    <Card className="border-border/50 shadow-sm overflow-hidden glass-card">
+    <Card className="border-border/50 shadow-sm overflow-hidden">
       <div className="h-1 bg-gradient-to-r from-primary via-violet-500 to-sky-500" />
       <CardContent className="p-4 md:p-6">
         <div className="flex items-center gap-2.5 md:gap-3 mb-4 md:mb-5">
@@ -160,6 +198,24 @@ export function SearchPanel({
             </Button>
           </div>
         </form>
+
+        {isSearching && (
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                검색 진행 중...
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="text-muted-foreground/70">
+                  {estimatedRemaining ? `예상: ${estimatedRemaining}` : "예상: 계산 중..."}
+                </span>
+                <span className="font-medium">{Math.round(searchProgress)}%</span>
+              </span>
+            </div>
+            <Progress value={searchProgress} className="h-1.5" />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
