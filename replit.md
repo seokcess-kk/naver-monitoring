@@ -29,6 +29,7 @@
 - Place Review: Insight summary cards with sentiment distribution, advanced filtering/sorting/pagination
 - Place Review: Sentiment trend charts with date-based visualization, keyword-sentiment stacked bars
 - SOV Analysis: Step indicator progress visualization, quick template selection dropdown
+- SOV Analysis: Redesigned UX - New analysis form always first and expanded, paginated history table (10 per page with search/filter), progress card shows independently of result selection
 - Reusable results-skeleton.tsx component with variants (StatCards, ReviewCard, Chart, InsightCard, Table, AspectBars)
 
 ## User Preferences
