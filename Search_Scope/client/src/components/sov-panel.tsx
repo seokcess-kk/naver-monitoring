@@ -979,7 +979,7 @@ export function SovPanel() {
                         브랜드
                       </TableHead>
                       <TableHead className="w-[100px]">상태</TableHead>
-                      <TableHead className="w-[100px] hidden md:table-cell">
+                      <TableHead className="w-[150px] hidden md:table-cell">
                         일시
                       </TableHead>
                     </TableRow>
@@ -997,22 +997,22 @@ export function SovPanel() {
                           {run.marketKeyword}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          <div className="flex flex-wrap gap-1 max-w-[200px]">
-                            {run.brands.slice(0, 3).map((brand) => (
+                          <div className="flex flex-wrap gap-1.5 max-w-[300px]">
+                            {run.brands.slice(0, 5).map((brand) => (
                               <Badge
                                 key={brand}
                                 variant="outline"
-                                className="text-[10px]"
+                                className="text-xs px-2 py-0.5"
                               >
                                 {brand}
                               </Badge>
                             ))}
-                            {run.brands.length > 3 && (
+                            {run.brands.length > 5 && (
                               <Badge
                                 variant="secondary"
-                                className="text-[10px]"
+                                className="text-xs px-2 py-0.5"
                               >
-                                +{run.brands.length - 3}
+                                +{run.brands.length - 5}
                               </Badge>
                             )}
                           </div>
@@ -1028,7 +1028,7 @@ export function SovPanel() {
                             </span>
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-sm hidden md:table-cell">
+                        <TableCell className="text-muted-foreground text-sm hidden md:table-cell whitespace-nowrap">
                           {new Date(run.createdAt).toLocaleDateString("ko-KR", {
                             month: "short",
                             day: "numeric",
