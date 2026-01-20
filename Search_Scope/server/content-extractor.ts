@@ -4,7 +4,7 @@ import pLimit from "p-limit";
 
 export interface ExtractionResult {
   content: string | null;
-  status: "success" | "success_api" | "success_ocr" | "failed";
+  status: "success" | "success_api" | "success_ocr" | "success_metadata" | "failed";
   urlType: string;
   method?: string;
 }
@@ -831,4 +831,67 @@ export function logExtractionSummary(): void {
     console.log(`[Extractor] Overall: ${totalSuccess}/${total} (${overallRate}%)`);
   }
   console.log("[Extractor] ========================\n");
+}
+
+export interface MetadataResult {
+  title: string | null;
+  description: string | null;
+  success: boolean;
+}
+
+export async function extractMetadata(url: string): Promise<MetadataResult> {
+  try {
+    console.log(`[Extractor] Extracting metadata from: ${url}`);
+    
+    const response = await axios.get(url, {
+      timeout: 10000,
+      headers: {
+        "User-Agent": DESKTOP_USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+      },
+      maxRedirects: 5,
+      validateStatus: (status) => status < 400,
+    });
+    
+    const html = response.data;
+    if (typeof html !== "string") {
+      console.log(`[Extractor] Metadata extraction failed: response is not HTML`);
+      return { title: null, description: null, success: false };
+    }
+    
+    let title: string | null = null;
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (titleMatch && titleMatch[1]) {
+      title = titleMatch[1].trim();
+    }
+    
+    let description: string | null = null;
+    const descPatterns = [
+      /<meta\s+name=["']description["']\s+content=["']([^"']+)["']/i,
+      /<meta\s+content=["']([^"']+)["']\s+name=["']description["']/i,
+      /<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i,
+      /<meta\s+content=["']([^"']+)["']\s+property=["']og:description["']/i,
+    ];
+    
+    for (const pattern of descPatterns) {
+      const match = html.match(pattern);
+      if (match && match[1]) {
+        description = match[1].trim();
+        break;
+      }
+    }
+    
+    if (title || description) {
+      console.log(`[Extractor] Metadata success - Title: ${title?.length || 0} chars, Desc: ${description?.length || 0} chars`);
+      return { title, description, success: true };
+    }
+    
+    console.log(`[Extractor] Metadata extraction: no title or description found`);
+    return { title: null, description: null, success: false };
+    
+  } catch (error) {
+    console.log(`[Extractor] Metadata extraction failed for ${url}:`, error instanceof Error ? error.message : "Unknown error");
+    return { title: null, description: null, success: false };
+  }
 }

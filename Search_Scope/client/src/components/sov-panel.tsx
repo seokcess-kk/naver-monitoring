@@ -703,6 +703,7 @@ export function SovPanel() {
                     <div className="space-y-2">
                       {selectedResult.exposures.map((exposure) => {
                         const isVerified = exposure.extractionStatus?.startsWith("success");
+                        const isMetadata = exposure.extractionStatus === "success_metadata";
                         return (
                           <div
                             key={exposure.id}
@@ -723,6 +724,11 @@ export function SovPanel() {
                               </Badge>
                               <span className="truncate text-sm group-hover:underline">{exposure.title}</span>
                               <ExternalLink className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                              {isMetadata && (
+                                <Badge variant="outline" className="shrink-0 text-[10px] text-blue-600 border-blue-300">
+                                  메타 기반
+                                </Badge>
+                              )}
                               {!isVerified && (
                                 <Badge variant="outline" className="shrink-0 text-[10px] text-amber-600 border-amber-300">
                                   미확인

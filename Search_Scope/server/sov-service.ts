@@ -16,6 +16,7 @@ import puppeteer from "puppeteer";
 import pLimit from "p-limit";
 import { 
   extractContent as extractContentNew, 
+  extractMetadata,
   logExtractionSummary, 
   resetExtractionStats,
   type ExtractionResult 
@@ -404,19 +405,54 @@ export async function executeSovRun(runId: string): Promise<void> {
         try {
           const { content, status } = await extractContent(exposure.url, exposure.description || undefined);
 
+          let finalContent = content;
+          let finalStatus = status;
+
+          if (!content) {
+            console.log(`[SOV] Content extraction failed for ${exposure.url}, trying metadata fallback...`);
+            const metadata = await extractMetadata(exposure.url);
+            
+            if (metadata.success) {
+              const metadataText = [
+                exposure.title || "",
+                metadata.title || "",
+                metadata.description || "",
+              ].filter(Boolean).join(" ");
+              
+              if (metadataText.length > 20) {
+                let hasMatchingBrand = false;
+                for (const brand of run.brands) {
+                  const brandRegex = new RegExp(`\\b${brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
+                  if (brandRegex.test(metadataText)) {
+                    hasMatchingBrand = true;
+                    break;
+                  }
+                }
+                
+                if (hasMatchingBrand) {
+                  finalContent = metadataText;
+                  finalStatus = "success_metadata";
+                  console.log(`[SOV] Metadata fallback success: ${metadataText.length} chars with brand match`);
+                } else {
+                  console.log(`[SOV] Metadata extracted but no brand match found`);
+                }
+              }
+            }
+          }
+
           await db
             .update(sovExposures)
             .set({
-              extractedContent: content,
-              extractionStatus: status,
+              extractedContent: finalContent,
+              extractionStatus: finalStatus,
             })
             .where(eq(sovExposures.id, exposure.id));
 
-          if (content) {
-            const contentEmbedding = await getEmbedding(content);
+          if (finalContent) {
+            const contentEmbedding = await getEmbedding(finalContent);
 
             for (const brand of run.brands) {
-              const ruleScore = calculateRuleScore(content, brand);
+              const ruleScore = calculateRuleScore(finalContent, brand);
               const semanticScore = await calculateSemanticScore(
                 contentEmbedding,
                 brandEmbeddings.get(brand)!
