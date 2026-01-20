@@ -23,6 +23,14 @@
 - **Place Review Analysis** with Redis/BullMQ for background job processing
 - Place review sentiment analysis using OpenAI GPT-4o-mini (aspect extraction, keywords, summary)
 
+**UI/UX Enhancements (January 2026):**
+- Dashboard: Brand/URL highlight feature (marks matching text in yellow), CSV export for search results
+- Dashboard: Recent searches stored in localStorage with quick-select functionality
+- Place Review: Insight summary cards with sentiment distribution, advanced filtering/sorting/pagination
+- Place Review: Sentiment trend charts with date-based visualization, keyword-sentiment stacked bars
+- SOV Analysis: Step indicator progress visualization, quick template selection dropdown
+- Reusable results-skeleton.tsx component with variants (StatCards, ReviewCard, Chart, InsightCard, Table, AspectBars)
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

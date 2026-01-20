@@ -8,8 +8,15 @@ import { ApiResultsSection } from "@/components/api-results-section";
 import { ApiKeySetup } from "@/components/api-key-setup";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Monitor, Smartphone, TrendingUp } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { Search, Monitor, Smartphone, TrendingUp, Clock, Sparkles, FileText, MessageSquare, HelpCircle, Newspaper, X, Highlighter, Download } from "lucide-react";
 import type { ApiKeyPublic } from "@shared/schema";
+
+const RECENT_SEARCHES_KEY = "search-scope-recent-searches";
+const MAX_RECENT_SEARCHES = 5;
 
 interface KeywordVolumeData {
   keyword: string;
@@ -80,8 +87,33 @@ interface ChannelLoadingState {
   news: boolean;
 }
 
+function getRecentSearches(): string[] {
+  try {
+    const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentSearch(keyword: string) {
+  try {
+    const recent = getRecentSearches().filter(k => k !== keyword);
+    recent.unshift(keyword);
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent.slice(0, MAX_RECENT_SEARCHES)));
+  } catch {}
+}
+
+function removeRecentSearch(keyword: string) {
+  try {
+    const recent = getRecentSearches().filter(k => k !== keyword);
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent));
+  } catch {}
+}
+
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [channelPages, setChannelPages] = useState<ChannelPages>({
@@ -101,6 +133,12 @@ export default function Dashboard() {
   const [keywordVolume, setKeywordVolume] = useState<KeywordVolumeData | null>(null);
   const [isLoadingVolume, setIsLoadingVolume] = useState(false);
   const [apiKeySetupOpen, setApiKeySetupOpen] = useState<boolean | undefined>(undefined);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [highlightTerm, setHighlightTerm] = useState("");
+
+  useEffect(() => {
+    setRecentSearches(getRecentSearches());
+  }, []);
 
   const { data: apiKey, isLoading: apiKeyLoading, refetch: refetchApiKey } = useQuery<ApiKeyPublic>({
     queryKey: ["/api/api-keys"],
@@ -142,6 +180,9 @@ export default function Dashboard() {
     setChannelPages({ blog: 1, cafe: 1, kin: 1, news: 1 });
     setKeywordVolume(null);
 
+    saveRecentSearch(keyword);
+    setRecentSearches(getRecentSearches());
+
     try {
       const searchResponse = await fetch(`/api/search?keyword=${encodeURIComponent(keyword)}&sort=${sort}&page=1`);
       if (!searchResponse.ok) throw new Error("검색 실패");
@@ -154,6 +195,46 @@ export default function Dashboard() {
     } finally {
       setIsSearching(false);
     }
+  };
+
+  const handleRecentSearchClick = (keyword: string) => {
+    handleSearch(keyword, currentSort);
+  };
+
+  const handleRemoveRecentSearch = (keyword: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    removeRecentSearch(keyword);
+    setRecentSearches(getRecentSearches());
+  };
+
+  const exportSearchToCSV = () => {
+    if (!searchResults) {
+      toast({ title: "내보낼 검색 결과가 없습니다", variant: "destructive" });
+      return;
+    }
+
+    const rows: string[][] = [["채널", "순위", "제목", "링크", "작성자", "날짜"]];
+    const channelNames: Record<string, string> = { blog: "블로그", cafe: "카페", kin: "지식iN", news: "뉴스" };
+
+    (["blog", "cafe", "kin", "news"] as const).forEach(channel => {
+      const data = searchResults.apiResults[channel];
+      data?.items?.forEach((item, idx) => {
+        const title = item.title.replace(/<[^>]*>/g, "").replace(/"/g, '""');
+        const author = item.bloggername || item.cafename || "-";
+        const date = item.postdate || item.pubDate || "-";
+        rows.push([channelNames[channel], String(idx + 1), `"${title}"`, item.link, author, date]);
+      });
+    });
+
+    const csv = rows.map(r => r.join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `search-${currentKeyword}-${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "CSV 다운로드 완료" });
   };
 
   const handleChannelPageChange = async (channel: ChannelKey, newPage: number) => {
@@ -314,8 +395,28 @@ export default function Dashboard() {
                   </Card>
                 )}
 
-                {searchResults && (
+                {searchResults ? (
                   <>
+                    <Card className="p-3 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                      <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
+                        <Highlighter className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <Input
+                          placeholder="브랜드/URL 하이라이트 (2글자 이상)"
+                          value={highlightTerm}
+                          onChange={(e) => setHighlightTerm(e.target.value)}
+                          className="h-9 text-sm max-w-xs"
+                        />
+                        {highlightTerm && (
+                          <Button variant="ghost" size="sm" className="h-9 px-2" onClick={() => setHighlightTerm("")}>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                      <Button variant="outline" size="sm" onClick={exportSearchToCSV}>
+                        <Download className="w-4 h-4 mr-2" />
+                        CSV 내보내기
+                      </Button>
+                    </Card>
                     <SmartBlockSection 
                       results={searchResults.smartBlock} 
                       isLoading={isSearching}
@@ -327,8 +428,73 @@ export default function Dashboard() {
                       channelLoading={channelLoading}
                       onChannelPageChange={handleChannelPageChange}
                       isLoading={isSearching}
+                      highlightTerm={highlightTerm}
                     />
                   </>
+                ) : !isSearching && hasApiKey && (
+                  <Card className="border-dashed">
+                    <CardContent className="py-12">
+                      <div className="text-center space-y-6">
+                        <div className="flex justify-center">
+                          <div className="p-4 rounded-full bg-primary/5">
+                            <Sparkles className="w-10 h-10 text-primary/60" />
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold mb-2">검색 결과가 여기에 표시됩니다</h3>
+                          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                            키워드를 입력하면 블로그, 카페, 지식iN, 뉴스 및 스마트블록 결과를 한눈에 확인할 수 있습니다.
+                          </p>
+                        </div>
+
+                        {recentSearches.length > 0 && (
+                          <div className="pt-4 border-t max-w-md mx-auto">
+                            <div className="flex items-center justify-center gap-2 mb-3 text-sm text-muted-foreground">
+                              <Clock className="w-4 h-4" />
+                              <span>최근 검색어</span>
+                            </div>
+                            <div className="flex flex-wrap justify-center gap-2">
+                              {recentSearches.map((keyword) => (
+                                <Badge
+                                  key={keyword}
+                                  variant="secondary"
+                                  className="cursor-pointer hover:bg-secondary/80 transition-colors group pr-1"
+                                  onClick={() => handleRecentSearchClick(keyword)}
+                                >
+                                  {keyword}
+                                  <button
+                                    onClick={(e) => handleRemoveRecentSearch(keyword, e)}
+                                    className="ml-1.5 p-0.5 rounded-full hover:bg-muted-foreground/20"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-lg mx-auto pt-4">
+                          <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-muted/30">
+                            <FileText className="w-5 h-5 text-green-500" />
+                            <span className="text-xs text-muted-foreground">블로그</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-muted/30">
+                            <MessageSquare className="w-5 h-5 text-orange-500" />
+                            <span className="text-xs text-muted-foreground">카페</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-muted/30">
+                            <HelpCircle className="w-5 h-5 text-blue-500" />
+                            <span className="text-xs text-muted-foreground">지식iN</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-muted/30">
+                            <Newspaper className="w-5 h-5 text-purple-500" />
+                            <span className="text-xs text-muted-foreground">뉴스</span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
           </div>
         </div>

@@ -338,11 +338,51 @@ export function SovPanel() {
                 </p>
               </div>
             ) : selectedResult.run.status !== "completed" ? (
-              <div className="text-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-                <p className="text-muted-foreground">
-                  {getStatusLabel(selectedResult.run.status)}... 잠시만 기다려주세요.
-                </p>
+              <div className="py-8 space-y-6">
+                <div className="flex justify-center">
+                  <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                </div>
+                <div className="max-w-md mx-auto">
+                  <div className="flex items-center justify-between mb-4">
+                    {["crawling", "extracting", "analyzing"].map((step, idx) => {
+                      const currentIdx = ["pending", "crawling", "extracting", "analyzing"].indexOf(selectedResult.run.status);
+                      const stepIdx = idx + 1;
+                      const isActive = stepIdx === currentIdx;
+                      const isCompleted = stepIdx < currentIdx;
+                      return (
+                        <div key={step} className="flex-1 flex items-center">
+                          <div className={`flex flex-col items-center flex-1 ${idx > 0 ? 'ml-2' : ''}`}>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
+                              isCompleted ? 'bg-green-500 text-white' : 
+                              isActive ? 'bg-primary text-white animate-pulse' : 
+                              'bg-muted text-muted-foreground'
+                            }`}>
+                              {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
+                            </div>
+                            <span className={`text-[10px] mt-1 ${isActive ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                              {step === "crawling" ? "크롤링" : step === "extracting" ? "추출" : "분석"}
+                            </span>
+                          </div>
+                          {idx < 2 && <div className={`h-0.5 w-full ${isCompleted ? 'bg-green-500' : 'bg-muted'}`} />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-center text-muted-foreground text-sm">
+                    {getStatusLabel(selectedResult.run.status)}... 잠시만 기다려주세요.
+                  </p>
+                  {selectedResult.run.processedExposures && selectedResult.run.totalExposures && (
+                    <div className="mt-4">
+                      <Progress 
+                        value={(parseInt(selectedResult.run.processedExposures) / parseInt(selectedResult.run.totalExposures)) * 100} 
+                        className="h-2"
+                      />
+                      <p className="text-xs text-center text-muted-foreground mt-2">
+                        {selectedResult.run.processedExposures} / {selectedResult.run.totalExposures} 처리됨
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -479,6 +519,34 @@ export function SovPanel() {
                 시장 키워드에서 브랜드별 노출 점유율을 분석합니다.
                 네이버 검색 스마트블록의 콘텐츠를 분석하여 브랜드 관련성을 계산합니다.
               </CardDescription>
+              {templates && templates.length > 0 && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 mb-2">
+                  <FolderOpen className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm text-muted-foreground shrink-0">빠른 선택:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {templates.slice(0, 4).map((template) => (
+                      <Badge
+                        key={template.id}
+                        variant="outline"
+                        className="cursor-pointer hover:bg-primary/10 hover:border-primary transition-colors"
+                        onClick={() => handleLoadTemplate(template)}
+                      >
+                        {template.name}
+                      </Badge>
+                    ))}
+                    {templates.length > 4 && (
+                      <Badge
+                        variant="secondary"
+                        className="cursor-pointer"
+                        onClick={() => setLoadTemplateOpen(true)}
+                      >
+                        +{templates.length - 4}개 더보기
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="market-keyword">시장 키워드</Label>
                 <Input

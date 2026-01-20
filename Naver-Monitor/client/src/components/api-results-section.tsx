@@ -78,6 +78,14 @@ interface ApiResultsSectionProps {
   channelLoading: ChannelLoadingState;
   onChannelPageChange: (channel: ChannelKey, page: number) => void;
   isLoading: boolean;
+  highlightTerm?: string;
+}
+
+function highlightText(html: string, term: string): string {
+  if (!term || term.trim().length < 2) return html;
+  const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escapedTerm})`, 'gi');
+  return html.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-800 px-0.5 rounded">$1</mark>');
 }
 
 interface ChannelConfig {
@@ -186,6 +194,7 @@ function ChannelCard({
   isChannelLoading,
   smartBlockResults,
   onPageChange,
+  highlightTerm,
 }: {
   channel: ChannelConfig;
   channelData: ApiResult;
@@ -194,6 +203,7 @@ function ChannelCard({
   isChannelLoading: boolean;
   smartBlockResults: SmartBlockResult[];
   onPageChange: (page: number) => void;
+  highlightTerm?: string;
 }) {
   return (
     <Card className="flex flex-col overflow-hidden border-border/50 shadow-sm hover-lift">
@@ -290,7 +300,7 @@ function ChannelCard({
                       <div className="flex items-center gap-2">
                         <h4
                           className="text-xs md:text-sm font-medium leading-snug line-clamp-2 group-hover:text-primary transition-colors"
-                          dangerouslySetInnerHTML={{ __html: item.title }}
+                          dangerouslySetInnerHTML={{ __html: highlightTerm ? highlightText(item.title, highlightTerm) : item.title }}
                         />
                         <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                       </div>
@@ -340,6 +350,7 @@ export function ApiResultsSection({
   channelLoading,
   onChannelPageChange,
   isLoading,
+  highlightTerm,
 }: ApiResultsSectionProps) {
   const [activeTab, setActiveTab] = useState<ChannelKey>("blog");
 
@@ -412,6 +423,7 @@ export function ApiResultsSection({
                   isChannelLoading={isChannelLoading}
                   smartBlockResults={smartBlockResults}
                   onPageChange={(page) => onChannelPageChange(channel.key, page)}
+                  highlightTerm={highlightTerm}
                 />
               </TabsContent>
             );
@@ -436,6 +448,7 @@ export function ApiResultsSection({
               isChannelLoading={isChannelLoading}
               smartBlockResults={smartBlockResults}
               onPageChange={(page) => onChannelPageChange(channel.key, page)}
+              highlightTerm={highlightTerm}
             />
           );
         })}
