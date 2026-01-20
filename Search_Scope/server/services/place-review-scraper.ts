@@ -121,6 +121,13 @@ function parseKoreanDate(dateStr: string): Date | null {
     }
   }
 
+  if (!result) {
+    const matchNaverFormat = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.[월화수목금토일]$/);
+    if (matchNaverFormat) {
+      result = new Date(now.getFullYear(), parseInt(matchNaverFormat[1]) - 1, parseInt(matchNaverFormat[2]));
+    }
+  }
+
   if (result && isValidDate(result)) {
     return result;
   }
