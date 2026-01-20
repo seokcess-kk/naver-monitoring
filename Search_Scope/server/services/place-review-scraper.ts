@@ -142,6 +142,9 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
     const items: Array<{ text: string; date: string; author: string; rating: string }> = [];
 
     const reviewSelectors = [
+      "li.place_apply_pui.EjjAW",
+      "li.place_apply_pui",
+      "li.EjjAW",
       ".pui__vn15t2",
       ".pui__X35jYm",
       ".place_review",
