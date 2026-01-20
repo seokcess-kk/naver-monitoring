@@ -53,12 +53,14 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b glass-card">
         <div className="container mx-auto px-4 h-14 md:h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="w-8 h-8 md:w-9 md:h-9 bg-primary rounded-lg flex items-center justify-center relative">
-              <div className="absolute inset-1.5 border-2 border-primary-foreground/80 rounded-full"></div>
-              <div className="w-1.5 h-1.5 bg-primary-foreground rounded-full"></div>
-            </div>
-            <span className="text-base md:text-lg font-bold">SEARCH SCOPE</span>
+          <div className="flex items-center gap-2 md:gap-2.5">
+            <svg className="w-7 h-7 md:w-8 md:h-8" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="224" cy="224" r="120" stroke="#1D4ED8" strokeWidth="24" />
+              <circle cx="224" cy="224" r="72" stroke="#22D3EE" strokeWidth="16" />
+              <path d="M318 318L408 408" stroke="#1D4ED8" strokeWidth="28" strokeLinecap="round" />
+              <path d="M344 92C396 122 432 176 432 240" stroke="#22D3EE" strokeWidth="16" strokeLinecap="round" />
+            </svg>
+            <span className="text-base md:text-lg font-semibold" style={{ fontFamily: "'Inter', sans-serif", color: '#1D4ED8', letterSpacing: '-0.02em' }}>SEARCH Scope</span>
           </div>
           <div className="flex items-center gap-2">
             <Button

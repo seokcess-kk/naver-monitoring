@@ -36,16 +36,16 @@ export function Header() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4 max-w-7xl">
         <div className="flex items-center gap-6">
           <Link href="/">
-            <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
-              <div className="w-9 h-9 bg-gradient-to-br from-primary to-violet-600 rounded-xl flex items-center justify-center shadow-sm relative">
-                <div className="absolute inset-1.5 border-2 border-primary-foreground/80 rounded-full"></div>
-                <div className="w-1.5 h-1.5 bg-primary-foreground rounded-full"></div>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-lg font-bold tracking-tight">
-                  SEARCH SCOPE
-                </span>
-              </div>
+            <div className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity">
+              <svg className="w-8 h-8" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="224" cy="224" r="120" stroke="#1D4ED8" strokeWidth="24" />
+                <circle cx="224" cy="224" r="72" stroke="#22D3EE" strokeWidth="16" />
+                <path d="M318 318L408 408" stroke="#1D4ED8" strokeWidth="28" strokeLinecap="round" />
+                <path d="M344 92C396 122 432 176 432 240" stroke="#22D3EE" strokeWidth="16" strokeLinecap="round" />
+              </svg>
+              <span className="text-lg font-semibold tracking-tight" style={{ fontFamily: "'Inter', sans-serif", color: '#1D4ED8', letterSpacing: '-0.02em' }}>
+                SEARCH Scope
+              </span>
             </div>
           </Link>
 
@@ -81,12 +81,14 @@ export function Header() {
             </SheetTrigger>
             <SheetContent side="left" className="w-72">
               <div className="flex flex-col gap-4 mt-6">
-                <div className="flex items-center gap-3 px-2 mb-4">
-                  <div className="w-8 h-8 bg-gradient-to-br from-primary to-violet-600 rounded-lg flex items-center justify-center relative">
-                    <div className="absolute inset-1 border-2 border-primary-foreground/80 rounded-full"></div>
-                    <div className="w-1 h-1 bg-primary-foreground rounded-full"></div>
-                  </div>
-                  <span className="font-bold">SEARCH SCOPE</span>
+                <div className="flex items-center gap-2.5 px-2 mb-4">
+                  <svg className="w-7 h-7" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="224" cy="224" r="120" stroke="#1D4ED8" strokeWidth="24" />
+                    <circle cx="224" cy="224" r="72" stroke="#22D3EE" strokeWidth="16" />
+                    <path d="M318 318L408 408" stroke="#1D4ED8" strokeWidth="28" strokeLinecap="round" />
+                    <path d="M344 92C396 122 432 176 432 240" stroke="#22D3EE" strokeWidth="16" strokeLinecap="round" />
+                  </svg>
+                  <span className="font-semibold" style={{ fontFamily: "'Inter', sans-serif", color: '#1D4ED8', letterSpacing: '-0.02em' }}>SEARCH Scope</span>
                 </div>
                 <nav className="flex flex-col gap-1">
                   {navItems.map((item) => {
