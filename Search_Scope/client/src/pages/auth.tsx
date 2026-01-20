@@ -200,18 +200,61 @@ export default function AuthPage() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="inline-flex flex-col items-center mb-4">
-              <svg className="w-20 h-20 shrink-0" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="224" cy="224" r="120" stroke="#1D4ED8" strokeWidth="24" />
-                <circle cx="224" cy="224" r="72" stroke="#22D3EE" strokeWidth="16" />
-                <path d="M318 318L408 408" stroke="#1D4ED8" strokeWidth="28" strokeLinecap="round" />
-                <path d="M344 92C396 122 432 176 432 240" stroke="#22D3EE" strokeWidth="16" strokeLinecap="round" />
+              <svg
+                className="w-20 h-20 shrink-0"
+                viewBox="0 0 512 512"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle
+                  cx="224"
+                  cy="224"
+                  r="120"
+                  stroke="#1D4ED8"
+                  strokeWidth="24"
+                />
+                <circle
+                  cx="224"
+                  cy="224"
+                  r="72"
+                  stroke="#22D3EE"
+                  strokeWidth="16"
+                />
+                <path
+                  d="M318 318L408 408"
+                  stroke="#1D4ED8"
+                  strokeWidth="28"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M344 92C396 122 432 176 432 240"
+                  stroke="#22D3EE"
+                  strokeWidth="16"
+                  strokeLinecap="round"
+                />
               </svg>
               <div className="flex flex-col items-center text-center">
-                <span className="text-[30px] font-bold" style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.8px' }}>
-                  <span style={{ color: '#1D4ED8' }}>Search</span>
-                  <span style={{ color: '#22D3EE' }}>Brand</span>
+                <span
+                  className="text-[30px] font-bold"
+                  style={{
+                    fontFamily: "'Inter', sans-serif",
+                    letterSpacing: "-0.8px",
+                  }}
+                >
+                  <span style={{ color: "#1D4ED8" }}>Search</span>
+                  <span style={{ color: "#22D3EE" }}>Brand</span>
                 </span>
-                <span className="text-[11px] mt-0.5" style={{ fontFamily: "'Inter', sans-serif", color: '#94A3B8', letterSpacing: '0.2px', opacity: 0.8 }}>powered by Glitzy</span>
+                <span
+                  className="text-[11px] mt-0.5"
+                  style={{
+                    fontFamily: "'Inter', sans-serif",
+                    color: "#94A3B8",
+                    letterSpacing: "0.2px",
+                    opacity: 0.8,
+                  }}
+                >
+                  powered by Glitzy
+                </span>
               </div>
             </div>
           </div>
@@ -284,23 +327,63 @@ export default function AuthPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex flex-col items-center mb-4">
-            <svg className="w-20 h-20 shrink-0" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="224" cy="224" r="120" stroke="#1D4ED8" strokeWidth="24" />
-              <circle cx="224" cy="224" r="72" stroke="#22D3EE" strokeWidth="16" />
-              <path d="M318 318L408 408" stroke="#1D4ED8" strokeWidth="28" strokeLinecap="round" />
-              <path d="M344 92C396 122 432 176 432 240" stroke="#22D3EE" strokeWidth="16" strokeLinecap="round" />
+            <svg
+              className="w-20 h-20 shrink-0"
+              viewBox="0 0 512 512"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle
+                cx="224"
+                cy="224"
+                r="120"
+                stroke="#1D4ED8"
+                strokeWidth="24"
+              />
+              <circle
+                cx="224"
+                cy="224"
+                r="72"
+                stroke="#22D3EE"
+                strokeWidth="16"
+              />
+              <path
+                d="M318 318L408 408"
+                stroke="#1D4ED8"
+                strokeWidth="28"
+                strokeLinecap="round"
+              />
+              <path
+                d="M344 92C396 122 432 176 432 240"
+                stroke="#22D3EE"
+                strokeWidth="16"
+                strokeLinecap="round"
+              />
             </svg>
             <div className="flex flex-col items-center text-center">
-              <span className="text-[30px] font-bold" style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.8px' }}>
-                <span style={{ color: '#1D4ED8' }}>Search</span>
-                <span style={{ color: '#22D3EE' }}>Brand</span>
+              <span
+                className="text-[30px] font-bold"
+                style={{
+                  fontFamily: "'Inter', sans-serif",
+                  letterSpacing: "-0.8px",
+                }}
+              >
+                <span style={{ color: "#1D4ED8" }}>Search</span>
+                <span style={{ color: "#22D3EE" }}>Brand</span>
               </span>
-              <span className="text-[11px] mt-0.5" style={{ fontFamily: "'Inter', sans-serif", color: '#94A3B8', letterSpacing: '0.2px', opacity: 0.8 }}>powered by Glitzy</span>
+              <span
+                className="text-[11px] mt-0.5"
+                style={{
+                  fontFamily: "'Inter', sans-serif",
+                  color: "#94A3B8",
+                  letterSpacing: "0.2px",
+                  opacity: 0.8,
+                }}
+              >
+                powered by Glitzy
+              </span>
             </div>
           </div>
-          <p className="text-muted-foreground">
-            네이버 검색 결과를 한눈에 파악하세요
-          </p>
         </div>
 
         {error && (
