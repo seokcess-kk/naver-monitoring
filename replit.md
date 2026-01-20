@@ -49,6 +49,13 @@
 - `filterReviews()` excludes reviews with null dates and uses normalized date comparison
 - `shouldStopScraping()` ignores null-date reviews when determining oldest review for stop condition
 - Resolves issue where DATE mode collected all reviews regardless of startDate setting
+- **Enhanced date extraction (January 20, 2026):**
+  - Added `isValidDate()` validator: checks date is not NaN, within 5-year range
+  - Strict date format validation with anchored regex patterns
+  - Expanded data-attribute scanning: datetime, data-date, data-time, data-created
+  - Multi-tier extraction: time elements → data attributes → priority selectors → header fallback
+  - Reduced logging verbosity for production (summary logs only)
+  - Fixed Puppeteer serialization issue in page.evaluate()
 
 ## User Preferences
 
