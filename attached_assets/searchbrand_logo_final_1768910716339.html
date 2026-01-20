@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SearchBrand Final Logo - Optical Balance</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #F8FAFC;
+            font-family: 'Inter', sans-serif;
+            gap: 60px;
+        }
+
+        .logo-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .section-label {
+            font-size: 12px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .logo-card {
+            background: white;
+            padding: 25px 40px;
+            border-radius: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- 공통 스타일 --- */
+        .brand-text {
+            color: #1D4ED8;
+            font-weight: 700;
+            letter-spacing: -0.8px;
+            line-height: 1;
+        }
+        .accent { color: #22D3EE; }
+        
+        .tagline {
+            font-family: 'Inter', sans-serif;
+            color: #94A3B8;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+            margin-top: 2px; /* Ultra Tight 간격 */
+            line-height: 1;
+            opacity: 0.8;
+        }
+
+        /* --- 1. 수평 버전 --- */
+        .horizontal-layout {
+            display: flex;
+            align-items: center; /* 기계적 중앙 정렬 */
+        }
+        .horizontal-layout .symbol {
+            width: 48px;
+            height: 48px;
+            margin-right: 0px;
+            flex-shrink: 0;
+            /* 심볼은 그대로 둠 */
+        }
+        .horizontal-layout .brand-text {
+            font-size: 36px;
+        }
+        .horizontal-layout .text-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end; /* 우측 정렬 */
+            
+            /* [핵심 수정] 상하 밸런스 보정 */
+            position: relative;
+            top: 5px; /* 텍스트 그룹을 3px 위로 올려 렌즈와 브랜드명의 눈높이를 맞춤 */
+        }
+
+        /* --- 2. 수직 버전 --- */
+        .vertical-layout {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .vertical-layout .symbol {
+            width: 84px;
+            height: 84px;
+            margin-bottom: 0px;
+            flex-shrink: 0;
+        }
+        .vertical-layout .brand-text {
+            font-size: 30px;
+        }
+        .vertical-layout .text-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="logo-section">
+        <div class="logo-card">
+            <div class="horizontal-layout">
+                <svg class="symbol" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="224" cy="224" r="120" stroke="#1D4ED8" stroke-width="24" />
+                    <circle cx="224" cy="224" r="72" stroke="#22D3EE" stroke-width="16" />
+                    <path d="M318 318L408 408" stroke="#1D4ED8" stroke-width="28" stroke-linecap="round" />
+                    <path d="M344 92C396 122 432 176 432 240" stroke="#22D3EE" stroke-width="16" stroke-linecap="round" />
+                </svg>
+                <div class="text-group">
+                    <div class="brand-text">Search<span class="accent">Brand</span></div>
+                    <div class="tagline">powered by Glitzy</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="logo-section">
+        <div class="logo-card">
+            <div class="vertical-layout">
+                <svg class="symbol" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="224" cy="224" r="120" stroke="#1D4ED8" stroke-width="24" />
+                    <circle cx="224" cy="224" r="72" stroke="#22D3EE" stroke-width="16" />
+                    <path d="M318 318L408 408" stroke="#1D4ED8" stroke-width="28" stroke-linecap="round" />
+                    <path d="M344 92C396 122 432 176 432 240" stroke="#22D3EE" stroke-width="16" stroke-linecap="round" />
+                </svg>
+                <div class="text-group">
+                    <div class="brand-text">Search<span class="accent">Brand</span></div>
+                    <div class="tagline">powered by Glitzy</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

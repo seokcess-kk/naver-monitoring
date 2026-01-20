@@ -51,19 +51,19 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b glass-card">
         <div className="container mx-auto px-4 h-14 md:h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 md:gap-2.5">
-            <svg className="w-7 h-7 md:w-8 md:h-8" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div className="flex items-center">
+            <svg className="w-10 h-10 md:w-12 md:h-12 shrink-0" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
               <circle cx="224" cy="224" r="120" stroke="#1D4ED8" strokeWidth="24" />
               <circle cx="224" cy="224" r="72" stroke="#22D3EE" strokeWidth="16" />
               <path d="M318 318L408 408" stroke="#1D4ED8" strokeWidth="28" strokeLinecap="round" />
               <path d="M344 92C396 122 432 176 432 240" stroke="#22D3EE" strokeWidth="16" strokeLinecap="round" />
             </svg>
-            <div className="flex flex-col">
-              <span className="text-base md:text-lg font-semibold" style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.02em' }}>
+            <div className="flex flex-col items-end relative" style={{ top: '3px' }}>
+              <span className="text-lg md:text-xl font-bold" style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.8px' }}>
                 <span style={{ color: '#1D4ED8' }}>Search</span>
                 <span style={{ color: '#22D3EE' }}>Brand</span>
               </span>
-              <span className="text-[9px] md:text-[10px] text-muted-foreground -mt-0.5" style={{ fontFamily: "'Inter', sans-serif" }}>powered by Glitzy</span>
+              <span className="text-[10px] md:text-[11px] mt-0.5" style={{ fontFamily: "'Inter', sans-serif", color: '#94A3B8', letterSpacing: '0.2px', opacity: 0.8 }}>powered by Glitzy</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
