@@ -1,7 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,8 +15,21 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -21,12 +40,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { 
-  BarChart3, 
-  Play, 
-  Clock, 
-  CheckCircle2, 
-  XCircle, 
+import {
+  BarChart3,
+  Play,
+  Clock,
+  CheckCircle2,
+  XCircle,
   Loader2,
   TrendingUp,
   ExternalLink,
@@ -42,7 +61,6 @@ import {
   FolderOpen,
   Trash2,
   Search,
-  Eye
 } from "lucide-react";
 
 interface SovRun {
@@ -119,35 +137,48 @@ export function SovPanel() {
     refetchInterval: pollingRunId ? 3000 : false,
   });
 
-  const selectedRunFromList = runs?.find(r => r.id === selectedRunId);
-  const isSelectedRunCompleted = selectedRunFromList?.status === "completed" || selectedRunFromList?.status === "failed";
-  
-  const { data: selectedResult, isLoading: resultLoading } = useQuery<SovResultResponse>({
-    queryKey: ["/api/sov/result", selectedRunId],
-    enabled: !!selectedRunId && showResults,
-    staleTime: isSelectedRunCompleted ? 5 * 60 * 1000 : 0,
-    refetchInterval: selectedRunId && !isSelectedRunCompleted ? 3000 : false,
-  });
+  const selectedRunFromList = runs?.find((r) => r.id === selectedRunId);
+  const isSelectedRunCompleted =
+    selectedRunFromList?.status === "completed" ||
+    selectedRunFromList?.status === "failed";
+
+  const { data: selectedResult, isLoading: resultLoading } =
+    useQuery<SovResultResponse>({
+      queryKey: ["/api/sov/result", selectedRunId],
+      enabled: !!selectedRunId && showResults,
+      staleTime: isSelectedRunCompleted ? 5 * 60 * 1000 : 0,
+      refetchInterval: selectedRunId && !isSelectedRunCompleted ? 3000 : false,
+    });
 
   const { data: templates } = useQuery<SovTemplate[]>({
     queryKey: ["/api/sov/templates"],
   });
 
   const activeRun = useMemo(() => {
-    return runs?.find(r => ["pending", "crawling", "extracting", "analyzing"].includes(r.status));
+    return runs?.find((r) =>
+      ["pending", "crawling", "extracting", "analyzing"].includes(r.status),
+    );
   }, [runs]);
 
   const filteredRuns = useMemo(() => {
     if (!runs) return [];
-    return runs.filter(run => {
-      const matchesSearch = historySearch === "" || 
+    return runs.filter((run) => {
+      const matchesSearch =
+        historySearch === "" ||
         run.marketKeyword.toLowerCase().includes(historySearch.toLowerCase()) ||
-        run.brands.some(b => b.toLowerCase().includes(historySearch.toLowerCase()));
+        run.brands.some((b) =>
+          b.toLowerCase().includes(historySearch.toLowerCase()),
+        );
       let matchesStatus = false;
       if (historyStatusFilter === "all") {
         matchesStatus = true;
       } else if (historyStatusFilter === "running") {
-        matchesStatus = ["pending", "crawling", "extracting", "analyzing"].includes(run.status);
+        matchesStatus = [
+          "pending",
+          "crawling",
+          "extracting",
+          "analyzing",
+        ].includes(run.status);
       } else {
         matchesStatus = run.status === historyStatusFilter;
       }
@@ -156,25 +187,39 @@ export function SovPanel() {
   }, [runs, historySearch, historyStatusFilter]);
 
   const totalPages = Math.ceil(filteredRuns.length / ITEMS_PER_PAGE);
-  const paginatedRuns = filteredRuns.slice((historyPage - 1) * ITEMS_PER_PAGE, historyPage * ITEMS_PER_PAGE);
+  const paginatedRuns = filteredRuns.slice(
+    (historyPage - 1) * ITEMS_PER_PAGE,
+    historyPage * ITEMS_PER_PAGE,
+  );
 
   useEffect(() => {
     setHistoryPage(1);
   }, [historySearch, historyStatusFilter]);
 
   const saveTemplateMutation = useMutation({
-    mutationFn: async (data: { name: string; marketKeyword: string; brands: string[] }) => {
+    mutationFn: async (data: {
+      name: string;
+      marketKeyword: string;
+      brands: string[];
+    }) => {
       const response = await apiRequest("POST", "/api/sov/templates", data);
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: "템플릿 저장됨", description: "다음에 빠르게 불러올 수 있습니다." });
+      toast({
+        title: "템플릿 저장됨",
+        description: "다음에 빠르게 불러올 수 있습니다.",
+      });
       setSaveTemplateOpen(false);
       setTemplateName("");
       queryClient.invalidateQueries({ queryKey: ["/api/sov/templates"] });
     },
     onError: () => {
-      toast({ title: "저장 실패", description: "잠시 후 다시 시도해주세요.", variant: "destructive" });
+      toast({
+        title: "저장 실패",
+        description: "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -192,15 +237,26 @@ export function SovPanel() {
     setMarketKeyword(template.marketKeyword);
     setBrands(template.brands);
     setLoadTemplateOpen(false);
-    toast({ title: "템플릿 불러오기 완료", description: `"${template.name}" 템플릿이 적용되었습니다.` });
+    toast({
+      title: "템플릿 불러오기 완료",
+      description: `"${template.name}" 템플릿이 적용되었습니다.`,
+    });
   };
 
   const handleSaveTemplate = () => {
     if (!templateName.trim() || !marketKeyword.trim() || brands.length === 0) {
-      toast({ title: "입력 오류", description: "템플릿 이름, 키워드, 브랜드가 필요합니다.", variant: "destructive" });
+      toast({
+        title: "입력 오류",
+        description: "템플릿 이름, 키워드, 브랜드가 필요합니다.",
+        variant: "destructive",
+      });
       return;
     }
-    saveTemplateMutation.mutate({ name: templateName.trim(), marketKeyword: marketKeyword.trim(), brands });
+    saveTemplateMutation.mutate({
+      name: templateName.trim(),
+      marketKeyword: marketKeyword.trim(),
+      brands,
+    });
   };
 
   const startRunMutation = useMutation({
@@ -294,7 +350,9 @@ export function SovPanel() {
     }
   };
 
-  const getStatusBadgeVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+  const getStatusBadgeVariant = (
+    status: string,
+  ): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case "completed":
         return "default";
@@ -310,7 +368,9 @@ export function SovPanel() {
   };
 
   useEffect(() => {
-    const completedRun = runs?.find((r) => r.id === pollingRunId && r.status === "completed");
+    const completedRun = runs?.find(
+      (r) => r.id === pollingRunId && r.status === "completed",
+    );
     if (completedRun && pollingRunId) {
       setPollingRunId(null);
       setSelectedRunId(completedRun.id);
@@ -319,14 +379,22 @@ export function SovPanel() {
 
   useEffect(() => {
     if (selectedRunId) {
-      queryClient.invalidateQueries({ queryKey: ["/api/sov/result", selectedRunId] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/sov/result", selectedRunId],
+      });
     }
   }, [selectedRunId]);
 
   useEffect(() => {
-    if (selectedRunId && selectedRunFromList?.status === "completed" && 
-        selectedResult?.run?.status && selectedResult.run.status !== "completed") {
-      queryClient.invalidateQueries({ queryKey: ["/api/sov/result", selectedRunId] });
+    if (
+      selectedRunId &&
+      selectedRunFromList?.status === "completed" &&
+      selectedResult?.run?.status &&
+      selectedResult.run.status !== "completed"
+    ) {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/sov/result", selectedRunId],
+      });
     }
   }, [selectedRunId, selectedRunFromList?.status, selectedResult?.run?.status]);
 
@@ -337,7 +405,7 @@ export function SovPanel() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-primary" />
-            새 SOV 분석
+            SOV 분석
           </CardTitle>
           <CardDescription>
             시장 키워드에서 브랜드별 노출 점유율을 분석합니다.
@@ -347,7 +415,9 @@ export function SovPanel() {
           {templates && templates.length > 0 && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
               <FolderOpen className="w-4 h-4 text-muted-foreground shrink-0" />
-              <span className="text-sm text-muted-foreground shrink-0">빠른 선택:</span>
+              <span className="text-sm text-muted-foreground shrink-0">
+                빠른 선택:
+              </span>
               <div className="flex flex-wrap gap-1.5">
                 {templates.slice(0, 4).map((template) => (
                   <Badge
@@ -437,7 +507,11 @@ export function SovPanel() {
           <div className="flex flex-wrap gap-2 pt-2">
             <Button
               onClick={handleStartRun}
-              disabled={!marketKeyword.trim() || brands.length === 0 || startRunMutation.isPending}
+              disabled={
+                !marketKeyword.trim() ||
+                brands.length === 0 ||
+                startRunMutation.isPending
+              }
               data-testid="button-start-sov"
             >
               {startRunMutation.isPending ? (
@@ -481,13 +555,16 @@ export function SovPanel() {
                           >
                             <p className="font-medium">{template.name}</p>
                             <p className="text-sm text-muted-foreground">
-                              {template.marketKeyword} · {template.brands.length}개 브랜드
+                              {template.marketKeyword} ·{" "}
+                              {template.brands.length}개 브랜드
                             </p>
                           </button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => deleteTemplateMutation.mutate(template.id)}
+                            onClick={() =>
+                              deleteTemplateMutation.mutate(template.id)
+                            }
                             disabled={deleteTemplateMutation.isPending}
                           >
                             <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
@@ -534,14 +611,22 @@ export function SovPanel() {
                     />
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    <p>키워드: <span className="font-medium">{marketKeyword}</span></p>
-                    <p>브랜드: <span className="font-medium">{brands.join(", ")}</span></p>
+                    <p>
+                      키워드:{" "}
+                      <span className="font-medium">{marketKeyword}</span>
+                    </p>
+                    <p>
+                      브랜드:{" "}
+                      <span className="font-medium">{brands.join(", ")}</span>
+                    </p>
                   </div>
                 </div>
                 <DialogFooter>
                   <Button
                     onClick={handleSaveTemplate}
-                    disabled={!templateName.trim() || saveTemplateMutation.isPending}
+                    disabled={
+                      !templateName.trim() || saveTemplateMutation.isPending
+                    }
                   >
                     {saveTemplateMutation.isPending ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -573,7 +658,12 @@ export function SovPanel() {
             <div className="max-w-xs mx-auto">
               <div className="flex items-start">
                 {["crawling", "extracting", "analyzing"].map((step, idx) => {
-                  const currentIdx = ["pending", "crawling", "extracting", "analyzing"].indexOf(activeRun.status);
+                  const currentIdx = [
+                    "pending",
+                    "crawling",
+                    "extracting",
+                    "analyzing",
+                  ].indexOf(activeRun.status);
                   const stepIdx = idx + 1;
                   const isActive = stepIdx === currentIdx;
                   const isCompleted = stepIdx < currentIdx;
@@ -581,25 +671,43 @@ export function SovPanel() {
                   return (
                     <div key={step} className="flex items-start flex-1">
                       <div className="flex flex-col items-center">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 border-2 ${
-                          isCompleted ? 'bg-green-500 border-green-500 text-white' : 
-                          isActive ? 'bg-blue-500 border-blue-500 text-white shadow-lg shadow-blue-500/30' : 
-                          'bg-background border-muted-foreground/30 text-muted-foreground'
-                        }`}>
-                          {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : idx + 1}
+                        <div
+                          className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 border-2 ${
+                            isCompleted
+                              ? "bg-green-500 border-green-500 text-white"
+                              : isActive
+                                ? "bg-blue-500 border-blue-500 text-white shadow-lg shadow-blue-500/30"
+                                : "bg-background border-muted-foreground/30 text-muted-foreground"
+                          }`}
+                        >
+                          {isCompleted ? (
+                            <CheckCircle2 className="w-5 h-5" />
+                          ) : (
+                            idx + 1
+                          )}
                         </div>
-                        <span className={`text-xs mt-2 font-medium whitespace-nowrap ${
-                          isCompleted ? 'text-green-600' :
-                          isActive ? 'text-blue-600' : 
-                          'text-muted-foreground'
-                        }`}>
-                          {step === "crawling" ? "크롤링" : step === "extracting" ? "추출" : "분석"}
+                        <span
+                          className={`text-xs mt-2 font-medium whitespace-nowrap ${
+                            isCompleted
+                              ? "text-green-600"
+                              : isActive
+                                ? "text-blue-600"
+                                : "text-muted-foreground"
+                          }`}
+                        >
+                          {step === "crawling"
+                            ? "크롤링"
+                            : step === "extracting"
+                              ? "추출"
+                              : "분석"}
                         </span>
                       </div>
                       {idx < 2 && (
-                        <div className={`flex-1 h-1 mt-[18px] mx-2 rounded-full transition-colors duration-300 ${
-                          isLineCompleted ? 'bg-green-500' : 'bg-muted'
-                        }`} />
+                        <div
+                          className={`flex-1 h-1 mt-[18px] mx-2 rounded-full transition-colors duration-300 ${
+                            isLineCompleted ? "bg-green-500" : "bg-muted"
+                          }`}
+                        />
                       )}
                     </div>
                   );
@@ -607,12 +715,17 @@ export function SovPanel() {
               </div>
               {activeRun.processedExposures && activeRun.totalExposures && (
                 <div className="mt-6">
-                  <Progress 
-                    value={(parseInt(activeRun.processedExposures) / parseInt(activeRun.totalExposures)) * 100} 
+                  <Progress
+                    value={
+                      (parseInt(activeRun.processedExposures) /
+                        parseInt(activeRun.totalExposures)) *
+                      100
+                    }
                     className="h-2"
                   />
                   <p className="text-xs text-center text-muted-foreground mt-2">
-                    {activeRun.processedExposures} / {activeRun.totalExposures} 처리됨
+                    {activeRun.processedExposures} / {activeRun.totalExposures}{" "}
+                    처리됨
                   </p>
                 </div>
               )}
@@ -622,130 +735,165 @@ export function SovPanel() {
       )}
 
       {/* 3. 분석 결과 표시 (완료/실패 시) */}
-      {selectedRunId && showResults && selectedResult?.run && 
-       ["completed", "failed"].includes(selectedResult.run.status) && (
-        <Card className="border-2 border-primary/20">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-primary" />
-                분석 결과
-                <Badge variant="outline" className="ml-2 font-normal">
-                  {selectedResult.run.marketKeyword}
-                </Badge>
-              </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowResults(false)}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {selectedResult.run.status === "failed" ? (
-              <div className="text-center py-8">
-                <XCircle className="w-8 h-8 mx-auto mb-4 text-red-500" />
-                <p className="text-muted-foreground">분석 중 오류가 발생했습니다.</p>
-                <p className="text-sm text-red-500 mt-2">
-                  {selectedResult.run.errorMessage || "알 수 없는 오류"}
-                </p>
+      {selectedRunId &&
+        showResults &&
+        selectedResult?.run &&
+        ["completed", "failed"].includes(selectedResult.run.status) && (
+          <Card className="border-2 border-primary/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-primary" />
+                  분석 결과
+                  <Badge variant="outline" className="ml-2 font-normal">
+                    {selectedResult.run.marketKeyword}
+                  </Badge>
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowResults(false)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h4 className="font-medium text-sm text-muted-foreground">브랜드별 점유율</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {[...selectedResult.results].sort((a, b) => b.sovPercentage - a.sovPercentage).map((result, idx) => (
-                      <Card key={result.brand} className={`bg-gradient-to-br ${idx === 0 ? 'from-primary/10 to-primary/5 border-primary/30' : 'from-card to-muted/20'}`}>
-                        <CardContent className="py-3 px-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium truncate">{result.brand}</span>
-                            {idx === 0 && <Badge className="text-[10px] px-1.5 py-0">1위</Badge>}
-                          </div>
-                          <p className="text-2xl font-bold text-primary">
-                            {result.sovPercentage.toFixed(1)}%
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {result.exposureCount}건 노출
-                          </p>
-                          <Progress value={result.sovPercentage} className="mt-2 h-1.5" />
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                  <div className="text-xs text-muted-foreground pt-2 border-t space-y-1">
-                    <div className="flex items-center gap-3">
-                      <span>총 {selectedResult.run.totalExposures}건 분석</span>
-                      {selectedResult.run.verifiedCount !== undefined && (
-                        <>
-                          <span className="text-green-600">
-                            <CheckCircle2 className="w-3 h-3 inline mr-0.5" />
-                            확인 {selectedResult.run.verifiedCount}건
-                          </span>
-                          {(selectedResult.run.unverifiedCount ?? 0) > 0 && (
-                            <span className="text-amber-600">
-                              미확인 {selectedResult.run.unverifiedCount}건
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
+            </CardHeader>
+            <CardContent>
+              {selectedResult.run.status === "failed" ? (
+                <div className="text-center py-8">
+                  <XCircle className="w-8 h-8 mx-auto mb-4 text-red-500" />
+                  <p className="text-muted-foreground">
+                    분석 중 오류가 발생했습니다.
+                  </p>
+                  <p className="text-sm text-red-500 mt-2">
+                    {selectedResult.run.errorMessage || "알 수 없는 오류"}
+                  </p>
                 </div>
-
-                <div className="space-y-3">
-                  <h4 className="font-medium text-sm text-muted-foreground">
-                    분석된 콘텐츠 ({selectedResult.exposures.length}건)
-                  </h4>
-                  <ScrollArea className="h-[280px] rounded-md border p-3">
-                    <div className="space-y-2">
-                      {selectedResult.exposures.map((exposure) => {
-                        const isVerified = exposure.extractionStatus?.startsWith("success");
-                        const isMetadata = exposure.extractionStatus === "success_metadata";
-                        return (
-                          <div
-                            key={exposure.id}
-                            className={`flex items-center justify-between p-2.5 rounded-lg transition-colors ${
-                              isVerified 
-                                ? 'bg-muted/50 hover:bg-muted' 
-                                : 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900'
-                            }`}
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-sm text-muted-foreground">
+                      브랜드별 점유율
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {[...selectedResult.results]
+                        .sort((a, b) => b.sovPercentage - a.sovPercentage)
+                        .map((result, idx) => (
+                          <Card
+                            key={result.brand}
+                            className={`bg-gradient-to-br ${idx === 0 ? "from-primary/10 to-primary/5 border-primary/30" : "from-card to-muted/20"}`}
                           >
-                            <a
-                              href={exposure.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2.5 flex-1 min-w-0 hover:text-primary transition-colors group"
-                            >
-                              <Badge variant="outline" className="shrink-0 text-[10px]">
-                                {exposure.blockType}
-                              </Badge>
-                              <span className="truncate text-sm group-hover:underline">{exposure.title}</span>
-                              <ExternalLink className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
-                              {isMetadata && (
-                                <Badge variant="outline" className="shrink-0 text-[10px] text-blue-600 border-blue-300">
-                                  메타 기반
-                                </Badge>
-                              )}
-                              {!isVerified && (
-                                <Badge variant="outline" className="shrink-0 text-[10px] text-amber-600 border-amber-300">
-                                  미확인
-                                </Badge>
-                              )}
-                            </a>
-                          </div>
-                        );
-                      })}
+                            <CardContent className="py-3 px-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium truncate">
+                                  {result.brand}
+                                </span>
+                                {idx === 0 && (
+                                  <Badge className="text-[10px] px-1.5 py-0">
+                                    1위
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-2xl font-bold text-primary">
+                                {result.sovPercentage.toFixed(1)}%
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {result.exposureCount}건 노출
+                              </p>
+                              <Progress
+                                value={result.sovPercentage}
+                                className="mt-2 h-1.5"
+                              />
+                            </CardContent>
+                          </Card>
+                        ))}
                     </div>
-                  </ScrollArea>
+                    <div className="text-xs text-muted-foreground pt-2 border-t space-y-1">
+                      <div className="flex items-center gap-3">
+                        <span>
+                          총 {selectedResult.run.totalExposures}건 분석
+                        </span>
+                        {selectedResult.run.verifiedCount !== undefined && (
+                          <>
+                            <span className="text-green-600">
+                              <CheckCircle2 className="w-3 h-3 inline mr-0.5" />
+                              확인 {selectedResult.run.verifiedCount}건
+                            </span>
+                            {(selectedResult.run.unverifiedCount ?? 0) > 0 && (
+                              <span className="text-amber-600">
+                                미확인 {selectedResult.run.unverifiedCount}건
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-sm text-muted-foreground">
+                      분석된 콘텐츠 ({selectedResult.exposures.length}건)
+                    </h4>
+                    <ScrollArea className="h-[280px] rounded-md border p-3">
+                      <div className="space-y-2">
+                        {selectedResult.exposures.map((exposure) => {
+                          const isVerified =
+                            exposure.extractionStatus?.startsWith("success");
+                          const isMetadata =
+                            exposure.extractionStatus === "success_metadata";
+                          return (
+                            <div
+                              key={exposure.id}
+                              className={`flex items-center justify-between p-2.5 rounded-lg transition-colors ${
+                                isVerified
+                                  ? "bg-muted/50 hover:bg-muted"
+                                  : "bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900"
+                              }`}
+                            >
+                              <a
+                                href={exposure.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2.5 flex-1 min-w-0 hover:text-primary transition-colors group"
+                              >
+                                <Badge
+                                  variant="outline"
+                                  className="shrink-0 text-[10px]"
+                                >
+                                  {exposure.blockType}
+                                </Badge>
+                                <span className="truncate text-sm group-hover:underline">
+                                  {exposure.title}
+                                </span>
+                                <ExternalLink className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                                {isMetadata && (
+                                  <Badge
+                                    variant="outline"
+                                    className="shrink-0 text-[10px] text-blue-600 border-blue-300"
+                                  >
+                                    메타 기반
+                                  </Badge>
+                                )}
+                                {!isVerified && (
+                                  <Badge
+                                    variant="outline"
+                                    className="shrink-0 text-[10px] text-amber-600 border-amber-300"
+                                  >
+                                    미확인
+                                  </Badge>
+                                )}
+                              </a>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
+                  </div>
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              )}
+            </CardContent>
+          </Card>
+        )}
 
       {/* 4. 분석 기록 - 페이지네이션 테이블 */}
       <Card>
@@ -770,7 +918,10 @@ export function SovPanel() {
                   className="pl-8 h-8 w-40 text-sm"
                 />
               </div>
-              <Select value={historyStatusFilter} onValueChange={setHistoryStatusFilter}>
+              <Select
+                value={historyStatusFilter}
+                onValueChange={setHistoryStatusFilter}
+              >
                 <SelectTrigger className="h-8 w-28 text-sm">
                   <SelectValue placeholder="상태" />
                 </SelectTrigger>
@@ -785,7 +936,9 @@ export function SovPanel() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
-                onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sov/runs"] })}
+                onClick={() =>
+                  queryClient.invalidateQueries({ queryKey: ["/api/sov/runs"] })
+                }
                 data-testid="button-refresh-runs"
                 aria-label="새로고침"
               >
@@ -804,7 +957,9 @@ export function SovPanel() {
           ) : !runs || runs.length === 0 ? (
             <div className="py-8 text-center border rounded-lg border-dashed">
               <TrendingUp className="w-10 h-10 mx-auto mb-3 text-muted-foreground/50" />
-              <p className="text-muted-foreground">아직 분석 기록이 없습니다.</p>
+              <p className="text-muted-foreground">
+                아직 분석 기록이 없습니다.
+              </p>
               <p className="text-sm text-muted-foreground mt-1">
                 위에서 시장 키워드와 브랜드를 입력하고 분석을 시작해보세요.
               </p>
@@ -820,37 +975,57 @@ export function SovPanel() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[180px]">키워드</TableHead>
-                      <TableHead className="hidden sm:table-cell">브랜드</TableHead>
+                      <TableHead className="hidden sm:table-cell">
+                        브랜드
+                      </TableHead>
                       <TableHead className="w-[100px]">상태</TableHead>
-                      <TableHead className="w-[100px] hidden md:table-cell">일시</TableHead>
-                      <TableHead className="w-[80px] text-right">액션</TableHead>
+                      <TableHead className="w-[100px] hidden md:table-cell">
+                        일시
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paginatedRuns.map((run) => (
-                      <TableRow 
+                      <TableRow
                         key={run.id}
-                        className={selectedRunId === run.id ? "bg-primary/5" : ""}
+                        className={`cursor-pointer hover:bg-muted/50 transition-colors ${
+                          selectedRunId === run.id ? "bg-primary/5" : ""
+                        }`}
+                        onClick={() => handleViewResult(run.id)}
                       >
-                        <TableCell className="font-medium">{run.marketKeyword}</TableCell>
+                        <TableCell className="font-medium">
+                          {run.marketKeyword}
+                        </TableCell>
                         <TableCell className="hidden sm:table-cell">
                           <div className="flex flex-wrap gap-1 max-w-[200px]">
                             {run.brands.slice(0, 3).map((brand) => (
-                              <Badge key={brand} variant="outline" className="text-[10px]">
+                              <Badge
+                                key={brand}
+                                variant="outline"
+                                className="text-[10px]"
+                              >
                                 {brand}
                               </Badge>
                             ))}
                             {run.brands.length > 3 && (
-                              <Badge variant="secondary" className="text-[10px]">
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px]"
+                              >
                                 +{run.brands.length - 3}
                               </Badge>
                             )}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={getStatusBadgeVariant(run.status)} className="gap-1">
+                          <Badge
+                            variant={getStatusBadgeVariant(run.status)}
+                            className="gap-1"
+                          >
                             {getStatusIcon(run.status)}
-                            <span className="hidden sm:inline">{getStatusLabel(run.status)}</span>
+                            <span className="hidden sm:inline">
+                              {getStatusLabel(run.status)}
+                            </span>
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm hidden md:table-cell">
@@ -858,19 +1033,8 @@ export function SovPanel() {
                             month: "short",
                             day: "numeric",
                             hour: "2-digit",
-                            minute: "2-digit"
+                            minute: "2-digit",
                           })}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewResult(run.id)}
-                            className="h-7 px-2"
-                          >
-                            <Eye className="w-3.5 h-3.5 mr-1" />
-                            보기
-                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -881,14 +1045,19 @@ export function SovPanel() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
                   <p className="text-sm text-muted-foreground">
-                    {filteredRuns.length}건 중 {(historyPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(historyPage * ITEMS_PER_PAGE, filteredRuns.length)}
+                    {filteredRuns.length}건 중{" "}
+                    {(historyPage - 1) * ITEMS_PER_PAGE + 1}-
+                    {Math.min(
+                      historyPage * ITEMS_PER_PAGE,
+                      filteredRuns.length,
+                    )}
                   </p>
                   <div className="flex items-center gap-1">
                     <Button
                       variant="outline"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                      onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
                       disabled={historyPage === 1}
                     >
                       <ChevronLeft className="w-4 h-4" />
@@ -900,7 +1069,9 @@ export function SovPanel() {
                       variant="outline"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => setHistoryPage(p => Math.min(totalPages, p + 1))}
+                      onClick={() =>
+                        setHistoryPage((p) => Math.min(totalPages, p + 1))
+                      }
                       disabled={historyPage === totalPages}
                     >
                       <ChevronRight className="w-4 h-4" />
