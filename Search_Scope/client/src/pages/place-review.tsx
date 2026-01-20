@@ -583,7 +583,7 @@ function JobResults({ jobId }: { jobId: string }) {
     },
   });
 
-  const { data: reviewsData, isLoading: reviewsLoading } = useQuery<{ reviews: ReviewWithAnalysis[] }>({
+  const { data: reviewsData, isLoading: reviewsLoading } = useQuery<{ reviews: ReviewWithAnalysis[], job: { totalReviews: string; analyzedReviews: string } }>({
     queryKey: ["place-review-reviews", jobId],
     queryFn: async () => {
       const res = await fetch(`/api/place-review/jobs/${jobId}/reviews`, { credentials: "include" });
@@ -591,6 +591,8 @@ function JobResults({ jobId }: { jobId: string }) {
       return res.json();
     },
   });
+
+  const reviewJobInfo = reviewsData?.job;
 
   const stats = statsData;
   const allReviews = reviewsData?.reviews || [];
@@ -734,7 +736,7 @@ function JobResults({ jobId }: { jobId: string }) {
           <TabsList>
             <TabsTrigger value="reviews">
               <MessageSquare className="w-4 h-4 mr-2" />
-              리뷰 ({filteredReviews.length})
+              리뷰 ({reviewJobInfo?.totalReviews || allReviews.length})
             </TabsTrigger>
             <TabsTrigger value="aspects">
               <BarChart3 className="w-4 h-4 mr-2" />
