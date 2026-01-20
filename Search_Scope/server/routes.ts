@@ -374,9 +374,12 @@ export async function registerRoutes(
       res.json(runs.map((run) => ({
         id: run.id,
         status: run.status,
+        statusMessage: run.statusMessage,
         marketKeyword: run.marketKeyword,
         brands: run.brands,
         totalExposures: run.totalExposures,
+        processedExposures: run.processedExposures,
+        errorMessage: run.errorMessage,
         createdAt: run.createdAt,
         completedAt: run.completedAt,
       })));
