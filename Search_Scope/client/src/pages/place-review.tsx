@@ -24,6 +24,7 @@ interface PlaceReviewJob {
   placeName: string | null;
   mode: string;
   status: string;
+  statusMessage: string | null;
   progress: string;
   totalReviews: string;
   analyzedReviews: string;
@@ -553,7 +554,7 @@ function JobList({
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                   <span className="flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    분석 진행 중
+                    {job.statusMessage || "분석 진행 중"}
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="text-muted-foreground/70">
@@ -566,6 +567,12 @@ function JobList({
                 </div>
                 <Progress value={parseInt(job.progress)} className="h-2 mb-2" />
               </>
+            )}
+            {job.status === "queued" && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                {job.statusMessage || "대기 중..."}
+              </div>
             )}
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span>리뷰: {job.totalReviews}</span>

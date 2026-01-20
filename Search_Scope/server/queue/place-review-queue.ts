@@ -49,7 +49,11 @@ async function processPlaceReviewJob(job: Job<PlaceReviewJobData>): Promise<void
 
   try {
     await db.update(placeReviewJobs)
-      .set({ status: "processing", progress: "0" })
+      .set({ status: "processing", progress: "0", statusMessage: "리뷰 크롤링 준비 중..." })
+      .where(eq(placeReviewJobs.id, jobId));
+
+    await db.update(placeReviewJobs)
+      .set({ statusMessage: "네이버 플레이스 페이지 접속 중..." })
       .where(eq(placeReviewJobs.id, jobId));
 
     const reviews = await scrapePlaceReviews({
@@ -60,8 +64,9 @@ async function processPlaceReviewJob(job: Job<PlaceReviewJobData>): Promise<void
       endDate: endDate ? new Date(endDate) : undefined,
       onProgress: async (current, total) => {
         const progress = Math.round((current / total) * 50);
+        const statusMessage = `리뷰 수집 중... ${current}/${total}개`;
         await db.update(placeReviewJobs)
-          .set({ progress: String(progress), totalReviews: String(total) })
+          .set({ progress: String(progress), totalReviews: String(total), statusMessage })
           .where(eq(placeReviewJobs.id, jobId));
         await job.updateProgress(progress);
       },
@@ -69,8 +74,20 @@ async function processPlaceReviewJob(job: Job<PlaceReviewJobData>): Promise<void
 
     console.log(`[PlaceReviewWorker] Scraped ${reviews.length} reviews`);
 
+    if (reviews.length === 0) {
+      await db.update(placeReviewJobs)
+        .set({ 
+          status: "completed", 
+          progress: "100", 
+          statusMessage: "수집된 리뷰가 없습니다",
+          completedAt: new Date() 
+        })
+        .where(eq(placeReviewJobs.id, jobId));
+      return;
+    }
+
     await db.update(placeReviewJobs)
-      .set({ totalReviews: String(reviews.length), progress: "50" })
+      .set({ totalReviews: String(reviews.length), progress: "50", statusMessage: `${reviews.length}개 리뷰 수집 완료, 분석 시작...` })
       .where(eq(placeReviewJobs.id, jobId));
 
     let analyzedCount = 0;
@@ -100,8 +117,12 @@ async function processPlaceReviewJob(job: Job<PlaceReviewJobData>): Promise<void
       }
 
       const progress = 50 + Math.round(((i + 1) / reviews.length) * 50);
+      const remaining = reviews.length - (i + 1);
+      const statusMessage = remaining > 0 
+        ? `감성 분석 중... ${i + 1}/${reviews.length}개 완료 (${remaining}개 남음)`
+        : `분석 완료 처리 중...`;
       await db.update(placeReviewJobs)
-        .set({ progress: String(progress), analyzedReviews: String(analyzedCount) })
+        .set({ progress: String(progress), analyzedReviews: String(analyzedCount), statusMessage })
         .where(eq(placeReviewJobs.id, jobId));
       await job.updateProgress(progress);
     }
@@ -111,6 +132,7 @@ async function processPlaceReviewJob(job: Job<PlaceReviewJobData>): Promise<void
         status: "completed",
         progress: "100",
         analyzedReviews: String(analyzedCount),
+        statusMessage: `분석 완료: ${analyzedCount}/${reviews.length}개 리뷰`,
         completedAt: new Date(),
       })
       .where(eq(placeReviewJobs.id, jobId));
@@ -118,10 +140,12 @@ async function processPlaceReviewJob(job: Job<PlaceReviewJobData>): Promise<void
     console.log(`[PlaceReviewWorker] Job ${jobId} completed. Analyzed ${analyzedCount}/${reviews.length} reviews`);
   } catch (error) {
     console.error(`[PlaceReviewWorker] Job ${jobId} failed:`, error);
+    const errorMsg = error instanceof Error ? error.message : "Unknown error";
     await db.update(placeReviewJobs)
       .set({
         status: "failed",
-        errorMessage: error instanceof Error ? error.message : "Unknown error",
+        errorMessage: errorMsg,
+        statusMessage: `분석 실패: ${errorMsg}`,
       })
       .where(eq(placeReviewJobs.id, jobId));
     throw error;
