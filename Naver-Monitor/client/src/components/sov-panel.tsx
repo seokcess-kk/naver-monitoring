@@ -561,8 +561,8 @@ export function SovPanel() {
       {activeRun && (
         <Card className="border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20">
           <CardContent className="py-6">
-            <div className="flex items-center gap-4 mb-4">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+            <div className="flex items-center gap-4 mb-6">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500 shrink-0" />
               <div>
                 <h3 className="font-medium">분석 진행 중</h3>
                 <p className="text-sm text-muted-foreground">
@@ -570,34 +570,43 @@ export function SovPanel() {
                 </p>
               </div>
             </div>
-            <div className="max-w-md">
-              <div className="flex items-center justify-between mb-3">
+            <div className="max-w-xs mx-auto">
+              <div className="flex items-start">
                 {["crawling", "extracting", "analyzing"].map((step, idx) => {
                   const currentIdx = ["pending", "crawling", "extracting", "analyzing"].indexOf(activeRun.status);
                   const stepIdx = idx + 1;
                   const isActive = stepIdx === currentIdx;
                   const isCompleted = stepIdx < currentIdx;
+                  const isLineCompleted = stepIdx < currentIdx;
                   return (
-                    <div key={step} className="flex-1 flex items-center">
-                      <div className={`flex flex-col items-center flex-1 ${idx > 0 ? 'ml-2' : ''}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
-                          isCompleted ? 'bg-green-500 text-white' : 
-                          isActive ? 'bg-blue-500 text-white animate-pulse' : 
-                          'bg-muted text-muted-foreground'
+                    <div key={step} className="flex items-start flex-1">
+                      <div className="flex flex-col items-center">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 border-2 ${
+                          isCompleted ? 'bg-green-500 border-green-500 text-white' : 
+                          isActive ? 'bg-blue-500 border-blue-500 text-white shadow-lg shadow-blue-500/30' : 
+                          'bg-background border-muted-foreground/30 text-muted-foreground'
                         }`}>
-                          {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
+                          {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : idx + 1}
                         </div>
-                        <span className={`text-[10px] mt-1 ${isActive ? 'text-blue-600 font-medium' : 'text-muted-foreground'}`}>
+                        <span className={`text-xs mt-2 font-medium whitespace-nowrap ${
+                          isCompleted ? 'text-green-600' :
+                          isActive ? 'text-blue-600' : 
+                          'text-muted-foreground'
+                        }`}>
                           {step === "crawling" ? "크롤링" : step === "extracting" ? "추출" : "분석"}
                         </span>
                       </div>
-                      {idx < 2 && <div className={`h-0.5 w-full ${isCompleted ? 'bg-green-500' : 'bg-muted'}`} />}
+                      {idx < 2 && (
+                        <div className={`flex-1 h-1 mt-[18px] mx-2 rounded-full transition-colors duration-300 ${
+                          isLineCompleted ? 'bg-green-500' : 'bg-muted'
+                        }`} />
+                      )}
                     </div>
                   );
                 })}
               </div>
               {activeRun.processedExposures && activeRun.totalExposures && (
-                <div>
+                <div className="mt-6">
                   <Progress 
                     value={(parseInt(activeRun.processedExposures) / parseInt(activeRun.totalExposures)) * 100} 
                     className="h-2"
