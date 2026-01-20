@@ -196,69 +196,31 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
 
       let date = "";
       
-      const dateRegex = /^(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?|오늘|어제|방금|\d+\s*(분|시간|일|주|개월|년)\s*전|\d{4}[.\-\/]\d{1,2}[.\-\/]\d{1,2}|\d{1,2}[.\-\/]\d{1,2})$/;
-      
-      const timeEl = el.querySelector("time");
-      if (timeEl) {
-        const datetime = timeEl.getAttribute("datetime") || timeEl.getAttribute("data-date");
-        if (datetime && datetime.length <= 25 && dateRegex.test(datetime.trim())) {
-          date = datetime;
-        }
-        if (!date && timeEl.textContent) {
-          const txt = timeEl.textContent.trim();
-          if (txt.length <= 25 && dateRegex.test(txt)) {
+      for (const sel of dateSelectors) {
+        const dateEl = el.querySelector(sel);
+        if (dateEl && dateEl.textContent) {
+          const txt = dateEl.textContent.trim();
+          if (txt === "오늘" || txt === "어제" || txt === "방금") {
             date = txt;
+            break;
+          }
+          if (txt.length < 30 && txt.match(/\d/) && (txt.includes("전") || txt.includes(".") || txt.includes("/") || txt.includes("월") || txt.includes("년"))) {
+            date = txt;
+            break;
           }
         }
       }
       
       if (!date) {
-        const dateContainers = el.querySelectorAll("time, [class*='date'], [class*='time'], [class*='ago'], [class*='info'], [class*='meta']");
-        for (let i = 0; i < dateContainers.length && !date; i++) {
-          const container = dateContainers[i];
-          const attrs = ["datetime", "data-date", "data-time", "data-created"];
-          for (let j = 0; j < attrs.length && !date; j++) {
-            const attrVal = container.getAttribute(attrs[j]);
-            if (attrVal && attrVal.length <= 25 && dateRegex.test(attrVal.trim())) {
-              date = attrVal;
-            }
-          }
+        const fullText = el.textContent || "";
+        const relativeMatch = fullText.match(/(\d+)\s*(분|시간|일|주|개월|년)\s*전/);
+        if (relativeMatch) {
+          date = relativeMatch[0];
         }
-      }
-      
-      if (!date) {
-        const prioritySelectors = [
-          ".pui__gfuUIT time",
-          ".pui__blind + span",
-          "[class*='time_'] time",
-          "time",
-          "[class*='date']",
-          "[class*='ago']",
-        ];
-        for (let i = 0; i < prioritySelectors.length && !date; i++) {
-          const dateEl = el.querySelector(prioritySelectors[i]);
-          if (dateEl && dateEl.textContent) {
-            const txt = dateEl.textContent.trim();
-            if (txt.length <= 25 && dateRegex.test(txt)) {
-              date = txt;
-            }
-          }
-        }
-      }
-      
-      if (!date) {
-        const headerArea = el.querySelector("[class*='info'], [class*='meta'], [class*='user']");
-        if (headerArea) {
-          const headerText = headerArea.textContent || "";
-          const relativeMatch = headerText.match(/(\d+)\s*(분|시간|일|주|개월|년)\s*전/);
-          if (relativeMatch && relativeMatch[0].length < 15) {
-            date = relativeMatch[0];
-          }
-          if (!date) {
-            if (headerText.includes("오늘")) date = "오늘";
-            else if (headerText.includes("어제")) date = "어제";
-            else if (headerText.includes("방금")) date = "방금";
-          }
+        if (!date) {
+          if (fullText.includes("오늘")) date = "오늘";
+          else if (fullText.includes("어제")) date = "어제";
+          else if (fullText.includes("방금")) date = "방금";
         }
       }
       
