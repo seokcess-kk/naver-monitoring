@@ -187,15 +187,21 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
     return items;
   });
 
+  console.log(`[PlaceReviewScraper] Extracted ${reviewData.length} raw review items`);
+  
   for (const item of reviewData) {
+    const parsedDate = parseKoreanDate(item.date);
+    console.log(`[PlaceReviewScraper] Date parsing: "${item.date}" -> ${parsedDate ? parsedDate.toISOString().split('T')[0] : 'null'}`);
+    
     reviews.push({
       text: item.text.slice(0, 2000),
-      date: parseKoreanDate(item.date),
+      date: parsedDate,
       author: item.author || undefined,
       rating: item.rating || undefined,
     });
   }
 
+  console.log(`[PlaceReviewScraper] Reviews with valid dates: ${reviews.filter(r => r.date !== null).length}/${reviews.length}`);
   return reviews;
 }
 
@@ -239,13 +245,20 @@ function filterReviews(
 
   if (mode === "DATE" && startDate) {
     const normalizedStartDate = normalizeToLocalDate(startDate);
+    console.log(`[PlaceReviewScraper] DATE mode filter: startDate=${normalizedStartDate.toISOString().split('T')[0]}, total reviews=${filtered.length}`);
+    
     filtered = filtered.filter((r) => {
       if (r.date === null) {
         console.log(`[PlaceReviewScraper] Excluding review with null date`);
         return false;
       }
-      return r.date.getTime() >= normalizedStartDate.getTime();
+      const passes = r.date.getTime() >= normalizedStartDate.getTime();
+      if (!passes) {
+        console.log(`[PlaceReviewScraper] Excluding review dated ${r.date.toISOString().split('T')[0]} (before startDate)`);
+      }
+      return passes;
     });
+    console.log(`[PlaceReviewScraper] After DATE filter: ${filtered.length} reviews remain`);
   }
 
   if (mode === "DATE_RANGE" && startDate && endDate) {
