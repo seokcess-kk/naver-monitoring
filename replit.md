@@ -42,6 +42,12 @@
 - **Performance optimization**: Shared Puppeteer browser instance for OCR/image extraction (recycled after 20 uses)
 - **Selective OCR**: OCR fallback only for blog/cafe/post content types, skipped when API description exists
 - Increased concurrency from 3 to 5, reduced OCR timeouts (15s image extraction, 20s Vision API)
+- **Progress Status Improvements (January 20, 2026):**
+  - Added `statusMessage` field to sovRuns schema for detailed progress tracking
+  - Multi-tier timeout system: 10min global, 30s per-exposure, 20s content embedding, 60s crawling, 30s brand embedding
+  - Real-time progress updates with estimated time remaining: "3/50 분석 완료 (예상 45초 남음)"
+  - Detailed status messages: "크롤링 중", "임베딩 생성 중", "콘텐츠 분석 시작", "결과 집계 중"
+  - UI shows statusMessage in progress card with blue highlight
 
 **Place Review Bug Fixes (January 2026):**
 - Fixed date filtering: `parseKoreanDate()` now returns null on parse failure instead of defaulting to current date

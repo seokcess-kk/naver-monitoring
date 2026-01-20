@@ -23,17 +23,30 @@ interface ScrapeOptions {
 const browserLimit = pLimit(2);
 
 async function launchBrowser(): Promise<Browser> {
-  return puppeteer.launch({
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--no-first-run",
-      "--no-zygote",
-    ],
-  });
+  console.log(`[PlaceReviewScraper] Launching browser...`);
+  console.log(`[PlaceReviewScraper] NODE_ENV: ${process.env.NODE_ENV}`);
+  
+  try {
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--no-first-run",
+        "--no-zygote",
+        "--disable-blink-features=AutomationControlled",
+      ],
+    });
+    
+    const version = await browser.version();
+    console.log(`[PlaceReviewScraper] Browser launched successfully: ${version}`);
+    return browser;
+  } catch (error) {
+    console.error(`[PlaceReviewScraper] Failed to launch browser:`, error);
+    throw error;
+  }
 }
 
 function normalizeToLocalDate(date: Date): Date {
@@ -365,6 +378,8 @@ function filterReviews(
 export async function scrapePlaceReviews(options: ScrapeOptions): Promise<ScrapedReview[]> {
   const { placeId, mode, limitQty, startDate, endDate, onProgress } = options;
 
+  console.log(`[PlaceReviewScraper] scrapePlaceReviews called with mode=${mode}, limitQty=${limitQty}, placeId=${placeId}`);
+
   return browserLimit(async () => {
     let browser: Browser | null = null;
 
@@ -377,8 +392,19 @@ export async function scrapePlaceReviews(options: ScrapeOptions): Promise<Scrape
       await page.setUserAgent(MOBILE_USER_AGENT);
       await page.setViewport({ width: 412, height: 915 });
 
-      await page.goto(reviewUrl, { waitUntil: "networkidle2", timeout: 30000 });
+      console.log(`[PlaceReviewScraper] Navigating to page...`);
+      const response = await page.goto(reviewUrl, { waitUntil: "networkidle2", timeout: 30000 });
+      console.log(`[PlaceReviewScraper] Page loaded - Status: ${response?.status()}, URL: ${page.url()}`);
+      
       await new Promise((resolve) => setTimeout(resolve, 2000));
+      
+      const pageTitle = await page.title();
+      const bodyLength = await page.evaluate(() => document.body?.innerHTML?.length || 0);
+      console.log(`[PlaceReviewScraper] Page title: "${pageTitle}", Body length: ${bodyLength}`);
+      
+      if (bodyLength < 1000) {
+        console.error(`[PlaceReviewScraper] WARNING: Page body is very short (${bodyLength} chars) - may be blocked or empty`);
+      }
 
       const allReviews: ScrapedReview[] = [];
       const seenTexts = new Set<string>();

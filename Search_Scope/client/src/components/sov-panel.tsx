@@ -66,6 +66,7 @@ import {
 interface SovRun {
   id: string;
   status: string;
+  statusMessage?: string | null;
   marketKeyword: string;
   brands: string[];
   totalExposures: string;
@@ -653,6 +654,11 @@ export function SovPanel() {
                 <p className="text-sm text-muted-foreground">
                   {activeRun.marketKeyword} · {getStatusLabel(activeRun.status)}
                 </p>
+                {activeRun.statusMessage && (
+                  <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mt-1">
+                    {activeRun.statusMessage}
+                  </p>
+                )}
               </div>
             </div>
             <div className="max-w-xs mx-auto">

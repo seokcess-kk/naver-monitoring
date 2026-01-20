@@ -349,17 +349,22 @@ export async function getSovResultsByTypeForRun(runId: string): Promise<SovResul
   return db.select().from(sovResultsByType).where(eq(sovResultsByType.runId, runId));
 }
 
+const SOV_RUN_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes max for entire run
+const PER_EXPOSURE_TIMEOUT_MS = 30 * 1000; // 30 seconds per exposure
+
 async function updateRunStatus(
   runId: string,
   status: string,
   totalExposures?: number,
   processedExposures?: number,
-  errorMessage?: string
+  errorMessage?: string,
+  statusMessage?: string
 ) {
   const updates: any = { status };
   if (totalExposures !== undefined) updates.totalExposures = String(totalExposures);
   if (processedExposures !== undefined) updates.processedExposures = String(processedExposures);
   if (errorMessage !== undefined) updates.errorMessage = errorMessage;
+  if (statusMessage !== undefined) updates.statusMessage = statusMessage;
   if (status === "completed" || status === "failed") {
     updates.completedAt = new Date();
   }
@@ -367,7 +372,29 @@ async function updateRunStatus(
   await db.update(sovRuns).set(updates).where(eq(sovRuns.id, runId));
 }
 
+async function executeWithTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  errorMessage: string
+): Promise<T> {
+  let timeoutId: NodeJS.Timeout;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+  });
+  
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    clearTimeout(timeoutId!);
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId!);
+    throw error;
+  }
+}
+
 export async function executeSovRun(runId: string): Promise<void> {
+  const startTime = Date.now();
+  
   try {
     const run = await getSovRun(runId);
     if (!run) {
@@ -375,9 +402,13 @@ export async function executeSovRun(runId: string): Promise<void> {
     }
 
     resetExtractionStats();
-    await updateRunStatus(runId, "crawling");
+    await updateRunStatus(runId, "crawling", undefined, undefined, undefined, "검색 결과 크롤링 중...");
 
-    const smartBlockSections = await crawlNaverSearch(run.marketKeyword);
+    const smartBlockSections = await executeWithTimeout(
+      crawlNaverSearch(run.marketKeyword),
+      60000,
+      "크롤링 타임아웃 (60초)"
+    );
     
     console.log(`[SOV] Crawled ${smartBlockSections.length} sections for keyword: ${run.marketKeyword}`);
     for (const section of smartBlockSections) {
@@ -414,11 +445,11 @@ export async function executeSovRun(runId: string): Promise<void> {
     }
 
     if (flatItems.length === 0) {
-      await updateRunStatus(runId, "completed", 0, 0);
+      await updateRunStatus(runId, "completed", 0, 0, undefined, "분석 완료 (결과 없음)");
       return;
     }
 
-    await updateRunStatus(runId, "extracting", flatItems.length, 0);
+    await updateRunStatus(runId, "extracting", flatItems.length, 0, undefined, `${flatItems.length}개 URL 추출 준비 중...`);
 
     const exposures: SovExposure[] = [];
     for (let i = 0; i < flatItems.length; i++) {
@@ -437,14 +468,20 @@ export async function executeSovRun(runId: string): Promise<void> {
       exposures.push(exposure);
     }
 
-    await updateRunStatus(runId, "analyzing");
+    await updateRunStatus(runId, "analyzing", flatItems.length, 0, undefined, "브랜드 임베딩 생성 중...");
 
     const brandEmbeddings: Map<string, number[]> = new Map();
     for (const brand of run.brands) {
       const brandText = `${brand} 브랜드 회사 기업 제품 서비스`;
-      const embedding = await getEmbedding(brandText);
+      const embedding = await executeWithTimeout(
+        getEmbedding(brandText),
+        30000,
+        `브랜드 임베딩 타임아웃: ${brand}`
+      );
       brandEmbeddings.set(brand, embedding);
     }
+    
+    await updateRunStatus(runId, "analyzing", flatItems.length, 0, undefined, "콘텐츠 분석 시작...");
 
     let processedCount = 0;
     const brandExposureCounts: Map<string, number> = new Map();
@@ -465,7 +502,7 @@ export async function executeSovRun(runId: string): Promise<void> {
 
     const extractionTasks = exposures.map((exposure) =>
       contentExtractionLimit(async () => {
-        try {
+        const processExposure = async (): Promise<void> => {
           const { content, status } = await extractContent(exposure.url, exposure.description || undefined);
 
           let finalContent = content;
@@ -511,7 +548,11 @@ export async function executeSovRun(runId: string): Promise<void> {
             .where(eq(sovExposures.id, exposure.id));
 
           if (finalContent) {
-            const contentEmbedding = await getEmbedding(finalContent);
+            const contentEmbedding = await executeWithTimeout(
+              getEmbedding(finalContent),
+              20000,
+              "콘텐츠 임베딩 타임아웃"
+            );
 
             for (const brand of run.brands) {
               const brandFound = checkBrandMatch(finalContent, brand);
@@ -545,16 +586,42 @@ export async function executeSovRun(runId: string): Promise<void> {
               }
             }
           }
+        };
 
+        try {
+          await executeWithTimeout(
+            processExposure(),
+            PER_EXPOSURE_TIMEOUT_MS,
+            `URL 처리 타임아웃: ${exposure.url.slice(0, 50)}...`
+          );
+          
           processedCount++;
-          await updateRunStatus(runId, "analyzing", flatItems.length, processedCount);
+          const elapsedSec = Math.round((Date.now() - startTime) / 1000);
+          const remainingItems = flatItems.length - processedCount;
+          const avgSecPerItem = processedCount > 0 ? elapsedSec / processedCount : 3;
+          const estimatedRemainingSec = Math.round(remainingItems * avgSecPerItem);
+          
+          const statusMsg = `${processedCount}/${flatItems.length} 분석 완료 (예상 ${estimatedRemainingSec}초 남음)`;
+          await updateRunStatus(runId, "analyzing", flatItems.length, processedCount, undefined, statusMsg);
         } catch (error) {
           console.error(`[SOV] Error processing exposure ${exposure.id}:`, error);
+          processedCount++;
+          await updateRunStatus(runId, "analyzing", flatItems.length, processedCount, undefined, 
+            `${processedCount}/${flatItems.length} 처리 중 (일부 오류 발생)`);
         }
       })
     );
 
-    await Promise.all(extractionTasks);
+    const globalTimeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`전체 분석 타임아웃 (${SOV_RUN_TIMEOUT_MS / 60000}분 초과)`)), SOV_RUN_TIMEOUT_MS);
+    });
+
+    await Promise.race([
+      Promise.all(extractionTasks),
+      globalTimeoutPromise
+    ]);
+
+    await updateRunStatus(runId, "analyzing", exposures.length, exposures.length, undefined, "결과 집계 중...");
 
     const totalExposures = exposures.length;
     for (const brand of run.brands) {
@@ -589,14 +656,17 @@ export async function executeSovRun(runId: string): Promise<void> {
       }
     }
 
+    const totalElapsedSec = Math.round((Date.now() - startTime) / 1000);
     logExtractionSummary();
     await closeSovBrowser();
-    await updateRunStatus(runId, "completed", totalExposures, totalExposures);
+    await updateRunStatus(runId, "completed", totalExposures, totalExposures, undefined, 
+      `분석 완료 (${totalElapsedSec}초 소요)`);
+    console.log(`[SOV] Run ${runId} completed in ${totalElapsedSec}s`);
   } catch (error) {
     console.error("[SOV] Run execution failed:", error);
     logExtractionSummary();
     await closeSovBrowser();
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    await updateRunStatus(runId, "failed", undefined, undefined, errorMessage);
+    await updateRunStatus(runId, "failed", undefined, undefined, errorMessage, `분석 실패: ${errorMessage}`);
   }
 }

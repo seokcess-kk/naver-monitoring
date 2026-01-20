@@ -48,6 +48,7 @@ export const sovRuns = pgTable("sov_runs", {
   marketKeyword: text("market_keyword").notNull(),
   brands: text("brands").array().notNull(),
   status: varchar("status", { length: 20 }).notNull().default("pending"),
+  statusMessage: text("status_message"),
   totalExposures: varchar("total_exposures").default("0"),
   processedExposures: varchar("processed_exposures").default("0"),
   errorMessage: text("error_message"),
