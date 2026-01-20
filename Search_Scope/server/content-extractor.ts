@@ -79,6 +79,17 @@ const CAFE_COMMENT_SELECTORS = [
   ".cmt_list",
   ".u_cbox_list",
   ".u_cbox_text_wrap",
+  ".u_cbox_contents",
+  ".u_cbox_comment_box",
+  ".u_cbox_text",
+  ".comment_text_view",
+  ".cbox_module",
+  "#cbox_module",
+  ".CommentListItem",
+  "[class*='comment']",
+  "[class*='Comment']",
+  ".reply_box",
+  ".reply_text",
 ];
 
 const NEWS_SELECTORS = [
@@ -370,11 +381,11 @@ async function followAdRedirect(url: string): Promise<AdRedirectResult | null> {
   });
 }
 
-async function extractWithSelectors(page: Page, selectors: string[]): Promise<string | null> {
-  return page.evaluate((sels) => {
+async function extractWithSelectors(page: Page, selectors: string[], minLength: number = 100): Promise<string | null> {
+  return page.evaluate((sels, minLen) => {
     for (const selector of sels) {
       const el = document.querySelector(selector);
-      if (el && el.textContent && el.textContent.trim().length > 100) {
+      if (el && el.textContent && el.textContent.trim().length > minLen) {
         return el.textContent.trim();
       }
     }
@@ -383,7 +394,33 @@ async function extractWithSelectors(page: Page, selectors: string[]): Promise<st
     removeElements.forEach((el) => el.remove());
     
     const bodyText = document.body?.innerText || "";
-    return bodyText.length > 100 ? bodyText : null;
+    return bodyText.length > minLen ? bodyText : null;
+  }, selectors, minLength);
+}
+
+async function extractAllComments(page: Page, selectors: string[]): Promise<string | null> {
+  return page.evaluate((sels) => {
+    const allTexts: string[] = [];
+    const seenTexts = new Set<string>();
+    
+    for (const selector of sels) {
+      try {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach((el) => {
+          const text = el.textContent?.trim();
+          if (text && text.length >= 5 && !seenTexts.has(text)) {
+            seenTexts.add(text);
+            allTexts.push(text);
+          }
+        });
+      } catch (e) {
+      }
+    }
+    
+    if (allTexts.length === 0) return null;
+    
+    const combined = allTexts.join(" ");
+    return combined.length > 10 ? combined : null;
   }, selectors);
 }
 
@@ -441,22 +478,22 @@ async function extractCafeContentMobile(url: string): Promise<string | null> {
       await page.goto(mobileUrl, { waitUntil: "networkidle2", timeout: 30000 });
       await delay(2500);
       
-      const articleContent = await extractWithSelectors(page, CAFE_SELECTORS);
-      const commentContent = await extractWithSelectors(page, CAFE_COMMENT_SELECTORS);
+      const articleContent = await extractWithSelectors(page, CAFE_SELECTORS, 20);
+      const commentContent = await extractAllComments(page, CAFE_COMMENT_SELECTORS);
       
       let combinedContent = "";
-      if (articleContent && articleContent.length > 50) {
+      if (articleContent && articleContent.length > 20) {
         combinedContent += articleContent;
       }
-      if (commentContent && commentContent.length > 20) {
+      if (commentContent && commentContent.length > 10) {
         combinedContent += " [댓글] " + commentContent;
         console.log(`[Extractor] Cafe comments found: ${commentContent.length} chars`);
       }
       
-      if (combinedContent.length > 100) {
+      if (combinedContent.length > 20) {
         const cleaned = combinedContent.replace(/\s+/g, " ").trim();
         console.log(`[Extractor] Cafe mobile success: ${cleaned.length} chars (with comments)`);
-        return cleaned.slice(0, 8000);
+        return cleaned.slice(0, 10000);
       }
       
       return null;
@@ -503,22 +540,22 @@ async function extractCafeContentPC(url: string): Promise<string | null> {
         await delay(2000);
       }
       
-      const articleContent = await extractWithSelectors(page, CAFE_SELECTORS);
-      const commentContent = await extractWithSelectors(page, CAFE_COMMENT_SELECTORS);
+      const articleContent = await extractWithSelectors(page, CAFE_SELECTORS, 20);
+      const commentContent = await extractAllComments(page, CAFE_COMMENT_SELECTORS);
       
       let combinedContent = "";
-      if (articleContent && articleContent.length > 50) {
+      if (articleContent && articleContent.length > 20) {
         combinedContent += articleContent;
       }
-      if (commentContent && commentContent.length > 20) {
+      if (commentContent && commentContent.length > 10) {
         combinedContent += " [댓글] " + commentContent;
         console.log(`[Extractor] Cafe PC comments found: ${commentContent.length} chars`);
       }
       
-      if (combinedContent.length > 100) {
+      if (combinedContent.length > 20) {
         const cleaned = combinedContent.replace(/\s+/g, " ").trim();
         console.log(`[Extractor] Cafe PC success: ${cleaned.length} chars (with comments)`);
-        return cleaned.slice(0, 8000);
+        return cleaned.slice(0, 10000);
       }
       
       return null;

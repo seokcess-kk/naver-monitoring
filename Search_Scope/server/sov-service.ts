@@ -214,9 +214,34 @@ function cosineSimilarity(a: number[], b: number[]): number {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
+function normalizeText(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, "").replace(/[^\w\uAC00-\uD7A3]/g, "");
+}
+
+function checkBrandMatch(content: string, brand: string): boolean {
+  const normalizedContent = normalizeText(content);
+  const normalizedBrand = normalizeText(brand);
+  
+  if (normalizedContent.includes(normalizedBrand)) {
+    return true;
+  }
+  
+  const lowerContent = content.toLowerCase();
+  const lowerBrand = brand.toLowerCase();
+  if (lowerContent.includes(lowerBrand)) {
+    return true;
+  }
+  
+  return false;
+}
+
 function calculateRuleScore(content: string, brand: string): number {
   const lowerContent = content.toLowerCase();
   const lowerBrand = brand.toLowerCase();
+  
+  if (checkBrandMatch(content, brand)) {
+    return 1.0;
+  }
   
   const brandWords = lowerBrand.split(/\s+/);
   let matchCount = 0;
@@ -227,14 +252,8 @@ function calculateRuleScore(content: string, brand: string): number {
     }
   }
 
-  const exactMatch = lowerContent.includes(lowerBrand);
   const partialRatio = brandWords.length > 0 ? matchCount / brandWords.length : 0;
-
-  if (exactMatch) {
-    return Math.min(1, 0.8 + partialRatio * 0.2);
-  }
-
-  return partialRatio * 0.6;
+  return partialRatio * 0.8;
 }
 
 async function calculateSemanticScore(
@@ -419,11 +438,10 @@ export async function executeSovRun(runId: string): Promise<void> {
                 metadata.description || "",
               ].filter(Boolean).join(" ");
               
-              if (metadataText.length > 20) {
+              if (metadataText.length > 10) {
                 let hasMatchingBrand = false;
                 for (const brand of run.brands) {
-                  const brandRegex = new RegExp(`\\b${brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
-                  if (brandRegex.test(metadataText)) {
+                  if (checkBrandMatch(metadataText, brand)) {
                     hasMatchingBrand = true;
                     break;
                   }
@@ -452,13 +470,14 @@ export async function executeSovRun(runId: string): Promise<void> {
             const contentEmbedding = await getEmbedding(finalContent);
 
             for (const brand of run.brands) {
-              const ruleScore = calculateRuleScore(finalContent, brand);
+              const brandFound = checkBrandMatch(finalContent, brand);
+              const ruleScore = brandFound ? 1.0 : calculateRuleScore(finalContent, brand);
               const semanticScore = await calculateSemanticScore(
                 contentEmbedding,
                 brandEmbeddings.get(brand)!
               );
               const combinedScore = calculateCombinedScore(ruleScore, semanticScore);
-              const isRelevant = ruleScore >= 0.8 || combinedScore >= RELEVANCE_THRESHOLD;
+              const isRelevant = brandFound || ruleScore >= 0.8 || combinedScore >= RELEVANCE_THRESHOLD;
 
               await db.insert(sovScores).values({
                 exposureId: exposure.id,
