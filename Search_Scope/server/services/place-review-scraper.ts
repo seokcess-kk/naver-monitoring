@@ -48,6 +48,12 @@ function parseKoreanDate(dateStr: string): Date | null {
   const trimmed = dateStr.trim();
   const now = new Date();
   
+  if (trimmed === "오늘" || trimmed === "방금") {
+    return normalizeToLocalDate(now);
+  }
+  if (trimmed === "어제") {
+    return normalizeToLocalDate(new Date(now.getTime() - 24 * 60 * 60 * 1000));
+  }
   if (trimmed.includes("분 전")) {
     const minutes = parseInt(trimmed.replace(/[^0-9]/g, "")) || 0;
     return normalizeToLocalDate(new Date(now.getTime() - minutes * 60 * 1000));
@@ -77,9 +83,19 @@ function parseKoreanDate(dateStr: string): Date | null {
     return normalizeToLocalDate(date);
   }
 
-  const match = trimmed.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
-  if (match) {
-    return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+  const matchYYYY = trimmed.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+  if (matchYYYY) {
+    return new Date(parseInt(matchYYYY[1]), parseInt(matchYYYY[2]) - 1, parseInt(matchYYYY[3]));
+  }
+
+  const matchKorean = trimmed.match(/(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/);
+  if (matchKorean) {
+    return new Date(parseInt(matchKorean[1]), parseInt(matchKorean[2]) - 1, parseInt(matchKorean[3]));
+  }
+
+  const matchKoreanShort = trimmed.match(/(\d{1,2})월\s*(\d{1,2})일/);
+  if (matchKoreanShort) {
+    return new Date(now.getFullYear(), parseInt(matchKoreanShort[1]) - 1, parseInt(matchKoreanShort[2]));
   }
 
   const match2 = trimmed.match(/(\d{1,2})[.\-\/](\d{1,2})/);
@@ -144,18 +160,51 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
 
       const dateSelectors = [
         ".pui__gfuUIT time",
+        ".pui__blind + span",
+        "[class*='time_'] time",
+        "[class*='_date']",
         ".review_date",
         "[class*='date']",
         "time",
         "[class*='time']",
+        "[class*='ago']",
+        "[class*='Date']",
+        "[class*='when']",
       ];
 
       let date = "";
       for (const sel of dateSelectors) {
         const dateEl = el.querySelector(sel);
         if (dateEl && dateEl.textContent) {
-          date = dateEl.textContent.trim();
-          break;
+          const txt = dateEl.textContent.trim();
+          if (txt === "오늘" || txt === "어제" || txt === "방금") {
+            date = txt;
+            break;
+          }
+          if (txt.match(/\d/) && (txt.includes("전") || txt.includes(".") || txt.includes("/") || txt.includes("월") || txt.includes("년"))) {
+            date = txt;
+            break;
+          }
+        }
+      }
+      
+      if (!date) {
+        const headerArea = el.querySelector("[class*='header'], [class*='info'], [class*='meta'], [class*='user']");
+        const searchText = headerArea ? (headerArea.textContent || "") : (el.textContent || "").slice(0, 200);
+        
+        const datePatterns = [
+          /오늘|어제|방금/,
+          /(\d+)\s*(분|시간|일|주|개월|년)\s*전/,
+          /\d{4}년\s*\d{1,2}월\s*\d{1,2}일/,
+          /\d{4}[.\-\/]\d{1,2}[.\-\/]\d{1,2}/,
+          /\d{1,2}월\s*\d{1,2}일/,
+        ];
+        for (const pattern of datePatterns) {
+          const match = searchText.match(pattern);
+          if (match) {
+            date = match[0];
+            break;
+          }
         }
       }
 
