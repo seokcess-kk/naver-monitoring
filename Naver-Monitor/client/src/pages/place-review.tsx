@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { Header } from "@/components/header";
 import { Loader2, Play, Trash2, BarChart3, MessageSquare, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
 
 interface PlaceReviewJob {
@@ -498,17 +499,24 @@ export default function PlaceReviewPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-8 px-4">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">플레이스 리뷰 분석</h1>
-            <p className="text-muted-foreground">네이버 플레이스 리뷰를 수집하고 AI로 감정을 분석합니다</p>
+      <Header />
+      <main className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
+        <div className="space-y-6 md:space-y-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-primary/10">
+                <MessageSquare className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold">플레이스 리뷰 분석</h1>
+                <p className="text-sm text-muted-foreground">네이버 플레이스 리뷰를 수집하고 AI로 감정을 분석합니다</p>
+              </div>
+            </div>
+            <Button variant="outline" onClick={() => refetch()}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              새로고침
+            </Button>
           </div>
-          <Button variant="outline" onClick={() => refetch()}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            새로고침
-          </Button>
-        </div>
 
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="space-y-6">
@@ -543,7 +551,8 @@ export default function PlaceReviewPage() {
             )}
           </div>
         </div>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

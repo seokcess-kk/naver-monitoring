@@ -36,6 +36,14 @@ Preferred communication style: Simple, everyday language.
 - **UI Components:** shadcn/ui component library with Radix UI primitives
 - **Styling:** Tailwind CSS with custom design tokens (CSS variables for theming)
 - **Build Tool:** Vite with path aliases (@/, @shared/, @assets/)
+- **Navigation:** Header with 3 main tabs (통합검색, SOV 분석, 플레이스 리뷰) + mobile sheet menu
+
+### Page Routes (Authenticated)
+- `/` - 통합검색 (Dashboard with search panel and results)
+- `/sov` - SOV 분석 (Share of Voice analysis page)
+- `/place-review` - 플레이스 리뷰 분석 (Place review sentiment analysis)
+- `/profile` - 사용자 프로필 및 설정
+- `/admin` - 관리자 콘솔 (admin/superadmin only)
 
 ### Backend Architecture
 - **Runtime:** Node.js with Express
