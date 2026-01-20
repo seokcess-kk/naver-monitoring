@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SearchScope Logo Variations</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&family=Inter:wght@600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #F8FAFC;
+            gap: 60px; /* 각 제안 사이 간격 */
+        }
+        .logo-container {
+            display: flex;
+            align-items: center; /* 수평 중앙 정렬 */
+            gap: 16px; /* 심볼과 텍스트 사이 간격 */
+            padding: 24px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        /* 심볼 크기 조정 (뷰박스 유지) */
+        .logo-symbol {
+            width: 48px;
+            height: 48px;
+        }
+
+        /* 제안 A 스타일 */
+        .text-logo-a {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 32px;
+            line-height: 1;
+        }
+        .text-a-search {
+            color: #1D4ED8; /* Deep Blue */
+            font-weight: 500; /* Medium */
+        }
+        .text-a-scope {
+            color: #22D3EE; /* Mint */
+            font-weight: 700; /* Bold */
+        }
+
+        /* 제안 B 스타일 */
+        .text-logo-b {
+            font-family: 'Inter', sans-serif;
+            font-size: 32px;
+            font-weight: 600; /* Semi-Bold */
+            color: #1D4ED8; /* Deep Blue 단일색 */
+            letter-spacing: -0.02em; /* 약간 자간 좁힘 */
+        }
+    </style>
+</head>
+<body>
+	<div class="logo-container">
+        <svg class="logo-symbol" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="224" cy="224" r="120" stroke="#1D4ED8" stroke-width="24" />
+            <circle cx="224" cy="224" r="72" stroke="#22D3EE" stroke-width="16" />
+            <path d="M318 318L408 408" stroke="#1D4ED8" stroke-width="28" stroke-linecap="round" />
+            <path d="M344 92C396 122 432 176 432 240" stroke="#22D3EE" stroke-width="16" stroke-linecap="round" />
+        </svg>
+        <div class="text-logo-b">
+            SEARCH Scope
+        </div>
+    </div>
+</body>
+</html>
