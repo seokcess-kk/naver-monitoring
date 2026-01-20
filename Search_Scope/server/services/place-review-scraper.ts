@@ -6,7 +6,7 @@ const MOBILE_USER_AGENT =
 
 interface ScrapedReview {
   text: string;
-  date: Date;
+  date: Date | null;
   author?: string;
   rating?: string;
 }
@@ -36,49 +36,59 @@ async function launchBrowser(): Promise<Browser> {
   });
 }
 
-function parseKoreanDate(dateStr: string): Date {
+function normalizeToLocalDate(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function parseKoreanDate(dateStr: string): Date | null {
+  if (!dateStr || dateStr.trim().length === 0) {
+    return null;
+  }
+  
+  const trimmed = dateStr.trim();
   const now = new Date();
   
-  if (dateStr.includes("분 전")) {
-    const minutes = parseInt(dateStr.replace(/[^0-9]/g, "")) || 0;
-    return new Date(now.getTime() - minutes * 60 * 1000);
+  if (trimmed.includes("분 전")) {
+    const minutes = parseInt(trimmed.replace(/[^0-9]/g, "")) || 0;
+    return normalizeToLocalDate(new Date(now.getTime() - minutes * 60 * 1000));
   }
-  if (dateStr.includes("시간 전")) {
-    const hours = parseInt(dateStr.replace(/[^0-9]/g, "")) || 0;
-    return new Date(now.getTime() - hours * 60 * 60 * 1000);
+  if (trimmed.includes("시간 전")) {
+    const hours = parseInt(trimmed.replace(/[^0-9]/g, "")) || 0;
+    return normalizeToLocalDate(new Date(now.getTime() - hours * 60 * 60 * 1000));
   }
-  if (dateStr.includes("일 전")) {
-    const days = parseInt(dateStr.replace(/[^0-9]/g, "")) || 0;
-    return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  if (trimmed.includes("일 전")) {
+    const days = parseInt(trimmed.replace(/[^0-9]/g, "")) || 0;
+    return normalizeToLocalDate(new Date(now.getTime() - days * 24 * 60 * 60 * 1000));
   }
-  if (dateStr.includes("주 전")) {
-    const weeks = parseInt(dateStr.replace(/[^0-9]/g, "")) || 0;
-    return new Date(now.getTime() - weeks * 7 * 24 * 60 * 60 * 1000);
+  if (trimmed.includes("주 전")) {
+    const weeks = parseInt(trimmed.replace(/[^0-9]/g, "")) || 0;
+    return normalizeToLocalDate(new Date(now.getTime() - weeks * 7 * 24 * 60 * 60 * 1000));
   }
-  if (dateStr.includes("개월 전")) {
-    const months = parseInt(dateStr.replace(/[^0-9]/g, "")) || 0;
+  if (trimmed.includes("개월 전")) {
+    const months = parseInt(trimmed.replace(/[^0-9]/g, "")) || 0;
     const date = new Date(now);
     date.setMonth(date.getMonth() - months);
-    return date;
+    return normalizeToLocalDate(date);
   }
-  if (dateStr.includes("년 전")) {
-    const years = parseInt(dateStr.replace(/[^0-9]/g, "")) || 0;
+  if (trimmed.includes("년 전")) {
+    const years = parseInt(trimmed.replace(/[^0-9]/g, "")) || 0;
     const date = new Date(now);
     date.setFullYear(date.getFullYear() - years);
-    return date;
+    return normalizeToLocalDate(date);
   }
 
-  const match = dateStr.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+  const match = trimmed.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
   if (match) {
     return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
   }
 
-  const match2 = dateStr.match(/(\d{1,2})[.\-\/](\d{1,2})/);
+  const match2 = trimmed.match(/(\d{1,2})[.\-\/](\d{1,2})/);
   if (match2) {
     return new Date(now.getFullYear(), parseInt(match2[1]) - 1, parseInt(match2[2]));
   }
 
-  return now;
+  console.log(`[PlaceReviewScraper] Failed to parse date: "${trimmed}"`);
+  return null;
 }
 
 async function extractReviews(page: Page): Promise<ScrapedReview[]> {
@@ -200,10 +210,17 @@ function shouldStopScraping(
   }
 
   if ((mode === "DATE" || mode === "DATE_RANGE") && startDate && reviews.length > 0) {
-    const oldestReview = reviews.reduce((oldest, review) =>
-      review.date < oldest.date ? review : oldest
+    const reviewsWithDates = reviews.filter((r) => r.date !== null);
+    if (reviewsWithDates.length === 0) {
+      return false;
+    }
+    
+    const normalizedStartDate = normalizeToLocalDate(startDate);
+    const oldestReview = reviewsWithDates.reduce((oldest, review) =>
+      review.date!.getTime() < oldest.date!.getTime() ? review : oldest
     );
-    if (oldestReview.date < startDate) {
+    
+    if (oldestReview.date!.getTime() < normalizedStartDate.getTime()) {
       return true;
     }
   }
@@ -221,11 +238,24 @@ function filterReviews(
   let filtered = [...reviews];
 
   if (mode === "DATE" && startDate) {
-    filtered = filtered.filter((r) => r.date >= startDate);
+    const normalizedStartDate = normalizeToLocalDate(startDate);
+    filtered = filtered.filter((r) => {
+      if (r.date === null) {
+        console.log(`[PlaceReviewScraper] Excluding review with null date`);
+        return false;
+      }
+      return r.date.getTime() >= normalizedStartDate.getTime();
+    });
   }
 
   if (mode === "DATE_RANGE" && startDate && endDate) {
-    filtered = filtered.filter((r) => r.date >= startDate && r.date <= endDate);
+    const normalizedStartDate = normalizeToLocalDate(startDate);
+    const normalizedEndDate = normalizeToLocalDate(endDate);
+    filtered = filtered.filter((r) => {
+      if (r.date === null) return false;
+      return r.date.getTime() >= normalizedStartDate.getTime() && 
+             r.date.getTime() <= normalizedEndDate.getTime();
+    });
   }
 
   if (mode === "QTY" && limitQty) {

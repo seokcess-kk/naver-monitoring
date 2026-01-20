@@ -12,7 +12,7 @@ import {
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { crawlNaverSearch } from "./crawler";
-import puppeteer from "puppeteer";
+import puppeteer, { Browser, Page } from "puppeteer";
 import pLimit from "p-limit";
 import { 
   extractContent as extractContentNew, 
@@ -28,7 +28,7 @@ const RELEVANCE_THRESHOLD = 0.72;
 const RULE_WEIGHT = 0.4;
 const SEMANTIC_WEIGHT = 0.6;
 
-const contentExtractionLimit = pLimit(3);
+const contentExtractionLimit = pLimit(5);
 
 interface FlatSmartBlockItem {
   blockType: string;
@@ -37,7 +37,42 @@ interface FlatSmartBlockItem {
   description: string;
 }
 
+let sharedBrowser: Browser | null = null;
+let browserUseCount = 0;
+const MAX_BROWSER_USES = 20;
 
+async function getSharedBrowser(): Promise<Browser> {
+  if (!sharedBrowser || browserUseCount >= MAX_BROWSER_USES) {
+    if (sharedBrowser) {
+      try {
+        await sharedBrowser.close();
+      } catch (e) {
+        console.log("[SOV] Failed to close old browser:", e);
+      }
+    }
+    sharedBrowser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+    });
+    browserUseCount = 0;
+    console.log("[SOV] New shared browser instance created");
+  }
+  browserUseCount++;
+  return sharedBrowser;
+}
+
+export async function closeSovBrowser(): Promise<void> {
+  if (sharedBrowser) {
+    try {
+      await sharedBrowser.close();
+      sharedBrowser = null;
+      browserUseCount = 0;
+      console.log("[SOV] Shared browser closed");
+    } catch (e) {
+      console.log("[SOV] Error closing shared browser:", e);
+    }
+  }
+}
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
   return Promise.race([
@@ -47,19 +82,16 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: 
 }
 
 async function extractImagesFromPage(url: string): Promise<string[]> {
-  let browser = null;
+  let page: Page | null = null;
   try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    });
-
-    const page = await browser.newPage();
+    const browser = await getSharedBrowser();
+    page = await browser.newPage();
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     );
     
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 20000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
+    await new Promise(r => setTimeout(r, 1000));
 
     const imageUrls = await page.evaluate(() => {
       const contentSelectors = [
@@ -99,7 +131,7 @@ async function extractImagesFromPage(url: string): Promise<string[]> {
         }
       });
       
-      return urls.slice(0, 5);
+      return urls.slice(0, 3);
     });
 
     console.log(`[SOV] Extracted ${imageUrls.length} images from: ${url}`);
@@ -108,8 +140,10 @@ async function extractImagesFromPage(url: string): Promise<string[]> {
     console.error("[SOV] Image extraction failed:", error);
     return [];
   } finally {
-    if (browser) {
-      await browser.close();
+    if (page) {
+      try {
+        await page.close();
+      } catch (e) {}
     }
   }
 }
@@ -160,6 +194,8 @@ async function extractTextFromImages(imageUrls: string[]): Promise<string | null
   }
 }
 
+const OCR_ELIGIBLE_TYPES = ["blog", "cafe", "post"];
+
 async function extractContent(
   url: string, 
   apiDescription?: string
@@ -171,17 +207,25 @@ async function extractContent(
   }
   
   if (result.status === "failed") {
-    console.log(`[SOV] Text extraction failed, trying image OCR for: ${url}`);
-    const imageUrls = await withTimeout(extractImagesFromPage(url), 25000, []);
-    if (imageUrls.length > 0) {
-      const imageText = await withTimeout(extractTextFromImages(imageUrls), 30000, null);
-      if (imageText) {
-        return { content: imageText, status: "success_ocr", urlType: result.urlType };
+    const isOcrEligible = OCR_ELIGIBLE_TYPES.some(type => 
+      result.urlType.toLowerCase().includes(type) || url.includes(type)
+    );
+    
+    if (isOcrEligible && (!apiDescription || apiDescription.length < 50)) {
+      console.log(`[SOV] Text extraction failed, trying image OCR for: ${url}`);
+      const imageUrls = await withTimeout(extractImagesFromPage(url), 15000, []);
+      if (imageUrls.length > 0) {
+        const imageText = await withTimeout(extractTextFromImages(imageUrls), 20000, null);
+        if (imageText) {
+          return { content: imageText, status: "success_ocr", urlType: result.urlType };
+        }
       }
+    } else {
+      console.log(`[SOV] Skipping OCR for ${result.urlType} (not eligible or has description)`);
     }
     
     if (apiDescription && apiDescription.length > 30) {
-      console.log(`[SOV] All extraction failed, using API description fallback: ${apiDescription.length} chars`);
+      console.log(`[SOV] Using API description fallback: ${apiDescription.length} chars`);
       return { content: apiDescription, status: "success_api", urlType: result.urlType };
     }
   }
@@ -546,10 +590,12 @@ export async function executeSovRun(runId: string): Promise<void> {
     }
 
     logExtractionSummary();
+    await closeSovBrowser();
     await updateRunStatus(runId, "completed", totalExposures, totalExposures);
   } catch (error) {
     console.error("[SOV] Run execution failed:", error);
     logExtractionSummary();
+    await closeSovBrowser();
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     await updateRunStatus(runId, "failed", undefined, undefined, errorMessage);
   }

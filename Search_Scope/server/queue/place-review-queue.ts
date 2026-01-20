@@ -80,7 +80,7 @@ async function processPlaceReviewJob(job: Job<PlaceReviewJobData>): Promise<void
       const [insertedReview] = await db.insert(placeReviews).values({
         jobId,
         reviewText: review.text,
-        reviewDate: review.date,
+        reviewDate: review.date ?? new Date(),
         authorName: review.author || null,
         rating: review.rating || null,
       }).returning();
