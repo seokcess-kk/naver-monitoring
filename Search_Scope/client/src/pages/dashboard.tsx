@@ -355,14 +355,7 @@ export default function Dashboard() {
       <Header />
       <main className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
         <div className="space-y-6 md:space-y-8">
-          <ApiKeySetup 
-            existingApiKey={apiKey} 
-            onSave={() => refetchApiKey()}
-            isOpen={apiKeySetupOpen}
-            onOpenChange={setApiKeySetupOpen}
-          />
-
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-primary/10">
               <Search className="w-6 h-6 text-primary" />
             </div>
@@ -371,6 +364,13 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">네이버 검색 결과를 한눈에 확인하세요</p>
             </div>
           </div>
+
+          <ApiKeySetup 
+            existingApiKey={apiKey} 
+            onSave={() => refetchApiKey()}
+            isOpen={apiKeySetupOpen}
+            onOpenChange={setApiKeySetupOpen}
+          />
 
           <div className="space-y-4 md:space-y-8">
             <SearchPanel 
