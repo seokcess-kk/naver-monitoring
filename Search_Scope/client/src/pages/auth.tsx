@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Layers, Mail, Lock, AlertCircle, CheckCircle } from "lucide-react";
+import { Mail, Lock, AlertCircle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 async function loginRequest(data: { email: string; password: string }) {
@@ -200,10 +200,19 @@ export default function AuthPage() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-                <Layers className="w-7 h-7 text-primary-foreground" />
+              <svg className="w-10 h-10" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="224" cy="224" r="120" stroke="#1D4ED8" strokeWidth="24" />
+                <circle cx="224" cy="224" r="72" stroke="#22D3EE" strokeWidth="16" />
+                <path d="M318 318L408 408" stroke="#1D4ED8" strokeWidth="28" strokeLinecap="round" />
+                <path d="M344 92C396 122 432 176 432 240" stroke="#22D3EE" strokeWidth="16" strokeLinecap="round" />
+              </svg>
+              <div className="flex flex-col items-start">
+                <span className="text-2xl font-bold" style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.02em' }}>
+                  <span style={{ color: '#1D4ED8' }}>Search</span>
+                  <span style={{ color: '#22D3EE' }}>Brand</span>
+                </span>
+                <span className="text-xs text-muted-foreground -mt-0.5">powered by Glitzy</span>
               </div>
-              <span className="text-2xl font-bold">SEARCH SCOPE</span>
             </div>
           </div>
 
@@ -275,10 +284,19 @@ export default function AuthPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-              <Layers className="w-7 h-7 text-primary-foreground" />
+            <svg className="w-10 h-10" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="224" cy="224" r="120" stroke="#1D4ED8" strokeWidth="24" />
+              <circle cx="224" cy="224" r="72" stroke="#22D3EE" strokeWidth="16" />
+              <path d="M318 318L408 408" stroke="#1D4ED8" strokeWidth="28" strokeLinecap="round" />
+              <path d="M344 92C396 122 432 176 432 240" stroke="#22D3EE" strokeWidth="16" strokeLinecap="round" />
+            </svg>
+            <div className="flex flex-col items-start">
+              <span className="text-2xl font-bold" style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.02em' }}>
+                <span style={{ color: '#1D4ED8' }}>Search</span>
+                <span style={{ color: '#22D3EE' }}>Brand</span>
+              </span>
+              <span className="text-xs text-muted-foreground -mt-0.5">powered by Glitzy</span>
             </div>
-            <span className="text-2xl font-bold">SEARCH SCOPE</span>
           </div>
           <p className="text-muted-foreground">
             네이버 검색 결과를 한눈에 파악하세요

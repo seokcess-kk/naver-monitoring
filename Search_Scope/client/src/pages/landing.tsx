@@ -8,13 +8,11 @@ import {
   Globe,
   ArrowRight,
   PieChart,
-  History,
   Key,
   Mail,
   Lock,
   ChevronDown,
   CheckCircle2,
-  Layers,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -60,7 +58,13 @@ export default function LandingPage() {
               <path d="M318 318L408 408" stroke="#1D4ED8" strokeWidth="28" strokeLinecap="round" />
               <path d="M344 92C396 122 432 176 432 240" stroke="#22D3EE" strokeWidth="16" strokeLinecap="round" />
             </svg>
-            <span className="text-base md:text-lg font-semibold" style={{ fontFamily: "'Inter', sans-serif", color: '#1D4ED8', letterSpacing: '-0.02em' }}>SEARCH Scope</span>
+            <div className="flex flex-col">
+              <span className="text-base md:text-lg font-semibold" style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.02em' }}>
+                <span style={{ color: '#1D4ED8' }}>Search</span>
+                <span style={{ color: '#22D3EE' }}>Brand</span>
+              </span>
+              <span className="text-[9px] md:text-[10px] text-muted-foreground -mt-0.5" style={{ fontFamily: "'Inter', sans-serif" }}>powered by Glitzy</span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -246,7 +250,7 @@ export default function LandingPage() {
               <Card className="hover-lift animate-fade-in-up-delay-2">
                 <CardContent className="p-5 md:p-6 text-center">
                   <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-chart-2/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
-                    <Layers className="w-6 h-6 md:w-7 md:h-7 text-chart-2" />
+                    <Globe className="w-6 h-6 md:w-7 md:h-7 text-chart-2" />
                   </div>
                   <h3 className="text-base md:text-lg font-semibold mb-2">
                     스마트블록 크롤링
@@ -278,16 +282,16 @@ export default function LandingPage() {
               <Card className="hover-lift animate-fade-in-up-delay-4">
                 <CardContent className="p-5 md:p-6 text-center">
                   <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-destructive/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
-                    <History className="w-6 h-6 md:w-7 md:h-7 text-destructive" />
+                    <BarChart3 className="w-6 h-6 md:w-7 md:h-7 text-destructive" />
                   </div>
                   <h3 className="text-base md:text-lg font-semibold mb-2">
-                    분석 히스토리
+                    플레이스 리뷰 분석
                   </h3>
                   <p className="text-xs md:text-sm text-muted-foreground">
-                    SOV 분석 결과 저장 및
+                    네이버 플레이스 리뷰를
                   </p>
                   <p className="text-xs md:text-sm text-muted-foreground">
-                    이전 분석 다시 보기
+                    AI가 감정·키워드 분석
                   </p>
                 </CardContent>
               </Card>
@@ -486,7 +490,7 @@ export default function LandingPage() {
 
       <footer className="py-6 md:py-8 border-t">
         <div className="container mx-auto px-4 text-center text-xs md:text-sm text-muted-foreground">
-          © 2026 SEARCH SCOPE. All rights reserved.
+          © 2026 SearchBrand. All rights reserved.
         </div>
       </footer>
     </div>
