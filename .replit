@@ -1,7 +1,7 @@
 modules = ["nodejs-20", "python-3.11", "postgresql-16"]
 [nix]
 channel = "stable-25_05"
-packages = ["unzip", "glib", "nss", "nspr", "at-spi2-atk", "cups", "dbus", "libdrm", "expat", "xorg.libxcb", "xorg.libX11", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXext", "xorg.libXfixes", "xorg.libXrandr", "libxkbcommon", "pango", "cairo", "alsa-lib", "mesa", "gtk3", "libgbm"]
+packages = ["unzip", "glib", "nss", "nspr", "at-spi2-atk", "cups", "dbus", "libdrm", "expat", "xorg.libxcb", "xorg.libX11", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXext", "xorg.libXfixes", "xorg.libXrandr", "libxkbcommon", "pango", "cairo", "alsa-lib", "mesa", "gtk3", "libgbm", "redis"]
 
 [agent]
 expertMode = true
@@ -23,13 +23,13 @@ args = "Naver Monitor"
 name = "Naver Monitor"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd Naver-Monitor && npm run dev"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "redis-server --daemonize yes && cd Naver-Monitor && npm run dev"
+waitForPort = 5000
 
 [[ports]]
 localPort = 3001
@@ -38,6 +38,10 @@ externalPort = 3001
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 6379
+externalPort = 3000
 
 [deployment]
 deploymentTarget = "vm"

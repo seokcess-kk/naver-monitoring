@@ -17,6 +17,7 @@ import {
   toApiKeyPublic 
 } from "./utils/request-helpers";
 import adminRoutes from "./admin-routes";
+import placeReviewRoutes, { initPlaceReviewWorker } from "./place-review-routes";
 
 const searchLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -69,6 +70,13 @@ export async function registerRoutes(
   registerAuthRoutes(app);
 
   app.use("/api/admin", isAuthenticated, attachUserToRequest, adminRoutes);
+  app.use("/api/place-review", placeReviewRoutes);
+
+  try {
+    initPlaceReviewWorker();
+  } catch (error) {
+    console.log("[PlaceReview] Worker not started (Redis may not be running):", error);
+  }
 
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });

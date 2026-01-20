@@ -268,3 +268,83 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 // User role types
 export type UserRole = "user" | "admin" | "superadmin";
 export type UserStatus = "active" | "suspended" | "pending";
+
+// Place Review Analysis 테이블
+export const placeReviewJobs = pgTable("place_review_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  placeId: varchar("place_id", { length: 50 }).notNull(),
+  placeName: text("place_name"),
+  mode: varchar("mode", { length: 20 }).notNull().default("QTY"),
+  limitQty: varchar("limit_qty"),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  status: varchar("status", { length: 20 }).notNull().default("queued"),
+  progress: varchar("progress").default("0"),
+  totalReviews: varchar("total_reviews").default("0"),
+  analyzedReviews: varchar("analyzed_reviews").default("0"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("idx_place_review_jobs_user_id").on(table.userId),
+  index("idx_place_review_jobs_status").on(table.status),
+  index("idx_place_review_jobs_place_id").on(table.placeId),
+]);
+
+export const placeReviews = pgTable("place_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => placeReviewJobs.id, { onDelete: "cascade" }),
+  reviewText: text("review_text").notNull(),
+  reviewDate: timestamp("review_date").notNull(),
+  authorName: text("author_name"),
+  rating: varchar("rating", { length: 10 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_place_reviews_job_id").on(table.jobId),
+  index("idx_place_reviews_review_date").on(table.reviewDate),
+]);
+
+export const placeReviewAnalyses = pgTable("place_review_analyses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reviewId: varchar("review_id").notNull().references(() => placeReviews.id, { onDelete: "cascade" }),
+  sentiment: varchar("sentiment", { length: 20 }).notNull(),
+  aspects: text("aspects").notNull().default("[]"),
+  keywords: text("keywords").notNull().default("[]"),
+  summary: text("summary"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_place_review_analyses_review_id").on(table.reviewId),
+  index("idx_place_review_analyses_sentiment").on(table.sentiment),
+]);
+
+export const insertPlaceReviewJobSchema = createInsertSchema(placeReviewJobs).omit({
+  id: true,
+  placeName: true,
+  status: true,
+  progress: true,
+  totalReviews: true,
+  analyzedReviews: true,
+  errorMessage: true,
+  createdAt: true,
+  completedAt: true,
+});
+
+export const insertPlaceReviewSchema = createInsertSchema(placeReviews).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPlaceReviewAnalysisSchema = createInsertSchema(placeReviewAnalyses).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPlaceReviewJob = z.infer<typeof insertPlaceReviewJobSchema>;
+export type PlaceReviewJob = typeof placeReviewJobs.$inferSelect;
+export type InsertPlaceReview = z.infer<typeof insertPlaceReviewSchema>;
+export type PlaceReview = typeof placeReviews.$inferSelect;
+export type InsertPlaceReviewAnalysis = z.infer<typeof insertPlaceReviewAnalysisSchema>;
+export type PlaceReviewAnalysis = typeof placeReviewAnalyses.$inferSelect;
+
+export type PlaceReviewMode = "QTY" | "DATE" | "DATE_RANGE";

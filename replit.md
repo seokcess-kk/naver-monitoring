@@ -20,6 +20,8 @@
 - Reusable EmptyState component for consistent empty/error/not-configured states
 - **Admin Console** with role-based access control (user/admin/superadmin)
 - Admin features: user management, SOV run/search log monitoring, API key management, audit logging
+- **Place Review Analysis** with Redis/BullMQ for background job processing
+- Place review sentiment analysis using OpenAI GPT-4o-mini (aspect extraction, keywords, summary)
 
 ## User Preferences
 
@@ -46,7 +48,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 - **Database:** PostgreSQL via Drizzle ORM
 - **Schema Location:** `shared/schema.ts` (shared between client/server)
-- **Key Tables:** users, sessions, api_keys, verification_tokens, sov_runs, sov_exposures, sov_scores, sov_results, sov_templates, search_logs, solutions, user_solutions, audit_logs
+- **Key Tables:** users, sessions, api_keys, verification_tokens, sov_runs, sov_exposures, sov_scores, sov_results, sov_templates, search_logs, solutions, user_solutions, audit_logs, place_review_jobs, place_reviews, place_review_analyses
 - **Migrations:** Drizzle Kit (`npm run db:push`)
 
 ### Authentication
@@ -76,6 +78,13 @@ Preferred communication style: Simple, everyday language.
 - `/api/search` - Unified Naver search (4 channels + SmartBlock)
 - `/api/search/channel` - Individual channel pagination
 - `/api/sov/*` - Share of Voice analysis runs and results
+- `/api/place-review/*` - Place Review Analysis endpoints:
+  - `POST /api/place-review/jobs` - Create new analysis job
+  - `GET /api/place-review/jobs` - List user's jobs
+  - `GET /api/place-review/jobs/:id` - Get job status
+  - `GET /api/place-review/jobs/:id/reviews` - Get analyzed reviews
+  - `GET /api/place-review/jobs/:id/stats` - Get sentiment/aspect statistics
+  - `DELETE /api/place-review/jobs/:id` - Delete job
 
 ### Caching Strategy
 - Naver API responses: LRU cache with 3-minute TTL
