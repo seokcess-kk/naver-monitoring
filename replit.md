@@ -39,6 +39,16 @@
 - Simplified relevance logic: if brand appears once in content, it's relevant (no score threshold required)
 - Lowered minimum text length from 100 to 20 characters for cafe/short content
 - Metadata fallback uses same Korean-friendly matching for consistent detection
+- **Performance optimization**: Shared Puppeteer browser instance for OCR/image extraction (recycled after 20 uses)
+- **Selective OCR**: OCR fallback only for blog/cafe/post content types, skipped when API description exists
+- Increased concurrency from 3 to 5, reduced OCR timeouts (15s image extraction, 20s Vision API)
+
+**Place Review Bug Fixes (January 2026):**
+- Fixed date filtering: `parseKoreanDate()` now returns null on parse failure instead of defaulting to current date
+- Added `normalizeToLocalDate()` helper to strip time component for consistent date comparisons
+- `filterReviews()` excludes reviews with null dates and uses normalized date comparison
+- `shouldStopScraping()` ignores null-date reviews when determining oldest review for stop condition
+- Resolves issue where DATE mode collected all reviews regardless of startDate setting
 
 ## User Preferences
 
