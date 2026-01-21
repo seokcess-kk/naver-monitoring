@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "deploy:build": "npm run deploy:build --prefix Search_Scope",
-    "deploy:start": "npm run deploy:start --prefix Search_Scope",
-    "build": "cd Search_Scope && npm run db:push && npm run build",
-    "start": "cd Search_Scope && npm run start",
+    "deploy:build": "npm run deploy:build --prefix SearchBrand",
+    "deploy:start": "npm run deploy:start --prefix SearchBrand",
+    "build": "cd SearchBrand && npm run db:push && npm run build",
+    "start": "cd SearchBrand && npm run start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
