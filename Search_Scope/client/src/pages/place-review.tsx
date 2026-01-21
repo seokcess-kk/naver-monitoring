@@ -521,7 +521,12 @@ function JobList({
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="font-medium">{job.placeId}</span>
+                <div className="flex flex-col">
+                  <span className="font-medium">{job.placeName || job.placeId}</span>
+                  {job.placeName && (
+                    <span className="text-xs text-muted-foreground">{job.placeId}</span>
+                  )}
+                </div>
                 <StatusBadge status={job.status} />
               </div>
               <div className="flex items-center gap-1">
@@ -705,6 +710,17 @@ function JobResults({ jobId }: { jobId: string }) {
 
   return (
     <div className="space-y-6">
+      {stats?.job && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold">{stats.job.placeName || stats.job.placeId}</h2>
+            {stats.job.placeName && (
+              <p className="text-sm text-muted-foreground">플레이스 ID: {stats.job.placeId}</p>
+            )}
+          </div>
+          <StatusBadge status={stats.job.status} />
+        </div>
+      )}
       <div className="grid gap-4 md:grid-cols-3">
         <Card 
           className={`cursor-pointer transition-all hover:shadow-md ${sentimentFilter === "Positive" ? "ring-2 ring-green-500" : ""}`}

@@ -78,7 +78,7 @@ async function processPlaceReviewJob(job: Job<PlaceReviewJobData>): Promise<void
       .set({ statusMessage: "네이버 플레이스 페이지 접속 중..." })
       .where(eq(placeReviewJobs.id, jobId));
 
-    const reviews = await scrapePlaceReviews({
+    const scrapeResult = await scrapePlaceReviews({
       placeId,
       mode,
       limitQty,
@@ -94,7 +94,14 @@ async function processPlaceReviewJob(job: Job<PlaceReviewJobData>): Promise<void
       },
     });
 
-    console.log(`[PlaceReviewWorker] Scraped ${reviews.length} reviews`);
+    const { placeName, reviews } = scrapeResult;
+    console.log(`[PlaceReviewWorker] Scraped ${reviews.length} reviews, placeName: "${placeName}"`);
+
+    if (placeName) {
+      await db.update(placeReviewJobs)
+        .set({ placeName })
+        .where(eq(placeReviewJobs.id, jobId));
+    }
 
     if (reviews.length === 0) {
       await db.update(placeReviewJobs)

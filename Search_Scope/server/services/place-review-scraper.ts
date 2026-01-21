@@ -11,6 +11,11 @@ interface ScrapedReview {
   rating?: string;
 }
 
+interface ScrapeResult {
+  placeName: string | null;
+  reviews: ScrapedReview[];
+}
+
 interface ScrapeOptions {
   placeId: string;
   mode: "QTY" | "DATE" | "DATE_RANGE";
@@ -461,7 +466,45 @@ function filterReviews(
   return filtered;
 }
 
-export async function scrapePlaceReviews(options: ScrapeOptions): Promise<ScrapedReview[]> {
+async function extractPlaceName(page: Page): Promise<string | null> {
+  const placeName = await page.evaluate(() => {
+    const nameSelectors = [
+      ".GHAhO",
+      ".Fc1rA",
+      "h1[class*='place_name']",
+      "h1.name",
+      ".place_name",
+      ".tit_location",
+      "[class*='PlaceName']",
+      "header h1",
+      ".biz_name",
+    ];
+
+    for (const selector of nameSelectors) {
+      const el = document.querySelector(selector);
+      if (el && el.textContent) {
+        const text = el.textContent.trim();
+        if (text.length > 0 && text.length < 100) {
+          return text;
+        }
+      }
+    }
+
+    const pageTitle = document.title;
+    if (pageTitle) {
+      const match = pageTitle.match(/^(.+?)(?:\s*[:：\-|]|\s*리뷰|\s*-\s*네이버)/);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    }
+
+    return null;
+  });
+
+  return placeName;
+}
+
+export async function scrapePlaceReviews(options: ScrapeOptions): Promise<ScrapeResult> {
   const { placeId, mode, limitQty, startDate, endDate, onProgress } = options;
 
   console.log(`[PlaceReviewScraper] scrapePlaceReviews called with mode=${mode}, limitQty=${limitQty}, placeId=${placeId}`);
@@ -491,6 +534,9 @@ export async function scrapePlaceReviews(options: ScrapeOptions): Promise<Scrape
       if (bodyLength < 1000) {
         console.error(`[PlaceReviewScraper] WARNING: Page body is very short (${bodyLength} chars) - may be blocked or empty`);
       }
+
+      const placeName = await extractPlaceName(page);
+      console.log(`[PlaceReviewScraper] Extracted place name: "${placeName}"`);
 
       const allReviews: ScrapedReview[] = [];
       const seenTexts = new Set<string>();
@@ -561,7 +607,7 @@ export async function scrapePlaceReviews(options: ScrapeOptions): Promise<Scrape
       const filteredReviews = filterReviews(allReviews, mode, limitQty, startDate, endDate);
       console.log(`[PlaceReviewScraper] Scraped ${filteredReviews.length} reviews (filtered from ${allReviews.length})`);
 
-      return filteredReviews;
+      return { placeName, reviews: filteredReviews };
     } catch (error) {
       console.error("[PlaceReviewScraper] Scraping failed:", error);
       throw error;
