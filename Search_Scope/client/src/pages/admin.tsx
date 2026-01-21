@@ -542,6 +542,42 @@ function AuditLogsTab() {
     return labels[action] || action;
   };
 
+  const formatDetails = (details: string | null): string => {
+    if (!details) return "-";
+    try {
+      const parsed = JSON.parse(details);
+      const labelMap: Record<string, string> = {
+        oldRole: "이전 역할",
+        newRole: "새 역할",
+        oldStatus: "이전 상태",
+        newStatus: "새 상태",
+        userId: "사용자",
+        code: "코드",
+        name: "이름",
+        isActive: "활성화",
+      };
+      const valueMap: Record<string, string> = {
+        user: "일반 사용자",
+        admin: "관리자",
+        superadmin: "슈퍼 관리자",
+        active: "활성",
+        suspended: "정지",
+        pending: "대기",
+        true: "예",
+        false: "아니오",
+      };
+      return Object.entries(parsed)
+        .map(([key, value]) => {
+          const label = labelMap[key] || key;
+          const displayValue = valueMap[String(value)] || String(value);
+          return `${label}: ${displayValue}`;
+        })
+        .join(" / ");
+    } catch {
+      return details;
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -570,8 +606,8 @@ function AuditLogsTab() {
                   <Badge variant="outline">{getActionLabel(log.action)}</Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">{log.targetType}</TableCell>
-                <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
-                  {log.details || "-"}
+                <TableCell className="text-sm text-muted-foreground max-w-sm">
+                  {formatDetails(log.details)}
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
                   {new Date(log.createdAt).toLocaleString("ko-KR")}

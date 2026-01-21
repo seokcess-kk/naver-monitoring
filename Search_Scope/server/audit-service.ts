@@ -60,7 +60,11 @@ interface GetAuditLogsParams {
 }
 
 export async function getAuditLogs(params: GetAuditLogsParams = {}) {
-  const { adminId, action, targetType, startDate, endDate, limit = 50, offset = 0 } = params;
+  const rawLimit = params.limit ?? 50;
+  const rawOffset = params.offset ?? 0;
+  const limit = Math.min(Math.max(1, rawLimit), 100);
+  const offset = Math.max(0, rawOffset);
+  const { adminId, action, targetType, startDate, endDate } = params;
   
   const conditions = [];
   

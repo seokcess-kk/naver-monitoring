@@ -18,15 +18,31 @@ import { z } from "zod";
 
 const router = Router();
 
+const paginationSchema = z.object({
+  limit: z.string().optional().transform((val) => {
+    const num = parseInt(val || "20", 10);
+    if (isNaN(num) || num < 1) return 20;
+    return Math.min(num, 100);
+  }),
+  offset: z.string().optional().transform((val) => {
+    const num = parseInt(val || "0", 10);
+    if (isNaN(num) || num < 0) return 0;
+    return num;
+  }),
+});
+
+function parsePagination(query: Record<string, unknown>): { limit: number; offset: number } {
+  const result = paginationSchema.safeParse(query);
+  if (result.success) {
+    return result.data;
+  }
+  return { limit: 20, offset: 0 };
+}
+
 router.get("/users", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
-    const { 
-      search, 
-      role, 
-      status, 
-      limit = "20", 
-      offset = "0" 
-    } = req.query;
+    const { search, role, status } = req.query;
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
     
     const conditions = [];
     
@@ -58,8 +74,8 @@ router.get("/users", requireAdmin, async (req: AdminRequest, res: Response) => {
         .from(users)
         .where(whereClause)
         .orderBy(desc(users.createdAt))
-        .limit(parseInt(limit as string))
-        .offset(parseInt(offset as string)),
+        .limit(limit)
+        .offset(offset),
       db
         .select({ count: sql<number>`count(*)` })
         .from(users)
@@ -69,8 +85,8 @@ router.get("/users", requireAdmin, async (req: AdminRequest, res: Response) => {
     res.json({
       users: userList,
       total: Number(countResult[0]?.count || 0),
-      limit: parseInt(limit as string),
-      offset: parseInt(offset as string),
+      limit,
+      offset,
     });
   } catch (error) {
     console.error("[Admin] Failed to list users:", error);
@@ -217,14 +233,8 @@ router.patch("/users/:userId", requireAdmin, async (req: AdminRequest, res: Resp
 
 router.get("/sov-runs", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
-    const { 
-      userId, 
-      status, 
-      startDate, 
-      endDate,
-      limit = "20", 
-      offset = "0" 
-    } = req.query;
+    const { userId, status, startDate, endDate } = req.query;
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
     
     const conditions = [];
     
@@ -260,8 +270,8 @@ router.get("/sov-runs", requireAdmin, async (req: AdminRequest, res: Response) =
         .from(sovRuns)
         .where(whereClause)
         .orderBy(desc(sovRuns.createdAt))
-        .limit(parseInt(limit as string))
-        .offset(parseInt(offset as string)),
+        .limit(limit)
+        .offset(offset),
       db
         .select({ count: sql<number>`count(*)` })
         .from(sovRuns)
@@ -271,8 +281,8 @@ router.get("/sov-runs", requireAdmin, async (req: AdminRequest, res: Response) =
     res.json({
       runs,
       total: Number(countResult[0]?.count || 0),
-      limit: parseInt(limit as string),
-      offset: parseInt(offset as string),
+      limit,
+      offset,
     });
   } catch (error) {
     console.error("[Admin] Failed to list SOV runs:", error);
@@ -282,14 +292,8 @@ router.get("/sov-runs", requireAdmin, async (req: AdminRequest, res: Response) =
 
 router.get("/search-logs", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
-    const { 
-      userId, 
-      searchType,
-      startDate, 
-      endDate,
-      limit = "50", 
-      offset = "0" 
-    } = req.query;
+    const { userId, searchType, startDate, endDate } = req.query;
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
     
     const conditions = [];
     
@@ -314,8 +318,8 @@ router.get("/search-logs", requireAdmin, async (req: AdminRequest, res: Response
         .from(searchLogs)
         .where(whereClause)
         .orderBy(desc(searchLogs.createdAt))
-        .limit(parseInt(limit as string))
-        .offset(parseInt(offset as string)),
+        .limit(limit)
+        .offset(offset),
       db
         .select({ count: sql<number>`count(*)` })
         .from(searchLogs)
@@ -325,8 +329,8 @@ router.get("/search-logs", requireAdmin, async (req: AdminRequest, res: Response
     res.json({
       logs,
       total: Number(countResult[0]?.count || 0),
-      limit: parseInt(limit as string),
-      offset: parseInt(offset as string),
+      limit,
+      offset,
     });
   } catch (error) {
     console.error("[Admin] Failed to list search logs:", error);
@@ -336,7 +340,7 @@ router.get("/search-logs", requireAdmin, async (req: AdminRequest, res: Response
 
 router.get("/api-keys", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
-    const { limit = "20", offset = "0" } = req.query;
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
     
     const [keys, countResult] = await Promise.all([
       db
@@ -349,8 +353,8 @@ router.get("/api-keys", requireAdmin, async (req: AdminRequest, res: Response) =
         })
         .from(apiKeys)
         .orderBy(desc(apiKeys.updatedAt))
-        .limit(parseInt(limit as string))
-        .offset(parseInt(offset as string)),
+        .limit(limit)
+        .offset(offset),
       db
         .select({ count: sql<number>`count(*)` })
         .from(apiKeys),
@@ -359,8 +363,8 @@ router.get("/api-keys", requireAdmin, async (req: AdminRequest, res: Response) =
     res.json({
       apiKeys: keys,
       total: Number(countResult[0]?.count || 0),
-      limit: parseInt(limit as string),
-      offset: parseInt(offset as string),
+      limit,
+      offset,
     });
   } catch (error) {
     console.error("[Admin] Failed to list API keys:", error);
@@ -402,15 +406,8 @@ router.delete("/api-keys/:keyId", requireAdmin, async (req: AdminRequest, res: R
 
 router.get("/audit-logs", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
-    const { 
-      adminId, 
-      action, 
-      targetType, 
-      startDate, 
-      endDate,
-      limit = "50", 
-      offset = "0" 
-    } = req.query;
+    const { adminId, action, targetType, startDate, endDate } = req.query;
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
     
     const result = await getAuditLogs({
       adminId: adminId as string,
@@ -418,8 +415,8 @@ router.get("/audit-logs", requireAdmin, async (req: AdminRequest, res: Response)
       targetType: targetType as string,
       startDate: startDate ? new Date(startDate as string) : undefined,
       endDate: endDate ? new Date(endDate as string) : undefined,
-      limit: parseInt(limit as string),
-      offset: parseInt(offset as string),
+      limit,
+      offset,
     });
     
     res.json(result);
