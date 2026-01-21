@@ -48,7 +48,7 @@ router.post("/jobs", requireAuth, async (req: Request, res: Response) => {
     }).returning();
 
     try {
-      await addPlaceReviewJob({
+      const queueJobId = await addPlaceReviewJob({
         jobId: job.id,
         placeId: parsed.placeId,
         mode: parsed.mode,
@@ -56,6 +56,13 @@ router.post("/jobs", requireAuth, async (req: Request, res: Response) => {
         startDate: parsed.startDate,
         endDate: parsed.endDate,
       });
+      
+      if (!queueJobId) {
+        await db.update(placeReviewJobs)
+          .set({ status: "failed", errorMessage: "Redis 서버 연결 실패" })
+          .where(eq(placeReviewJobs.id, job.id));
+        return res.status(503).json({ error: "플레이스 리뷰 분석 서비스를 사용할 수 없습니다. 잠시 후 다시 시도해주세요." });
+      }
     } catch (queueError) {
       console.error("[PlaceReview] Failed to add job to queue:", queueError);
       await db.update(placeReviewJobs)
@@ -266,10 +273,14 @@ router.delete("/jobs/:jobId", requireAuth, async (req: Request, res: Response) =
   }
 });
 
-export function initPlaceReviewWorker(): void {
+export async function initPlaceReviewWorker(): Promise<void> {
   try {
-    startPlaceReviewWorker();
-    console.log("[PlaceReview] Worker initialized");
+    const worker = await startPlaceReviewWorker();
+    if (worker) {
+      console.log("[PlaceReview] Worker initialized");
+    } else {
+      console.warn("[PlaceReview] Worker not started - Redis may not be available");
+    }
   } catch (error) {
     console.error("[PlaceReview] Failed to start worker:", error);
   }

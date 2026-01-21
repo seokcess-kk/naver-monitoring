@@ -54,8 +54,23 @@
 
 - **타입**: VM (Reserved VM) - 항상 실행
 - **빌드**: `npm run deploy:build` (의존성 설치 + 빌드)
-- **실행**: `npm run deploy:start` (DB 마이그레이션 + 서버 시작)
+- **실행**: `npm run deploy:start` (DB 마이그레이션 + Redis 시작 + Chrome 설치 + 서버 시작)
 - **Cold Start 최적화**: 2단계 부팅 (헬스체크 먼저, 앱 초기화 나중)
+
+### 프로덕션 서비스 가용성
+
+| 서비스 | 필수 | 비활성화 시 영향 |
+|--------|------|-----------------|
+| PostgreSQL | 필수 | 앱 시작 불가 |
+| Redis | 선택 | 플레이스 리뷰 분석 비활성화 (다른 기능 정상) |
+| Chrome/Puppeteer | 선택 | 스마트블록 크롤링 비활성화 (다른 기능 정상) |
+| OPENAI_API_KEY | 선택 | SOV 분석 비활성화 |
+
+### 배포 스크립트 동작
+1. `npm run db:push` - DB 마이그레이션
+2. `redis-server --daemonize yes` - Redis 백그라운드 시작 (실패 시 경고만)
+3. `npx puppeteer browsers install chrome` - Chrome 설치 (실패 시 경고만)
+4. `node dist/index.cjs` - 서버 시작
 
 ## 개발/배포 체크리스트
 

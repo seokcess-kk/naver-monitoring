@@ -72,11 +72,9 @@ export async function registerRoutes(
   app.use("/api/admin", isAuthenticated, attachUserToRequest, adminRoutes);
   app.use("/api/place-review", placeReviewRoutes);
 
-  try {
-    initPlaceReviewWorker();
-  } catch (error) {
+  initPlaceReviewWorker().catch((error) => {
     console.log("[PlaceReview] Worker not started (Redis may not be running):", error);
-  }
+  });
 
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });

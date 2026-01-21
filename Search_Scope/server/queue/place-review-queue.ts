@@ -4,6 +4,7 @@ import { placeReviewJobs, placeReviews, placeReviewAnalyses } from "@shared/sche
 import { eq } from "drizzle-orm";
 import { scrapePlaceReviews } from "../services/place-review-scraper";
 import { analyzeReview } from "../services/place-review-analyzer";
+import { checkRedisConnection, isRedisAvailable } from "./redis";
 
 const QUEUE_NAME = "place-review-analysis";
 
@@ -24,8 +25,25 @@ interface PlaceReviewJobData {
 
 let queue: Queue | null = null;
 let worker: Worker | null = null;
+let redisChecked = false;
 
-export function getPlaceReviewQueue(): Queue {
+export async function ensureRedisAvailable(): Promise<boolean> {
+  if (!redisChecked) {
+    const available = await checkRedisConnection();
+    redisChecked = true;
+    if (!available) {
+      console.warn("[PlaceReviewQueue] Redis is not available. Place review analysis will not work.");
+    }
+    return available;
+  }
+  return isRedisAvailable();
+}
+
+export function getPlaceReviewQueue(): Queue | null {
+  if (!isRedisAvailable()) {
+    console.warn("[PlaceReviewQueue] Cannot get queue - Redis not available");
+    return null;
+  }
   if (!queue) {
     queue = new Queue(QUEUE_NAME, { connection: getRedisConfig() });
     console.log("[PlaceReviewQueue] Queue initialized");
@@ -33,8 +51,12 @@ export function getPlaceReviewQueue(): Queue {
   return queue;
 }
 
-export async function addPlaceReviewJob(data: PlaceReviewJobData): Promise<string> {
+export async function addPlaceReviewJob(data: PlaceReviewJobData): Promise<string | null> {
   const q = getPlaceReviewQueue();
+  if (!q) {
+    console.error("[PlaceReviewQueue] Cannot add job - Redis not available");
+    return null;
+  }
   const job = await q.add("analyze", data, {
     removeOnComplete: 100,
     removeOnFail: 50,
@@ -152,9 +174,16 @@ async function processPlaceReviewJob(job: Job<PlaceReviewJobData>): Promise<void
   }
 }
 
-export function startPlaceReviewWorker(): Worker {
+export async function startPlaceReviewWorker(): Promise<Worker | null> {
   if (worker) {
     return worker;
+  }
+
+  const redisAvailable = await ensureRedisAvailable();
+  if (!redisAvailable) {
+    console.warn("[PlaceReviewWorker] Cannot start worker - Redis not available");
+    console.warn("[PlaceReviewWorker] Place review analysis will be disabled");
+    return null;
   }
 
   worker = new Worker(QUEUE_NAME, processPlaceReviewJob, {
