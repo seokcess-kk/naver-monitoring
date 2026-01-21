@@ -11,6 +11,7 @@ export type AuditAction =
   | "solution_update"
   | "solution_delete"
   | "user_solution_assign"
+  | "user_solution_update"
   | "user_solution_revoke"
   | "sov_run_delete"
   | "search_log_delete";

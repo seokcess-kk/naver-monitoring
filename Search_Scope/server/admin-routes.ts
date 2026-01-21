@@ -595,4 +595,183 @@ router.patch("/solutions/:solutionId", requireSuperAdmin, async (req: AdminReque
   }
 });
 
+router.get("/user-solutions/:userId", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+    
+    const assignments = await db
+      .select({
+        id: userSolutions.id,
+        solutionId: userSolutions.solutionId,
+        solutionCode: solutions.code,
+        solutionName: solutions.name,
+        isEnabled: userSolutions.isEnabled,
+        expiresAt: userSolutions.expiresAt,
+        createdAt: userSolutions.createdAt,
+      })
+      .from(userSolutions)
+      .innerJoin(solutions, eq(userSolutions.solutionId, solutions.id))
+      .where(eq(userSolutions.userId, userId))
+      .orderBy(solutions.code);
+    
+    res.json({ assignments });
+  } catch (error) {
+    console.error("[Admin] Failed to get user solutions:", error);
+    res.status(500).json({ error: "사용자 솔루션 조회 실패" });
+  }
+});
+
+const assignSolutionSchema = z.object({
+  solutionId: z.string().min(1),
+  expiresAt: z.string().nullable().optional(),
+});
+
+router.post("/user-solutions/:userId", requireSuperAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const adminId = req.adminId!;
+    
+    const validation = assignSolutionSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: "잘못된 요청입니다" });
+    }
+    
+    const { solutionId, expiresAt } = validation.data;
+    
+    const [existingAssignment] = await db
+      .select()
+      .from(userSolutions)
+      .where(and(
+        eq(userSolutions.userId, userId),
+        eq(userSolutions.solutionId, solutionId)
+      ));
+    
+    if (existingAssignment) {
+      return res.status(409).json({ error: "이미 할당된 솔루션입니다" });
+    }
+    
+    const [solution] = await db
+      .select()
+      .from(solutions)
+      .where(eq(solutions.id, solutionId));
+    
+    if (!solution) {
+      return res.status(404).json({ error: "솔루션을 찾을 수 없습니다" });
+    }
+    
+    const [assignment] = await db
+      .insert(userSolutions)
+      .values({
+        userId,
+        solutionId,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+      })
+      .returning();
+    
+    await logAudit({
+      adminId,
+      action: "user_solution_assign",
+      targetType: "user_solution",
+      targetId: assignment.id,
+      details: { userId, solutionCode: solution.code },
+      ipAddress: req.ip,
+    });
+    
+    res.status(201).json({ assignment });
+  } catch (error) {
+    console.error("[Admin] Failed to assign solution:", error);
+    res.status(500).json({ error: "솔루션 할당 실패" });
+  }
+});
+
+const updateUserSolutionSchema = z.object({
+  isEnabled: z.enum(["true", "false"]).optional(),
+  expiresAt: z.string().nullable().optional(),
+});
+
+router.patch("/user-solutions/:assignmentId", requireSuperAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { assignmentId } = req.params;
+    const adminId = req.adminId!;
+    
+    const validation = updateUserSolutionSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: "잘못된 요청입니다" });
+    }
+    
+    const [existing] = await db
+      .select()
+      .from(userSolutions)
+      .where(eq(userSolutions.id, assignmentId));
+    
+    if (!existing) {
+      return res.status(404).json({ error: "할당 정보를 찾을 수 없습니다" });
+    }
+    
+    const { isEnabled, expiresAt } = validation.data;
+    
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (isEnabled !== undefined) updates.isEnabled = isEnabled;
+    if (expiresAt !== undefined) updates.expiresAt = expiresAt ? new Date(expiresAt) : null;
+    
+    await db
+      .update(userSolutions)
+      .set(updates)
+      .where(eq(userSolutions.id, assignmentId));
+    
+    await logAudit({
+      adminId,
+      action: "user_solution_update",
+      targetType: "user_solution",
+      targetId: assignmentId,
+      details: validation.data,
+      ipAddress: req.ip,
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error("[Admin] Failed to update user solution:", error);
+    res.status(500).json({ error: "솔루션 설정 수정 실패" });
+  }
+});
+
+router.delete("/user-solutions/:assignmentId", requireSuperAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { assignmentId } = req.params;
+    const adminId = req.adminId!;
+    
+    const [existing] = await db
+      .select({
+        id: userSolutions.id,
+        userId: userSolutions.userId,
+        solutionCode: solutions.code,
+      })
+      .from(userSolutions)
+      .innerJoin(solutions, eq(userSolutions.solutionId, solutions.id))
+      .where(eq(userSolutions.id, assignmentId));
+    
+    if (!existing) {
+      return res.status(404).json({ error: "할당 정보를 찾을 수 없습니다" });
+    }
+    
+    await db
+      .delete(userSolutions)
+      .where(eq(userSolutions.id, assignmentId));
+    
+    await logAudit({
+      adminId,
+      action: "user_solution_revoke",
+      targetType: "user_solution",
+      targetId: assignmentId,
+      details: { userId: existing.userId, solutionCode: existing.solutionCode },
+      ipAddress: req.ip,
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error("[Admin] Failed to revoke solution:", error);
+    res.status(500).json({ error: "솔루션 해제 실패" });
+  }
+});
+
 export default router;
