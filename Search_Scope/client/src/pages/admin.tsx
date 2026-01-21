@@ -33,6 +33,9 @@ import {
   Plus,
   Edit,
   Calendar,
+  BarChart3,
+  TrendingUp,
+  MessageSquare,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -1317,6 +1320,415 @@ function SolutionsTab() {
   );
 }
 
+interface UserActivityInsights {
+  activeUsers: { daily: number; weekly: number; monthly: number };
+  popularKeywords: { keyword: string; count: number }[];
+  searchByType: { searchType: string; count: number }[];
+  dailySearchTrend: { date: string; count: number }[];
+}
+
+interface SovTrendInsights {
+  summary: { total: number; completed: number; failed: number; successRate: number };
+  recentKeywords: { keyword: string; count: number }[];
+  dailyRunTrend: { date: string; total: number; completed: number; failed: number }[];
+}
+
+interface PlaceReviewInsights {
+  summary: { totalJobs: number; completedJobs: number; totalReviews: number };
+  sentimentDistribution: { sentiment: string; count: number }[];
+  popularPlaces: { placeId: string; placeName: string | null; jobCount: number; totalReviews: number }[];
+  dailyJobTrend: { date: string; total: number; completed: number }[];
+}
+
+function InsightsTab() {
+  const { data: userActivity, isLoading: loadingUser, refetch: refetchUser } = useQuery<UserActivityInsights>({
+    queryKey: ["/api/admin/insights/user-activity"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/admin/insights/user-activity");
+      return res.json();
+    },
+  });
+
+  const { data: sovTrends, isLoading: loadingSov, refetch: refetchSov } = useQuery<SovTrendInsights>({
+    queryKey: ["/api/admin/insights/sov-trends"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/admin/insights/sov-trends");
+      return res.json();
+    },
+  });
+
+  const { data: placeReviews, isLoading: loadingPlace, refetch: refetchPlace } = useQuery<PlaceReviewInsights>({
+    queryKey: ["/api/admin/insights/place-reviews"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/admin/insights/place-reviews");
+      return res.json();
+    },
+  });
+
+  const handleRefreshAll = () => {
+    refetchUser();
+    refetchSov();
+    refetchPlace();
+  };
+
+  const getSentimentLabel = (sentiment: string) => {
+    const labels: Record<string, string> = {
+      Positive: "긍정",
+      Negative: "부정",
+      Neutral: "중립",
+    };
+    return labels[sentiment] || sentiment;
+  };
+
+  const getSentimentColor = (sentiment: string) => {
+    switch (sentiment) {
+      case "Positive": return "text-green-600";
+      case "Negative": return "text-red-600";
+      default: return "text-gray-600";
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">데이터 인사이트</h3>
+        <Button variant="outline" size="sm" onClick={handleRefreshAll}>
+          <RefreshCw className="w-4 h-4 mr-2" />
+          새로고침
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              활성 사용자
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingUser ? (
+              <Skeleton className="h-16 w-full" />
+            ) : (
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">오늘</span>
+                  <span className="font-semibold">{userActivity?.activeUsers.daily || 0}명</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">최근 7일</span>
+                  <span className="font-semibold">{userActivity?.activeUsers.weekly || 0}명</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">최근 30일</span>
+                  <span className="font-semibold">{userActivity?.activeUsers.monthly || 0}명</span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              SOV 분석 현황
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingSov ? (
+              <Skeleton className="h-16 w-full" />
+            ) : (
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">전체 분석</span>
+                  <span className="font-semibold">{sovTrends?.summary.total || 0}건</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">성공률</span>
+                  <span className="font-semibold text-green-600">{sovTrends?.summary.successRate || 0}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">실패</span>
+                  <span className="font-semibold text-red-600">{sovTrends?.summary.failed || 0}건</span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              플레이스 리뷰 현황
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingPlace ? (
+              <Skeleton className="h-16 w-full" />
+            ) : (
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">분석 작업</span>
+                  <span className="font-semibold">{placeReviews?.summary.completedJobs || 0}건</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">분석 리뷰</span>
+                  <span className="font-semibold">{placeReviews?.summary.totalReviews || 0}개</span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">인기 검색 키워드 (최근 7일)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingUser ? (
+              <Skeleton className="h-40 w-full" />
+            ) : userActivity?.popularKeywords.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">데이터가 없습니다</p>
+            ) : (
+              <div className="space-y-2">
+                {userActivity?.popularKeywords.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground w-5">{idx + 1}</span>
+                      <span className="text-sm">{item.keyword}</span>
+                    </div>
+                    <Badge variant="secondary">{item.count}회</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">SOV 인기 키워드 (최근 7일)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingSov ? (
+              <Skeleton className="h-40 w-full" />
+            ) : sovTrends?.recentKeywords.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">데이터가 없습니다</p>
+            ) : (
+              <div className="space-y-2">
+                {sovTrends?.recentKeywords.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground w-5">{idx + 1}</span>
+                      <span className="text-sm">{item.keyword}</span>
+                    </div>
+                    <Badge variant="secondary">{item.count}회</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">리뷰 감성 분포</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingPlace ? (
+              <Skeleton className="h-24 w-full" />
+            ) : placeReviews?.sentimentDistribution.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">데이터가 없습니다</p>
+            ) : (
+              <div className="space-y-3">
+                {placeReviews?.sentimentDistribution.map((item) => (
+                  <div key={item.sentiment} className="flex items-center justify-between">
+                    <span className={`font-medium ${getSentimentColor(item.sentiment)}`}>
+                      {getSentimentLabel(item.sentiment)}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-32 bg-muted rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full ${item.sentiment === "Positive" ? "bg-green-500" : item.sentiment === "Negative" ? "bg-red-500" : "bg-gray-500"}`}
+                          style={{ width: `${Math.min(100, (item.count / (placeReviews.summary.totalReviews || 1)) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium w-12 text-right">{item.count}개</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">인기 플레이스</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingPlace ? (
+              <Skeleton className="h-24 w-full" />
+            ) : placeReviews?.popularPlaces.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">데이터가 없습니다</p>
+            ) : (
+              <div className="space-y-2">
+                {placeReviews?.popularPlaces.slice(0, 5).map((place, idx) => (
+                  <div key={place.placeId} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground w-5">{idx + 1}</span>
+                      <span className="text-sm truncate max-w-48">{place.placeName || place.placeId}</span>
+                    </div>
+                    <Badge variant="outline">{place.totalReviews || 0}개 리뷰</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">채널별 검색 현황 (최근 7일)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingUser ? (
+              <Skeleton className="h-24 w-full" />
+            ) : userActivity?.searchByType.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">데이터가 없습니다</p>
+            ) : (
+              <div className="space-y-3">
+                {userActivity?.searchByType.map((item) => {
+                  const totalSearches = userActivity.searchByType.reduce((sum, i) => sum + i.count, 0);
+                  const percentage = totalSearches > 0 ? Math.round((item.count / totalSearches) * 100) : 0;
+                  const channelLabels: Record<string, string> = {
+                    unified: "통합검색",
+                    blog: "블로그",
+                    cafe: "카페",
+                    kin: "지식iN",
+                    news: "뉴스",
+                    sov: "SOV 분석",
+                  };
+                  return (
+                    <div key={item.searchType} className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{channelLabels[item.searchType] || item.searchType}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 bg-muted rounded-full h-2">
+                          <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${percentage}%` }} />
+                        </div>
+                        <span className="text-sm w-16 text-right">{item.count}회</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">일별 검색 추이 (최근 7일)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingUser ? (
+              <Skeleton className="h-24 w-full" />
+            ) : userActivity?.dailySearchTrend.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">데이터가 없습니다</p>
+            ) : (
+              <div className="space-y-2">
+                {userActivity?.dailySearchTrend.map((item) => {
+                  const maxCount = Math.max(...(userActivity?.dailySearchTrend.map(d => d.count) || [1]));
+                  const percentage = maxCount > 0 ? Math.round((item.count / maxCount) * 100) : 0;
+                  const dateStr = new Date(item.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+                  return (
+                    <div key={item.date} className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground w-16">{dateStr}</span>
+                      <div className="flex items-center gap-2 flex-1 ml-2">
+                        <div className="flex-1 bg-muted rounded-full h-2">
+                          <div className="bg-green-500 h-2 rounded-full" style={{ width: `${percentage}%` }} />
+                        </div>
+                        <span className="text-sm w-12 text-right">{item.count}건</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">SOV 일별 분석 추이 (최근 7일)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingSov ? (
+              <Skeleton className="h-24 w-full" />
+            ) : sovTrends?.dailyRunTrend.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">데이터가 없습니다</p>
+            ) : (
+              <div className="space-y-2">
+                {sovTrends?.dailyRunTrend.map((item) => {
+                  const dateStr = new Date(item.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+                  return (
+                    <div key={item.date} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground w-16">{dateStr}</span>
+                      <div className="flex gap-4">
+                        <span>전체: <span className="font-medium">{item.total}</span></span>
+                        <span className="text-green-600">성공: {item.completed}</span>
+                        <span className="text-red-600">실패: {item.failed}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">플레이스 리뷰 일별 분석 (최근 7일)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingPlace ? (
+              <Skeleton className="h-24 w-full" />
+            ) : placeReviews?.dailyJobTrend.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">데이터가 없습니다</p>
+            ) : (
+              <div className="space-y-2">
+                {placeReviews?.dailyJobTrend.map((item) => {
+                  const dateStr = new Date(item.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+                  return (
+                    <div key={item.date} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground w-16">{dateStr}</span>
+                      <div className="flex gap-4">
+                        <span>전체: <span className="font-medium">{item.total}</span></span>
+                        <span className="text-green-600">완료: {item.completed}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 interface ServiceStatus {
   name: string;
   status: "ok" | "error" | "unknown";
@@ -1589,6 +2001,10 @@ export default function AdminPage() {
               <Package className="w-4 h-4" />
               솔루션
             </TabsTrigger>
+            <TabsTrigger value="insights" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              인사이트
+            </TabsTrigger>
             <TabsTrigger value="system" className="gap-2">
               <Server className="w-4 h-4" />
               시스템 상태
@@ -1612,6 +2028,9 @@ export default function AdminPage() {
           </TabsContent>
           <TabsContent value="solutions">
             <SolutionsTab />
+          </TabsContent>
+          <TabsContent value="insights">
+            <InsightsTab />
           </TabsContent>
           <TabsContent value="system">
             <SystemStatusTab />

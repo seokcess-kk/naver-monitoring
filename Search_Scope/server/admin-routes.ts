@@ -5,9 +5,13 @@ import {
   apiKeys, 
   sovRuns, 
   sovExposures,
+  sovScores,
   searchLogs, 
   solutions, 
   userSolutions,
+  placeReviewJobs,
+  placeReviewAnalyses,
+  placeReviews,
   type UserRole,
   type UserStatus,
 } from "@shared/schema";
@@ -771,6 +775,196 @@ router.delete("/user-solutions/:assignmentId", requireSuperAdmin, async (req: Ad
   } catch (error) {
     console.error("[Admin] Failed to revoke solution:", error);
     res.status(500).json({ error: "솔루션 해제 실패" });
+  }
+});
+
+router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [dailyActive] = await db
+      .select({ count: sql<number>`count(distinct ${searchLogs.userId})` })
+      .from(searchLogs)
+      .where(gte(searchLogs.createdAt, today));
+
+    const [weeklyActive] = await db
+      .select({ count: sql<number>`count(distinct ${searchLogs.userId})` })
+      .from(searchLogs)
+      .where(gte(searchLogs.createdAt, weekAgo));
+
+    const [monthlyActive] = await db
+      .select({ count: sql<number>`count(distinct ${searchLogs.userId})` })
+      .from(searchLogs)
+      .where(gte(searchLogs.createdAt, monthAgo));
+
+    const popularKeywords = await db
+      .select({
+        keyword: searchLogs.keyword,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(searchLogs)
+      .where(gte(searchLogs.createdAt, weekAgo))
+      .groupBy(searchLogs.keyword)
+      .orderBy(sql`count(*) desc`)
+      .limit(10);
+
+    const searchByType = await db
+      .select({
+        searchType: searchLogs.searchType,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(searchLogs)
+      .where(gte(searchLogs.createdAt, weekAgo))
+      .groupBy(searchLogs.searchType);
+
+    const dailySearchTrend = await db
+      .select({
+        date: sql<string>`date_trunc('day', ${searchLogs.createdAt})::date::text`,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(searchLogs)
+      .where(gte(searchLogs.createdAt, weekAgo))
+      .groupBy(sql`date_trunc('day', ${searchLogs.createdAt})`)
+      .orderBy(sql`date_trunc('day', ${searchLogs.createdAt})`);
+
+    res.json({
+      activeUsers: {
+        daily: dailyActive?.count || 0,
+        weekly: weeklyActive?.count || 0,
+        monthly: monthlyActive?.count || 0,
+      },
+      popularKeywords,
+      searchByType,
+      dailySearchTrend,
+    });
+  } catch (error) {
+    console.error("[Admin] Failed to get user activity insights:", error);
+    res.status(500).json({ error: "사용자 활동 인사이트 조회 실패" });
+  }
+});
+
+router.get("/insights/sov-trends", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [totalRuns] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(sovRuns);
+
+    const [completedRuns] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(sovRuns)
+      .where(eq(sovRuns.status, "completed"));
+
+    const [failedRuns] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(sovRuns)
+      .where(eq(sovRuns.status, "failed"));
+
+    const recentKeywords = await db
+      .select({
+        keyword: sovRuns.marketKeyword,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(sovRuns)
+      .where(gte(sovRuns.createdAt, weekAgo))
+      .groupBy(sovRuns.marketKeyword)
+      .orderBy(sql`count(*) desc`)
+      .limit(10);
+
+    const dailyRunTrend = await db
+      .select({
+        date: sql<string>`date_trunc('day', ${sovRuns.createdAt})::date::text`,
+        total: sql<number>`count(*)::int`,
+        completed: sql<number>`count(*) filter (where ${sovRuns.status} = 'completed')::int`,
+        failed: sql<number>`count(*) filter (where ${sovRuns.status} = 'failed')::int`,
+      })
+      .from(sovRuns)
+      .where(gte(sovRuns.createdAt, weekAgo))
+      .groupBy(sql`date_trunc('day', ${sovRuns.createdAt})`)
+      .orderBy(sql`date_trunc('day', ${sovRuns.createdAt})`);
+
+    res.json({
+      summary: {
+        total: totalRuns?.count || 0,
+        completed: completedRuns?.count || 0,
+        failed: failedRuns?.count || 0,
+        successRate: totalRuns?.count ? Math.round((completedRuns?.count || 0) / totalRuns.count * 100) : 0,
+      },
+      recentKeywords,
+      dailyRunTrend,
+    });
+  } catch (error) {
+    console.error("[Admin] Failed to get SOV trends:", error);
+    res.status(500).json({ error: "SOV 트렌드 조회 실패" });
+  }
+});
+
+router.get("/insights/place-reviews", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [totalJobs] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(placeReviewJobs);
+
+    const [completedJobs] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(placeReviewJobs)
+      .where(eq(placeReviewJobs.status, "completed"));
+
+    const [totalReviews] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(placeReviews);
+
+    const sentimentDistribution = await db
+      .select({
+        sentiment: placeReviewAnalyses.sentiment,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(placeReviewAnalyses)
+      .groupBy(placeReviewAnalyses.sentiment);
+
+    const popularPlaces = await db
+      .select({
+        placeId: placeReviewJobs.placeId,
+        placeName: placeReviewJobs.placeName,
+        jobCount: sql<number>`count(*)::int`,
+        totalReviews: sql<number>`sum(${placeReviewJobs.analyzedReviews}::int)::int`,
+      })
+      .from(placeReviewJobs)
+      .where(eq(placeReviewJobs.status, "completed"))
+      .groupBy(placeReviewJobs.placeId, placeReviewJobs.placeName)
+      .orderBy(sql`count(*) desc`)
+      .limit(10);
+
+    const dailyJobTrend = await db
+      .select({
+        date: sql<string>`date_trunc('day', ${placeReviewJobs.createdAt})::date::text`,
+        total: sql<number>`count(*)::int`,
+        completed: sql<number>`count(*) filter (where ${placeReviewJobs.status} = 'completed')::int`,
+      })
+      .from(placeReviewJobs)
+      .where(gte(placeReviewJobs.createdAt, weekAgo))
+      .groupBy(sql`date_trunc('day', ${placeReviewJobs.createdAt})`)
+      .orderBy(sql`date_trunc('day', ${placeReviewJobs.createdAt})`);
+
+    res.json({
+      summary: {
+        totalJobs: totalJobs?.count || 0,
+        completedJobs: completedJobs?.count || 0,
+        totalReviews: totalReviews?.count || 0,
+      },
+      sentimentDistribution,
+      popularPlaces,
+      dailyJobTrend,
+    });
+  } catch (error) {
+    console.error("[Admin] Failed to get place review insights:", error);
+    res.status(500).json({ error: "플레이스 리뷰 인사이트 조회 실패" });
   }
 });
 
