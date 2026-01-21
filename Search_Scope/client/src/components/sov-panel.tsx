@@ -654,11 +654,6 @@ export function SovPanel() {
                 <p className="text-sm text-muted-foreground">
                   {activeRun.marketKeyword} · {getStatusLabel(activeRun.status)}
                 </p>
-                {activeRun.statusMessage && (
-                  <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mt-1">
-                    {activeRun.statusMessage}
-                  </p>
-                )}
               </div>
             </div>
             <div className="max-w-xs mx-auto">
@@ -719,31 +714,42 @@ export function SovPanel() {
                   );
                 })}
               </div>
-              {activeRun.processedExposures && activeRun.totalExposures && (
-                <div className="mt-6">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-                    <span>{activeRun.processedExposures} / {activeRun.totalExposures} 처리됨</span>
-                    <span className="flex items-center gap-2">
-                      <span className="text-muted-foreground/70">
-                        {parseInt(activeRun.totalExposures) > parseInt(activeRun.processedExposures)
-                          ? `예상: 약 ${Math.ceil((parseInt(activeRun.totalExposures) - parseInt(activeRun.processedExposures)) * 3)}초`
-                          : "예상: 거의 완료"}
+              <div className="mt-6">
+                {activeRun.statusMessage && (
+                  <p className="text-sm text-blue-600 dark:text-blue-400 font-medium text-center mb-3">
+                    {activeRun.statusMessage}
+                  </p>
+                )}
+                {parseInt(activeRun.totalExposures || "0") > 0 ? (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                      <span>{activeRun.processedExposures || "0"} / {activeRun.totalExposures} 처리됨</span>
+                      <span className="flex items-center gap-2">
+                        <span className="text-muted-foreground/70">
+                          {parseInt(activeRun.totalExposures) > parseInt(activeRun.processedExposures || "0")
+                            ? `예상: 약 ${Math.ceil((parseInt(activeRun.totalExposures) - parseInt(activeRun.processedExposures || "0")) * 3)}초`
+                            : "예상: 거의 완료"}
+                        </span>
+                        <span className="font-medium">
+                          {Math.round((parseInt(activeRun.processedExposures || "0") / parseInt(activeRun.totalExposures)) * 100)}%
+                        </span>
                       </span>
-                      <span className="font-medium">
-                        {Math.round((parseInt(activeRun.processedExposures) / parseInt(activeRun.totalExposures)) * 100)}%
-                      </span>
-                    </span>
-                  </div>
-                  <Progress
-                    value={
-                      (parseInt(activeRun.processedExposures) /
-                        parseInt(activeRun.totalExposures)) *
-                      100
-                    }
-                    className="h-2"
-                  />
-                </div>
-              )}
+                    </div>
+                    <Progress
+                      value={
+                        (parseInt(activeRun.processedExposures || "0") /
+                          parseInt(activeRun.totalExposures)) *
+                        100
+                      }
+                      className="h-2"
+                    />
+                  </>
+                ) : !activeRun.statusMessage && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    준비 중...
+                  </p>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
