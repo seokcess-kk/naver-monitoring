@@ -148,6 +148,60 @@ function parseKoreanDate(dateStr: string): Date | null {
   return null;
 }
 
+function cleanReviewText(text: string): string {
+  if (!text) return "";
+  
+  const segments = text.split(/[\n\r|·•]+/);
+  const cleanedSegments: string[] = [];
+  
+  const standaloneMetadataPatterns = [
+    /^리뷰\s*\d+\s*$/,
+    /^사진\s*\d+\s*$/,
+    /^팔로워\s*\d+\s*$/,
+    /^팔로잉\s*\d+\s*$/,
+    /^영수증\s*\d+\s*$/,
+    /^더보기\s*$/,
+    /^접기\s*$/,
+    /^답글\s*$/,
+    /^좋아요\s*$/,
+    /^공감\s*$/,
+    /^신고\s*$/,
+    /^수정됨\s*$/,
+    /^\d+\s*(분|시간|일|주|개월|년)\s*전\s*$/,
+    /^\d{2,4}\.\s*\d{1,2}\.\s*\d{1,2}\.?\s*$/,
+    /^(블로그|영수증)\s*리뷰\s*$/i,
+    /^[가-힣a-zA-Z0-9_]+님의\s*(리뷰|방문)\s*$/,
+    /^(방문|재방문)\s*\d+회?\s*$/,
+    /^작성자\s*$/,
+  ];
+  
+  for (const segment of segments) {
+    const trimmed = segment.trim();
+    if (!trimmed || trimmed.length < 3) continue;
+    
+    let isMetadata = false;
+    for (const pattern of standaloneMetadataPatterns) {
+      if (pattern.test(trimmed)) {
+        isMetadata = true;
+        break;
+      }
+    }
+    
+    if (!isMetadata) {
+      cleanedSegments.push(trimmed);
+    }
+  }
+  
+  let result = cleanedSegments.join(" ");
+  
+  result = result.replace(/\s*더보기\s*$/g, "");
+  result = result.replace(/\s+/g, " ").trim();
+  
+  if (result.length < 5) return "";
+  
+  return result;
+}
+
 async function extractReviews(page: Page): Promise<ScrapedReview[]> {
   const reviews: ScrapedReview[] = [];
 
@@ -187,11 +241,13 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
     reviewElements.forEach((el) => {
       const textSelectors = [
         ".pui__xtsQN-",
-        ".review_txt",
-        "[class*='content']",
-        "[class*='text']",
-        "p",
-        "span",
+        ".pui__vn15t2 > a",
+        ".ZZ4OK > a",
+        "[class*='review_txt']",
+        "[class*='reviewContent']",
+        "[class*='review-content']",
+        "[class*='content_text']",
+        ".zPfVt",
       ];
 
       let text = "";
@@ -202,8 +258,33 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
           break;
         }
       }
-      if (!text && el.textContent) {
-        text = el.textContent.trim();
+      
+      if (!text) {
+        const paragraphs = Array.from(el.querySelectorAll("p, span.txt"));
+        for (const p of paragraphs) {
+          const pText = p.textContent?.trim() || "";
+          if (pText.length > 20 && !pText.match(/^(리뷰|사진|팔로워|팔로잉|영수증)\s*\d+$/)) {
+            text = pText;
+            break;
+          }
+        }
+      }
+      
+      if (!text) {
+        const allText = el.textContent?.trim() || "";
+        if (allText.length > 30) {
+          const parts = allText.split(/[\n\r]+/);
+          for (const part of parts) {
+            const trimmedPart = part.trim();
+            if (trimmedPart.length > 20 && 
+                !trimmedPart.match(/^(리뷰|사진|팔로워|팔로잉|영수증|더보기|접기|좋아요|공감|답글|신고)\s*\d*$/) &&
+                !trimmedPart.match(/^\d+\s*(분|시간|일|주|개월|년)\s*전$/) &&
+                !trimmedPart.match(/^[가-힣a-zA-Z0-9_]+님$/)) {
+              text = trimmedPart;
+              break;
+            }
+          }
+        }
       }
 
       let date = "";
@@ -287,13 +368,18 @@ async function extractReviews(page: Page): Promise<ScrapedReview[]> {
   const dateSamples: string[] = [];
   for (const item of reviewData) {
     const parsedDate = parseKoreanDate(item.date);
+    const cleanedText = cleanReviewText(item.text);
+    
+    if (!cleanedText || cleanedText.length < 5) {
+      continue;
+    }
     
     if (dateSamples.length < 5) {
       dateSamples.push(`"${item.date}" -> ${parsedDate ? parsedDate.toISOString().split('T')[0] : 'null'}`);
     }
     
     reviews.push({
-      text: item.text.slice(0, 2000),
+      text: cleanedText.slice(0, 2000),
       date: parsedDate,
       author: item.author || undefined,
       rating: item.rating || undefined,
