@@ -17,7 +17,7 @@ import {
 } from "@shared/schema";
 import { requireAdmin, requireSuperAdmin, type AdminRequest } from "./admin-middleware";
 import { logAudit, getAuditLogs } from "./audit-service";
-import { desc, eq, and, ilike, sql, gte, lte, count } from "drizzle-orm";
+import { desc, eq, and, or, ilike, sql, gte, lte, count, isNull, not } from "drizzle-orm";
 import { z } from "zod";
 
 const router = Router();
@@ -1130,9 +1130,9 @@ router.get("/export/sov-runs", requireAdmin, async (req: AdminRequest, res: Resp
       .orderBy(desc(sovRuns.createdAt))
       .limit(10000);
 
-    const csvHeader = "ID,마켓키워드,브랜드,채널,상태,생성일시,완료일시\n";
+    const csvHeader = "ID,마켓키워드,브랜드,상태,처리노출수,전체노출수,생성일시,완료일시\n";
     const csvBody = runs.map(run => 
-      `"${run.id}","${run.marketKeyword.replace(/"/g, '""')}","${run.brandName.replace(/"/g, '""')}","${run.channel}","${run.status}","${run.createdAt ? new Date(run.createdAt).toISOString() : ''}","${run.completedAt ? new Date(run.completedAt).toISOString() : ''}"`
+      `"${run.id}","${run.marketKeyword.replace(/"/g, '""')}","${run.brands.join(', ').replace(/"/g, '""')}","${run.status}","${run.processedExposures || 0}","${run.totalExposures || 0}","${run.createdAt ? new Date(run.createdAt).toISOString() : ''}","${run.completedAt ? new Date(run.completedAt).toISOString() : ''}"`
     ).join("\n");
 
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
@@ -1180,6 +1180,116 @@ router.get("/export/place-review-jobs", requireAdmin, async (req: AdminRequest, 
   } catch (error) {
     console.error("[Admin] Failed to export place review jobs:", error);
     res.status(500).json({ error: "플레이스 리뷰 내보내기 실패" });
+  }
+});
+
+// 플레이스명 누락된 작업들 조회
+router.get("/place-review-jobs/missing-names", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const jobs = await db
+      .select({
+        id: placeReviewJobs.id,
+        placeId: placeReviewJobs.placeId,
+        placeName: placeReviewJobs.placeName,
+        status: placeReviewJobs.status,
+        createdAt: placeReviewJobs.createdAt,
+      })
+      .from(placeReviewJobs)
+      .where(or(
+        isNull(placeReviewJobs.placeName),
+        eq(placeReviewJobs.placeName, "")
+      ))
+      .orderBy(desc(placeReviewJobs.createdAt))
+      .limit(100);
+
+    res.json({ jobs, count: jobs.length });
+  } catch (error) {
+    console.error("[Admin] Failed to get jobs with missing names:", error);
+    res.status(500).json({ error: "조회 실패" });
+  }
+});
+
+// 플레이스명 수동 업데이트
+router.patch("/place-review-jobs/:jobId/place-name", requireSuperAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { jobId } = req.params;
+    const { placeName } = req.body;
+
+    if (!placeName || typeof placeName !== "string") {
+      return res.status(400).json({ error: "플레이스명을 입력해주세요" });
+    }
+
+    await db.update(placeReviewJobs)
+      .set({ placeName: placeName.trim() })
+      .where(eq(placeReviewJobs.id, jobId));
+
+    await logAudit({
+      adminId: req.user!.id,
+      action: "update_place_name",
+      targetType: "place_review_job",
+      targetId: jobId,
+      details: { placeName },
+      ipAddress: req.ip || undefined
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("[Admin] Failed to update place name:", error);
+    res.status(500).json({ error: "플레이스명 업데이트 실패" });
+  }
+});
+
+// 동일 placeId의 다른 작업에서 플레이스명 복사
+router.post("/place-review-jobs/sync-place-names", requireSuperAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    // 플레이스명이 있는 작업들 조회
+    const jobsWithNames = await db
+      .select({
+        placeId: placeReviewJobs.placeId,
+        placeName: placeReviewJobs.placeName,
+      })
+      .from(placeReviewJobs)
+      .where(and(
+        not(isNull(placeReviewJobs.placeName)),
+        not(eq(placeReviewJobs.placeName, ""))
+      ))
+      .groupBy(placeReviewJobs.placeId, placeReviewJobs.placeName);
+
+    const placeNameMap: Record<string, string> = {};
+    for (const job of jobsWithNames) {
+      if (job.placeName && !placeNameMap[job.placeId]) {
+        placeNameMap[job.placeId] = job.placeName;
+      }
+    }
+
+    let updatedCount = 0;
+    for (const placeId of Object.keys(placeNameMap)) {
+      const placeName = placeNameMap[placeId];
+      await db.update(placeReviewJobs)
+        .set({ placeName })
+        .where(and(
+          eq(placeReviewJobs.placeId, placeId),
+          or(
+            isNull(placeReviewJobs.placeName),
+            eq(placeReviewJobs.placeName, "")
+          )
+        ));
+      updatedCount++;
+    }
+
+    await logAudit({
+      adminId: req.user!.id,
+      action: "sync_place_names",
+      targetType: "place_review_jobs",
+      targetId: undefined,
+      details: { updatedPlaceIds: updatedCount },
+      ipAddress: req.ip || undefined
+    });
+
+    res.json({ success: true, updatedCount });
+  } catch (error) {
+    console.error("[Admin] Failed to sync place names:", error);
+    res.status(500).json({ error: "플레이스명 동기화 실패" });
   }
 });
 

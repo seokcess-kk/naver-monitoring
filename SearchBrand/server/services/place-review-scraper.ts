@@ -468,33 +468,77 @@ function filterReviews(
 
 async function extractPlaceName(page: Page): Promise<string | null> {
   const placeName = await page.evaluate(() => {
+    // 모바일 네이버 플레이스 페이지 셀렉터 (우선순위순)
     const nameSelectors = [
+      // 모바일 플레이스 페이지 상호명 셀렉터
       ".GHAhO",
-      ".Fc1rA",
-      "h1[class*='place_name']",
+      ".Fc1rA", 
+      ".YwYLL",
+      ".place_section_content span.GHAhO",
+      // 일반 플레이스 페이지 셀렉터
+      "[class*='name'][class*='place']",
+      "[class*='title'][class*='place']",
+      ".place_section_content h1",
+      ".place_section_header h2",
+      "h1[class*='place']",
       "h1.name",
       ".place_name",
       ".tit_location",
       "[class*='PlaceName']",
       "header h1",
       ".biz_name",
+      // 헤더 영역 span/div 내 텍스트
+      ".place_section_header span",
+      "[class*='Header'] span[class*='name']",
+      "[class*='header'] span[class*='title']",
     ];
 
     for (const selector of nameSelectors) {
-      const el = document.querySelector(selector);
-      if (el && el.textContent) {
-        const text = el.textContent.trim();
-        if (text.length > 0 && text.length < 100) {
-          return text;
+      try {
+        const el = document.querySelector(selector);
+        if (el && el.textContent) {
+          const text = el.textContent.trim();
+          // 유효한 상호명인지 확인 (1-80자, 숫자만으로 구성되지 않음)
+          if (text.length > 0 && text.length < 80 && !/^\d+$/.test(text)) {
+            return text;
+          }
+        }
+      } catch (e) {
+        // 셀렉터 오류 무시
+      }
+    }
+
+    // 백업: 페이지 타이틀에서 추출
+    const pageTitle = document.title;
+    if (pageTitle) {
+      // "상호명 : 네이버 플레이스" 또는 "상호명 - 리뷰" 패턴
+      const patterns = [
+        /^(.+?)\s*:\s*네이버/,
+        /^(.+?)\s*-\s*네이버/,
+        /^(.+?)\s*\|\s*네이버/,
+        /^(.+?)(?:\s*리뷰)/,
+        /^(.+?)(?:\s*[:：\-|])/,
+      ];
+      for (const pattern of patterns) {
+        const match = pageTitle.match(pattern);
+        if (match && match[1]) {
+          const name = match[1].trim();
+          if (name.length > 0 && name.length < 80 && !/^\d+$/.test(name)) {
+            return name;
+          }
         }
       }
     }
 
-    const pageTitle = document.title;
-    if (pageTitle) {
-      const match = pageTitle.match(/^(.+?)(?:\s*[:：\-|]|\s*리뷰|\s*-\s*네이버)/);
-      if (match && match[1]) {
-        return match[1].trim();
+    // 최후의 백업: og:title 메타 태그
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) {
+      const content = ogTitle.getAttribute('content');
+      if (content) {
+        const name = content.split(/[:\-|]/)[0].trim();
+        if (name.length > 0 && name.length < 80 && !/^\d+$/.test(name)) {
+          return name;
+        }
       }
     }
 

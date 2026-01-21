@@ -14,7 +14,9 @@ export type AuditAction =
   | "user_solution_update"
   | "user_solution_revoke"
   | "sov_run_delete"
-  | "search_log_delete";
+  | "search_log_delete"
+  | "update_place_name"
+  | "sync_place_names";
 
 export type AuditTargetType = 
   | "user"
@@ -22,7 +24,9 @@ export type AuditTargetType =
   | "solution"
   | "user_solution"
   | "sov_run"
-  | "search_log";
+  | "search_log"
+  | "place_review_job"
+  | "place_review_jobs";
 
 interface LogAuditParams {
   adminId: string;
