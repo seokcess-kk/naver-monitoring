@@ -296,7 +296,7 @@ router.get("/sov-runs", requireAdmin, async (req: AdminRequest, res: Response) =
 
 router.get("/search-logs", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
-    const { userId, searchType, startDate, endDate } = req.query;
+    const { userId, searchType, startDate, endDate, keyword } = req.query;
     const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
     
     const conditions = [];
@@ -312,6 +312,9 @@ router.get("/search-logs", requireAdmin, async (req: AdminRequest, res: Response
     }
     if (endDate && typeof endDate === "string") {
       conditions.push(lte(searchLogs.createdAt, new Date(endDate)));
+    }
+    if (keyword && typeof keyword === "string") {
+      conditions.push(ilike(searchLogs.keyword, `%${keyword}%`));
     }
     
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -965,6 +968,218 @@ router.get("/insights/place-reviews", requireAdmin, async (req: AdminRequest, re
   } catch (error) {
     console.error("[Admin] Failed to get place review insights:", error);
     res.status(500).json({ error: "플레이스 리뷰 인사이트 조회 실패" });
+  }
+});
+
+router.get("/insights/system-performance", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [totalSearches] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(searchLogs)
+      .where(gte(searchLogs.createdAt, weekAgo));
+
+    const [totalSovRuns] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(sovRuns)
+      .where(gte(sovRuns.createdAt, weekAgo));
+
+    const [completedSovRuns] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(sovRuns)
+      .where(and(gte(sovRuns.createdAt, weekAgo), eq(sovRuns.status, "completed")));
+
+    const [failedSovRuns] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(sovRuns)
+      .where(and(gte(sovRuns.createdAt, weekAgo), eq(sovRuns.status, "failed")));
+
+    const [totalPlaceJobs] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(placeReviewJobs)
+      .where(gte(placeReviewJobs.createdAt, weekAgo));
+
+    const [completedPlaceJobs] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(placeReviewJobs)
+      .where(and(gte(placeReviewJobs.createdAt, weekAgo), eq(placeReviewJobs.status, "completed")));
+
+    const [failedPlaceJobs] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(placeReviewJobs)
+      .where(and(gte(placeReviewJobs.createdAt, weekAgo), eq(placeReviewJobs.status, "failed")));
+
+    const [pendingPlaceJobs] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(placeReviewJobs)
+      .where(eq(placeReviewJobs.status, "pending"));
+
+    const [processingPlaceJobs] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(placeReviewJobs)
+      .where(eq(placeReviewJobs.status, "processing"));
+
+    const dailyApiUsage = await db
+      .select({
+        date: sql<string>`date_trunc('day', ${searchLogs.createdAt})::date::text`,
+        searches: sql<number>`count(*)::int`,
+      })
+      .from(searchLogs)
+      .where(gte(searchLogs.createdAt, weekAgo))
+      .groupBy(sql`date_trunc('day', ${searchLogs.createdAt})`)
+      .orderBy(sql`date_trunc('day', ${searchLogs.createdAt})`);
+
+    const sovSuccessRate = totalSovRuns?.count ? Math.round((completedSovRuns?.count || 0) / totalSovRuns.count * 100) : 0;
+    const placeSuccessRate = totalPlaceJobs?.count ? Math.round((completedPlaceJobs?.count || 0) / totalPlaceJobs.count * 100) : 0;
+
+    res.json({
+      apiUsage: {
+        totalSearches: totalSearches?.count || 0,
+        dailyUsage: dailyApiUsage,
+      },
+      sovQueue: {
+        total: totalSovRuns?.count || 0,
+        completed: completedSovRuns?.count || 0,
+        failed: failedSovRuns?.count || 0,
+        successRate: sovSuccessRate,
+      },
+      placeReviewQueue: {
+        total: totalPlaceJobs?.count || 0,
+        completed: completedPlaceJobs?.count || 0,
+        failed: failedPlaceJobs?.count || 0,
+        pending: pendingPlaceJobs?.count || 0,
+        processing: processingPlaceJobs?.count || 0,
+        successRate: placeSuccessRate,
+      },
+    });
+  } catch (error) {
+    console.error("[Admin] Failed to get system performance:", error);
+    res.status(500).json({ error: "시스템 성능 조회 실패" });
+  }
+});
+
+router.get("/export/search-logs", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { searchType, startDate, endDate, keyword, userId } = req.query;
+    
+    const conditions = [];
+    
+    if (searchType && typeof searchType === "string") {
+      conditions.push(eq(searchLogs.searchType, searchType));
+    }
+    if (startDate && typeof startDate === "string") {
+      conditions.push(gte(searchLogs.createdAt, new Date(startDate)));
+    }
+    if (endDate && typeof endDate === "string") {
+      conditions.push(lte(searchLogs.createdAt, new Date(endDate)));
+    }
+    if (keyword && typeof keyword === "string") {
+      conditions.push(ilike(searchLogs.keyword, `%${keyword}%`));
+    }
+    if (userId && typeof userId === "string") {
+      conditions.push(eq(searchLogs.userId, userId));
+    }
+    
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    const logs = await db
+      .select()
+      .from(searchLogs)
+      .where(whereClause)
+      .orderBy(desc(searchLogs.createdAt))
+      .limit(10000);
+
+    const csvHeader = "ID,키워드,검색타입,사용자ID,생성일시\n";
+    const csvBody = logs.map(log => 
+      `"${log.id}","${log.keyword.replace(/"/g, '""')}","${log.searchType}","${log.userId}","${new Date(log.createdAt!).toISOString()}"`
+    ).join("\n");
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="search-logs-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send("\uFEFF" + csvHeader + csvBody);
+  } catch (error) {
+    console.error("[Admin] Failed to export search logs:", error);
+    res.status(500).json({ error: "검색 로그 내보내기 실패" });
+  }
+});
+
+router.get("/export/sov-runs", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { status, startDate, endDate } = req.query;
+    
+    const conditions = [];
+    
+    if (status && typeof status === "string") {
+      conditions.push(eq(sovRuns.status, status as any));
+    }
+    if (startDate && typeof startDate === "string") {
+      conditions.push(gte(sovRuns.createdAt, new Date(startDate)));
+    }
+    if (endDate && typeof endDate === "string") {
+      conditions.push(lte(sovRuns.createdAt, new Date(endDate)));
+    }
+    
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    const runs = await db
+      .select()
+      .from(sovRuns)
+      .where(whereClause)
+      .orderBy(desc(sovRuns.createdAt))
+      .limit(10000);
+
+    const csvHeader = "ID,마켓키워드,브랜드,채널,상태,생성일시,완료일시\n";
+    const csvBody = runs.map(run => 
+      `"${run.id}","${run.marketKeyword.replace(/"/g, '""')}","${run.brandName.replace(/"/g, '""')}","${run.channel}","${run.status}","${run.createdAt ? new Date(run.createdAt).toISOString() : ''}","${run.completedAt ? new Date(run.completedAt).toISOString() : ''}"`
+    ).join("\n");
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="sov-runs-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send("\uFEFF" + csvHeader + csvBody);
+  } catch (error) {
+    console.error("[Admin] Failed to export SOV runs:", error);
+    res.status(500).json({ error: "SOV 분석 내보내기 실패" });
+  }
+});
+
+router.get("/export/place-review-jobs", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { status, startDate, endDate } = req.query;
+    
+    const conditions = [];
+    
+    if (status && typeof status === "string") {
+      conditions.push(eq(placeReviewJobs.status, status as any));
+    }
+    if (startDate && typeof startDate === "string") {
+      conditions.push(gte(placeReviewJobs.createdAt, new Date(startDate)));
+    }
+    if (endDate && typeof endDate === "string") {
+      conditions.push(lte(placeReviewJobs.createdAt, new Date(endDate)));
+    }
+    
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    const jobs = await db
+      .select()
+      .from(placeReviewJobs)
+      .where(whereClause)
+      .orderBy(desc(placeReviewJobs.createdAt))
+      .limit(10000);
+
+    const csvHeader = "ID,플레이스ID,플레이스명,모드,상태,총리뷰,분석리뷰,생성일시,완료일시\n";
+    const csvBody = jobs.map(job => 
+      `"${job.id}","${job.placeId}","${(job.placeName || '').replace(/"/g, '""')}","${job.mode}","${job.status}","${job.totalReviews}","${job.analyzedReviews}","${job.createdAt ? new Date(job.createdAt).toISOString() : ''}","${job.completedAt ? new Date(job.completedAt).toISOString() : ''}"`
+    ).join("\n");
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="place-review-jobs-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send("\uFEFF" + csvHeader + csvBody);
+  } catch (error) {
+    console.error("[Admin] Failed to export place review jobs:", error);
+    res.status(500).json({ error: "플레이스 리뷰 내보내기 실패" });
   }
 });
 

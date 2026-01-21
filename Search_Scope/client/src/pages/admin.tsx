@@ -36,6 +36,7 @@ import {
   BarChart3,
   TrendingUp,
   MessageSquare,
+  Download,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -668,8 +669,29 @@ function SovRunsTab() {
 
   const totalPages = data ? Math.ceil(data.total / limit) : 0;
 
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      pending: "대기",
+      processing: "처리중",
+      completed: "완료",
+      failed: "실패",
+    };
+    return labels[status] || status;
+  };
+
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => window.open("/api/admin/export/sov-runs", "_blank")}
+        >
+          <Download className="w-4 h-4 mr-1" />
+          CSV 내보내기
+        </Button>
+      </div>
+
       <Card>
         <Table>
           <TableHeader>
@@ -698,7 +720,7 @@ function SovRunsTab() {
                 <TableCell className="max-w-xs truncate">{run.brands.join(", ")}</TableCell>
                 <TableCell>
                   <Badge variant={run.status === "completed" ? "default" : run.status === "failed" ? "destructive" : "outline"}>
-                    {run.status}
+                    {getStatusLabel(run.status)}
                   </Badge>
                 </TableCell>
                 <TableCell>{run.processedExposures}/{run.totalExposures}</TableCell>
@@ -728,15 +750,25 @@ function SovRunsTab() {
 
 function SearchLogsTab() {
   const [page, setPage] = useState(0);
+  const [searchType, setSearchType] = useState<string>("");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [keywordFilter, setKeywordFilter] = useState<string>("");
+  const [userIdFilter, setUserIdFilter] = useState<string>("");
   const limit = 30;
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["/api/admin/search-logs", page],
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["/api/admin/search-logs", page, searchType, startDate, endDate, keywordFilter, userIdFilter],
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: limit.toString(),
         offset: (page * limit).toString(),
       });
+      if (searchType) params.append("searchType", searchType);
+      if (startDate) params.append("startDate", startDate);
+      if (endDate) params.append("endDate", endDate);
+      if (keywordFilter) params.append("keyword", keywordFilter);
+      if (userIdFilter) params.append("userId", userIdFilter);
       const res = await apiRequest("GET", `/api/admin/search-logs?${params}`);
       return res.json() as Promise<{ logs: SearchLogAdmin[]; total: number }>;
     },
@@ -744,8 +776,105 @@ function SearchLogsTab() {
 
   const totalPages = data ? Math.ceil(data.total / limit) : 0;
 
+  const handleApplyFilters = () => {
+    setPage(0);
+    refetch();
+  };
+
+  const handleResetFilters = () => {
+    setSearchType("");
+    setStartDate("");
+    setEndDate("");
+    setKeywordFilter("");
+    setUserIdFilter("");
+    setPage(0);
+  };
+
   return (
     <div className="space-y-4">
+      <Card className="p-4">
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">검색 타입</label>
+            <select 
+              className="border rounded px-2 py-1 text-sm"
+              value={searchType}
+              onChange={(e) => setSearchType(e.target.value)}
+            >
+              <option value="">전체</option>
+              <option value="unified">통합검색</option>
+              <option value="blog">블로그</option>
+              <option value="cafe">카페</option>
+              <option value="kin">지식iN</option>
+              <option value="news">뉴스</option>
+              <option value="sov">SOV</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">시작일</label>
+            <input 
+              type="date" 
+              className="border rounded px-2 py-1 text-sm"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">종료일</label>
+            <input 
+              type="date" 
+              className="border rounded px-2 py-1 text-sm"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">키워드 검색</label>
+            <input 
+              type="text" 
+              className="border rounded px-2 py-1 text-sm w-32"
+              placeholder="키워드..."
+              value={keywordFilter}
+              onChange={(e) => setKeywordFilter(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">사용자 ID</label>
+            <input 
+              type="text" 
+              className="border rounded px-2 py-1 text-sm w-28"
+              placeholder="ID..."
+              value={userIdFilter}
+              onChange={(e) => setUserIdFilter(e.target.value)}
+            />
+          </div>
+          <Button variant="outline" size="sm" onClick={handleApplyFilters}>
+            적용
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleResetFilters}>
+            초기화
+          </Button>
+          <div className="ml-auto">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (searchType) params.append("searchType", searchType);
+                if (startDate) params.append("startDate", startDate);
+                if (endDate) params.append("endDate", endDate);
+                if (keywordFilter) params.append("keyword", keywordFilter);
+                if (userIdFilter) params.append("userId", userIdFilter);
+                window.open(`/api/admin/export/search-logs?${params}`, "_blank");
+              }}
+            >
+              <Download className="w-4 h-4 mr-1" />
+              CSV 내보내기
+            </Button>
+          </div>
+        </div>
+      </Card>
+
       <Card>
         <Table>
           <TableHeader>
@@ -771,7 +900,7 @@ function SearchLogsTab() {
                 <TableCell className="font-medium">{log.keyword}</TableCell>
                 <TableCell>
                   <Badge variant={log.searchType === "sov" ? "default" : "secondary"}>
-                    {log.searchType}
+                    {log.searchType === "unified" ? "통합검색" : log.searchType}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground text-xs font-mono">{log.userId.slice(0, 8)}...</TableCell>
@@ -1340,6 +1469,12 @@ interface PlaceReviewInsights {
   dailyJobTrend: { date: string; total: number; completed: number }[];
 }
 
+interface SystemPerformanceInsights {
+  apiUsage: { totalSearches: number; dailyUsage: { date: string; searches: number }[] };
+  sovQueue: { total: number; completed: number; failed: number; successRate: number };
+  placeReviewQueue: { total: number; completed: number; failed: number; pending: number; processing: number; successRate: number };
+}
+
 function InsightsTab() {
   const { data: userActivity, isLoading: loadingUser, refetch: refetchUser } = useQuery<UserActivityInsights>({
     queryKey: ["/api/admin/insights/user-activity"],
@@ -1365,10 +1500,19 @@ function InsightsTab() {
     },
   });
 
+  const { data: systemPerf, isLoading: loadingSystem, refetch: refetchSystem } = useQuery<SystemPerformanceInsights>({
+    queryKey: ["/api/admin/insights/system-performance"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/admin/insights/system-performance");
+      return res.json();
+    },
+  });
+
   const handleRefreshAll = () => {
     refetchUser();
     refetchSov();
     refetchPlace();
+    refetchSystem();
   };
 
   const getSentimentLabel = (sentiment: string) => {
@@ -1716,6 +1860,113 @@ function InsightsTab() {
                       <div className="flex gap-4">
                         <span>전체: <span className="font-medium">{item.total}</span></span>
                         <span className="text-green-600">완료: {item.completed}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-8 border-t pt-6">
+        <h4 className="text-base font-medium mb-4 flex items-center gap-2">
+          <Activity className="w-4 h-4" />
+          시스템 성능 모니터링 (최근 7일)
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">API 사용량</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingSystem ? (
+                <Skeleton className="h-12 w-full" />
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">총 검색 요청</span>
+                    <span className="font-semibold">{systemPerf?.apiUsage.totalSearches || 0}건</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">SOV 분석 큐</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingSystem ? (
+                <Skeleton className="h-12 w-full" />
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">성공률</span>
+                    <span className={`font-semibold ${(systemPerf?.sovQueue.successRate || 0) >= 80 ? "text-green-600" : "text-yellow-600"}`}>
+                      {systemPerf?.sovQueue.successRate || 0}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-green-600">완료: {systemPerf?.sovQueue.completed || 0}</span>
+                    <span className="text-red-600">실패: {systemPerf?.sovQueue.failed || 0}</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">리뷰 분석 큐</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingSystem ? (
+                <Skeleton className="h-12 w-full" />
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">성공률</span>
+                    <span className={`font-semibold ${(systemPerf?.placeReviewQueue.successRate || 0) >= 80 ? "text-green-600" : "text-yellow-600"}`}>
+                      {systemPerf?.placeReviewQueue.successRate || 0}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-blue-600">대기: {systemPerf?.placeReviewQueue.pending || 0}</span>
+                    <span className="text-yellow-600">진행: {systemPerf?.placeReviewQueue.processing || 0}</span>
+                    <span className="text-red-600">실패: {systemPerf?.placeReviewQueue.failed || 0}</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle className="text-base">일별 API 사용량</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingSystem ? (
+              <Skeleton className="h-24 w-full" />
+            ) : systemPerf?.apiUsage.dailyUsage.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">데이터가 없습니다</p>
+            ) : (
+              <div className="space-y-2">
+                {systemPerf?.apiUsage.dailyUsage.map((item) => {
+                  const maxSearches = Math.max(...(systemPerf?.apiUsage.dailyUsage.map(d => d.searches) || [1]));
+                  const percentage = maxSearches > 0 ? Math.round((item.searches / maxSearches) * 100) : 0;
+                  const dateStr = new Date(item.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+                  return (
+                    <div key={item.date} className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground w-16">{dateStr}</span>
+                      <div className="flex items-center gap-2 flex-1 ml-2">
+                        <div className="flex-1 bg-muted rounded-full h-2">
+                          <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${percentage}%` }} />
+                        </div>
+                        <span className="text-sm w-12 text-right">{item.searches}건</span>
                       </div>
                     </div>
                   );
