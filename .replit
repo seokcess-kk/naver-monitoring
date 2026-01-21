@@ -39,10 +39,14 @@ externalPort = 3001
 localPort = 5000
 externalPort = 80
 
+[[ports]]
+localPort = 6379
+externalPort = 3000
+
 [deployment]
 deploymentTarget = "vm"
-run = ["npm", "run", "deploy:start", "--prefix", "Search_Scope"]
-build = ["npm", "run", "deploy:build", "--prefix", "Search_Scope"]
+run = ["npm", "run", "deploy:start", "--prefix", "SearchBrand"]
+build = ["npm", "run", "deploy:build", "--prefix", "SearchBrand"]
 
 [userenv]
 
