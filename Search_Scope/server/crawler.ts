@@ -2,6 +2,7 @@ import puppeteer from "puppeteer";
 import pLimit from "p-limit";
 import LRUCache from "lru-cache";
 import { execSync } from "child_process";
+import { existsSync } from "fs";
 
 interface SmartBlockPost {
   rank: number | null;
@@ -28,28 +29,35 @@ const crawlCache = new LRUCache<string, SmartBlockSection[]>({
 
 function getChromiumPath(): string | undefined {
   if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-    return process.env.PUPPETEER_EXECUTABLE_PATH;
+    if (existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
+      console.log('[Crawler] Using env PUPPETEER_EXECUTABLE_PATH:', process.env.PUPPETEER_EXECUTABLE_PATH);
+      return process.env.PUPPETEER_EXECUTABLE_PATH;
+    }
+    console.warn('[Crawler] PUPPETEER_EXECUTABLE_PATH set but file not found:', process.env.PUPPETEER_EXECUTABLE_PATH);
   }
   
   try {
-    const path = execSync('which chromium', { encoding: 'utf8' }).trim();
-    if (path) {
-      console.log('[Crawler] Using system Chromium:', path);
-      return path;
+    const systemPath = execSync('which chromium', { encoding: 'utf8' }).trim();
+    if (systemPath && existsSync(systemPath)) {
+      console.log('[Crawler] Using system Chromium:', systemPath);
+      return systemPath;
     }
   } catch {
   }
   
   try {
     const puppeteerPath = puppeteer.executablePath();
-    if (puppeteerPath) {
-      console.log('[Crawler] Using Puppeteer bundled Chromium:', puppeteerPath);
+    if (puppeteerPath && existsSync(puppeteerPath)) {
+      console.log('[Crawler] Using Puppeteer bundled Chrome:', puppeteerPath);
       return puppeteerPath;
+    } else if (puppeteerPath) {
+      console.warn('[Crawler] Puppeteer executablePath returned but file not found:', puppeteerPath);
     }
   } catch {
   }
   
-  console.log('[Crawler] No Chromium found, using Puppeteer default');
+  console.warn('[Crawler] No valid Chrome/Chromium found. SmartBlock crawling will be disabled.');
+  console.warn('[Crawler] Run "npx puppeteer browsers install chrome" to install Chrome.');
   return undefined;
 }
 
