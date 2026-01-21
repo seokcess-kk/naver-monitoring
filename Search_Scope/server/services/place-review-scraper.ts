@@ -522,7 +522,34 @@ export async function scrapePlaceReviews(options: ScrapeOptions): Promise<Scrape
       await page.setViewport({ width: 412, height: 915 });
 
       console.log(`[PlaceReviewScraper] Navigating to page...`);
-      const response = await page.goto(reviewUrl, { waitUntil: "networkidle2", timeout: 30000 });
+      
+      // Production-optimized navigation with retry logic
+      const navigationTimeout = process.env.NODE_ENV === 'production' ? 60000 : 30000;
+      let response = null;
+      let retries = 0;
+      const maxRetries = 2;
+      
+      while (retries <= maxRetries) {
+        try {
+          response = await page.goto(reviewUrl, { 
+            waitUntil: "domcontentloaded", 
+            timeout: navigationTimeout 
+          });
+          // Wait for network to settle after initial load
+          await page.waitForNetworkIdle({ timeout: 10000 }).catch(() => {
+            console.log(`[PlaceReviewScraper] Network idle timeout - continuing anyway`);
+          });
+          break;
+        } catch (navError: any) {
+          retries++;
+          if (retries > maxRetries) {
+            throw navError;
+          }
+          console.log(`[PlaceReviewScraper] Navigation attempt ${retries} failed, retrying... (${navError.message})`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+      
       console.log(`[PlaceReviewScraper] Page loaded - Status: ${response?.status()}, URL: ${page.url()}`);
       
       await new Promise((resolve) => setTimeout(resolve, 2000));
