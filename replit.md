@@ -79,7 +79,7 @@
 
 ## 파일 구조
 
-Search_Scope/
+SearchBrand/
 ├── client/src/
 │   ├── components/      # UI 컴포넌트
 │   ├── pages/           # 페이지 컴포넌트

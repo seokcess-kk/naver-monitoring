@@ -28,7 +28,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "redis-server --daemonize yes && cd Search_Scope && npm run dev"
+args = "redis-server --daemonize yes && cd SearchBrand && npm run dev"
 waitForPort = 5000
 
 [[ports]]
@@ -38,10 +38,6 @@ externalPort = 3001
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 6379
-externalPort = 3000
 
 [deployment]
 deploymentTarget = "vm"
