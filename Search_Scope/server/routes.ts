@@ -18,6 +18,7 @@ import {
 } from "./utils/request-helpers";
 import adminRoutes from "./admin-routes";
 import placeReviewRoutes, { initPlaceReviewWorker } from "./place-review-routes";
+import { getAllServicesStatus, getQuickRedisStatus, getQuickOpenAIStatus, getQuickChromeStatus } from "./services/service-status";
 
 const searchLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -78,6 +79,29 @@ export async function registerRoutes(
 
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  app.get("/api/services/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const user = await findUserById(userId);
+      if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+        return res.status(403).json({ message: "관리자 권한이 필요합니다" });
+      }
+      const status = await getAllServicesStatus();
+      res.json(status);
+    } catch (error) {
+      console.error("Service status check error:", error);
+      res.status(500).json({ message: "서비스 상태 확인 실패" });
+    }
+  });
+
+  app.get("/api/services/quick-status", (_req, res) => {
+    res.json({
+      redis: getQuickRedisStatus(),
+      openai: getQuickOpenAIStatus(),
+      chrome: getQuickChromeStatus(),
+    });
   });
 
   app.get("/api/api-keys", isAuthenticated, apiKeyLimiter, async (req: any, res) => {

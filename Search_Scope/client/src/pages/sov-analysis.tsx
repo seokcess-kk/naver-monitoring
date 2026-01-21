@@ -5,6 +5,7 @@ import { SovPanel } from "@/components/sov-panel";
 import { ApiKeySetup } from "@/components/api-key-setup";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import { ServiceStatusAlert } from "@/components/service-status-alert";
 import { BarChart3, AlertCircle } from "lucide-react";
 import type { ApiKeyPublic } from "@shared/schema";
 import { useState, useEffect } from "react";
@@ -55,6 +56,8 @@ export default function SovAnalysisPage() {
               <p className="text-sm text-muted-foreground">Share of Voice - 브랜드 노출 점유율 분석</p>
             </div>
           </div>
+
+          <ServiceStatusAlert service="openai" featureName="SOV 분석" />
 
           <ApiKeySetup 
             existingApiKey={apiKey} 

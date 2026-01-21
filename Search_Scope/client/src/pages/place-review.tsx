@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/header";
 import { StatCardsSkeleton, ReviewListSkeleton, AspectBarsSkeleton, InsightCardSkeleton } from "@/components/ui/results-skeleton";
+import { ServiceStatusAlert, useServiceStatus } from "@/components/service-status-alert";
 import { 
   Loader2, Play, Trash2, BarChart3, MessageSquare, TrendingUp, TrendingDown, Minus, 
   RefreshCw, Search, Filter, Download, RotateCcw, AlertTriangle, Lightbulb, ChevronLeft, ChevronRight,
@@ -1052,6 +1053,8 @@ export default function PlaceReviewPage() {
               새로고침
             </Button>
           </div>
+
+          <ServiceStatusAlert service="redis" featureName="플레이스 리뷰 분석" />
 
           <div className="grid gap-8 lg:grid-cols-3">
             <div className="space-y-6">

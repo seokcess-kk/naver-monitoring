@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useServiceStatus } from "@/components/service-status-alert";
 import {
   Layers,
   MapPin,
@@ -10,6 +12,7 @@ import {
   FileText,
   ExternalLink,
   Zap,
+  AlertTriangle,
 } from "lucide-react";
 
 interface SmartBlockPost {
@@ -82,6 +85,9 @@ export function SmartBlockSection({
   isLoading,
   highlightTerm,
 }: SmartBlockSectionProps) {
+  const { chromeAvailable, isError } = useServiceStatus();
+  const isChromeAvailable = chromeAvailable !== false;
+
   if (isLoading) {
     return (
       <section className="space-y-4 md:space-y-6">
@@ -123,15 +129,23 @@ export function SmartBlockSection({
             </p>
           </div>
         </div>
+        {chromeAvailable === false && (
+          <Alert variant="destructive" className="border-amber-500/50 bg-amber-500/10">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              스마트블록 크롤링 서비스가 점검 중입니다. 기본 검색 결과만 표시됩니다.
+            </AlertDescription>
+          </Alert>
+        )}
         <Card className="border-border/50">
           <EmptyState
             variant="no-results"
             title="스마트블록 결과가 없습니다"
-            description="해당 키워드에 대한 스마트블록이 검색되지 않았습니다."
-            suggestions={[
+            description={chromeAvailable === false ? "크롤링 서비스 점검 중으로 스마트블록을 수집할 수 없습니다." : "해당 키워드에 대한 스마트블록이 검색되지 않았습니다."}
+            suggestions={isChromeAvailable ? [
               "다른 키워드로 검색해보세요",
               "인기 키워드는 더 많은 결과를 보여줍니다"
-            ]}
+            ] : []}
           />
         </Card>
       </section>
