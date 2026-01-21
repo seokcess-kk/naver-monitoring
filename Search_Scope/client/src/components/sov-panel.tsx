@@ -715,12 +715,23 @@ export function SovPanel() {
                 })}
               </div>
               <div className="mt-6">
-                {activeRun.statusMessage && (
-                  <p className="text-sm text-blue-600 dark:text-blue-400 font-medium text-center mb-3">
-                    {activeRun.statusMessage}
-                  </p>
-                )}
-                {parseInt(activeRun.totalExposures || "0") > 0 ? (
+                {activeRun.statusMessage ? (
+                  <>
+                    <p className="text-sm text-blue-600 dark:text-blue-400 font-medium text-center mb-3">
+                      {activeRun.statusMessage}
+                    </p>
+                    {parseInt(activeRun.totalExposures || "0") > 0 && (
+                      <Progress
+                        value={
+                          (parseInt(activeRun.processedExposures || "0") /
+                            parseInt(activeRun.totalExposures)) *
+                          100
+                        }
+                        className="h-2"
+                      />
+                    )}
+                  </>
+                ) : parseInt(activeRun.totalExposures || "0") > 0 ? (
                   <>
                     <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
                       <span>{activeRun.processedExposures || "0"} / {activeRun.totalExposures} 처리됨</span>
@@ -744,7 +755,7 @@ export function SovPanel() {
                       className="h-2"
                     />
                   </>
-                ) : !activeRun.statusMessage && (
+                ) : (
                   <p className="text-xs text-muted-foreground text-center">
                     준비 중...
                   </p>
