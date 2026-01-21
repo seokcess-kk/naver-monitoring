@@ -94,12 +94,46 @@
 - [ ] 주요 기능 프로덕션에서 테스트
 - [ ] 에러 로그 모니터링
 
+## 핵심 기능 의존성
+
+수정 작업 시 기존 기능이 영향받지 않도록 아래 의존성을 확인하세요.
+
+| 기능 | 의존 시스템 | 핵심 파일 | 수정 시 확인 사항 |
+|------|------------|----------|------------------|
+| **스마트블록 크롤링** | Puppeteer + Chrome | `server/crawler.ts` | Chrome 설치 상태, 로그에서 `[Crawler] Using` 메시지 확인 |
+| **통합검색 API** | Naver API + 사용자 키 | `server/routes.ts`, `server/naver-api.ts` | API 키 설정 여부, 4채널 결과 반환 |
+| **SOV 분석** | OpenAI API + 임베딩 | `server/sov-service.ts` | OPENAI_API_KEY, statusMessage 포함 여부 |
+| **플레이스 리뷰** | Redis + BullMQ + Puppeteer | `server/queue/place-review-queue.ts` | Redis 연결, 워커 시작 로그 확인 |
+| **인증/세션** | PostgreSQL + 세션 | `server/auth.ts`, `server/storage.ts` | SESSION_SECRET, DB 연결 |
+| **관리자 콘솔** | 역할 기반 접근 제어 | `server/admin-routes.ts` | superadmin/admin 권한 확인 |
+
+### 파일별 영향 범위
+
+| 파일 수정 시 | 영향받는 기능 | 필수 테스트 |
+|-------------|-------------|------------|
+| `shared/schema.ts` | 전체 DB 관련 기능 | DB push, API 응답 매핑 확인 |
+| `server/routes.ts` | 모든 API 엔드포인트 | 해당 API 호출 테스트 |
+| `server/crawler.ts` | 스마트블록 | 검색 후 스마트블록 표시 확인 |
+| `server/sov-service.ts` | SOV 분석 | SOV 실행 및 진행 상태 확인 |
+| `server/queue/*.ts` | 플레이스 리뷰 | 리뷰 크롤링 및 분석 작동 확인 |
+| `client/src/pages/*.tsx` | 해당 페이지 UI | 페이지 렌더링 및 기능 확인 |
+
+### 배포 시 자주 발생하는 문제
+
+| 문제 | 원인 | 해결 방법 |
+|------|------|----------|
+| 스마트블록 안 나옴 | Chrome 미설치 | `npx puppeteer browsers install chrome` 실행 |
+| SOV 분석 실패 | OpenAI API 키 누락 | 환경변수 OPENAI_API_KEY 확인 |
+| 플레이스 리뷰 멈춤 | Redis 연결 실패 | Redis 서버 상태 확인 |
+| API 필드 누락 | routes.ts 매핑 누락 | 스키마 필드가 응답에 포함되는지 확인 |
+
 ## 주의사항
 
 ### 흔한 실수
 1. **API 응답 매핑 누락**: 스키마에 필드 추가 후 `routes.ts`에서 반환하지 않음
 2. **DB 마이그레이션 누락**: 배포 시 `db:push` 실행 확인 필요
 3. **타입 불일치**: 서버/클라이언트 간 타입 동기화 필수
+4. **Chrome 캐시 초기화**: 배포 환경에서 Chrome 재설치 필요할 수 있음
 
 ### 파일 구조
 ```
@@ -125,15 +159,23 @@ Search_Scope/
 
 ## 최근 변경사항 (2026년 1월)
 
+### 스마트블록 크롤링 (1/21)
+- Chrome 경로 검증 로직 강화 (`existsSync`로 실제 파일 존재 확인)
+- 명확한 경고 메시지 추가 (Chrome 미설치 시 원인 파악 용이)
+- 핵심 기능 의존성 문서화 추가
+
 ### SOV 분석
 - 상세 진행 상태 메시지 표시 ("크롤링 중...", "3/50 분석 완료")
 - 다단계 타임아웃: 전체 10분, 개별 30초, 임베딩 20초
 - API 응답에 `statusMessage`, `processedExposures`, `errorMessage` 포함
 
 ### 플레이스 리뷰
+- statusMessage 필드 추가 (진행 상태 표시)
 - 날짜 필터링 버그 수정 (DATE 모드 정상 동작)
 - 강화된 날짜 추출 로직
 - 프로덕션 디버그 로그 추가
 
 ### 일반
-- 배포 전 체크리스트 강화
+- 핵심 기능 의존성 테이블 추가
+- 파일별 영향 범위 문서화
+- 배포 시 자주 발생하는 문제 가이드 추가
