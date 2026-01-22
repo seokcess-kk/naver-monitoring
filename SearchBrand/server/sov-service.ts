@@ -14,6 +14,27 @@ import { eq } from "drizzle-orm";
 import { crawlNaverSearch } from "./crawler";
 import puppeteer, { Browser, Page } from "puppeteer";
 import pLimit from "p-limit";
+import { execSync } from "child_process";
+import { existsSync } from "fs";
+
+function getChromiumPath(): string | undefined {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    if (existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
+      return process.env.PUPPETEER_EXECUTABLE_PATH;
+    }
+  }
+  
+  try {
+    const systemPath = execSync('which chromium', { encoding: 'utf8' }).trim();
+    if (systemPath && existsSync(systemPath)) {
+      return systemPath;
+    }
+  } catch {
+    // System chromium not found
+  }
+  
+  return undefined;
+}
 import { 
   extractContent as extractContentNew, 
   extractMetadata,
@@ -50,8 +71,10 @@ async function getSharedBrowser(): Promise<Browser> {
         console.log("[SOV] Failed to close old browser:", e);
       }
     }
+    const executablePath = getChromiumPath();
     sharedBrowser = await puppeteer.launch({
       headless: true,
+      executablePath,
       args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
     });
     browserUseCount = 0;

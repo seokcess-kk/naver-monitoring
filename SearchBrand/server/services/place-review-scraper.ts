@@ -1,5 +1,29 @@
 import puppeteer, { Browser, Page } from "puppeteer";
 import pLimit from "p-limit";
+import { execSync } from "child_process";
+import { existsSync } from "fs";
+
+function getChromiumPath(): string | undefined {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    if (existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
+      console.log('[PlaceReviewScraper] Using env PUPPETEER_EXECUTABLE_PATH:', process.env.PUPPETEER_EXECUTABLE_PATH);
+      return process.env.PUPPETEER_EXECUTABLE_PATH;
+    }
+  }
+  
+  try {
+    const systemPath = execSync('which chromium', { encoding: 'utf8' }).trim();
+    if (systemPath && existsSync(systemPath)) {
+      console.log('[PlaceReviewScraper] Using system Chromium:', systemPath);
+      return systemPath;
+    }
+  } catch {
+    // System chromium not found
+  }
+  
+  console.log('[PlaceReviewScraper] No system Chromium found, using Puppeteer default');
+  return undefined;
+}
 
 const MOBILE_USER_AGENT =
   "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
@@ -32,8 +56,10 @@ async function launchBrowser(): Promise<Browser> {
   console.log(`[PlaceReviewScraper] NODE_ENV: ${process.env.NODE_ENV}`);
   
   try {
+    const executablePath = getChromiumPath();
     const browser = await puppeteer.launch({
       headless: true,
+      executablePath,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
