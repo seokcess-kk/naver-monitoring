@@ -1,4 +1,4 @@
-import puppeteer, { Browser, Page } from "puppeteer";
+import puppeteer, { Browser, Page } from "puppeteer-core";
 import axios from "axios";
 import pLimit from "p-limit";
 import { execSync } from "child_process";

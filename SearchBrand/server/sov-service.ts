@@ -12,7 +12,7 @@ import {
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { crawlNaverSearch } from "./crawler";
-import puppeteer, { Browser, Page } from "puppeteer";
+import puppeteer, { Browser, Page } from "puppeteer-core";
 import pLimit from "p-limit";
 import { execSync } from "child_process";
 import { existsSync } from "fs";

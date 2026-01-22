@@ -1,4 +1,4 @@
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
 import pLimit from "p-limit";
 import LRUCache from "lru-cache";
 import { execSync } from "child_process";
