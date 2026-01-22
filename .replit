@@ -52,3 +52,7 @@ build = ["npm", "run", "deploy:build", "--prefix", "SearchBrand"]
 
 [userenv.production]
 APP_BASE_URL = "https://naver-monitor--inner1.replit.app"
+
+[userenv.shared]
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+PUPPETEER_SKIP_DOWNLOAD = "true"
