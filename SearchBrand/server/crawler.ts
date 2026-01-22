@@ -1,8 +1,7 @@
 import puppeteer from "puppeteer-core";
 import pLimit from "p-limit";
 import LRUCache from "lru-cache";
-import { execSync } from "child_process";
-import { existsSync } from "fs";
+import { findChromePath } from "./utils/chrome-finder";
 
 interface SmartBlockPost {
   rank: number | null;
@@ -27,45 +26,11 @@ const crawlCache = new LRUCache<string, SmartBlockSection[]>({
   ttl: 5 * 60 * 1000,
 });
 
-function getChromiumPath(): string | undefined {
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-    if (existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
-      console.log('[Crawler] Using env PUPPETEER_EXECUTABLE_PATH:', process.env.PUPPETEER_EXECUTABLE_PATH);
-      return process.env.PUPPETEER_EXECUTABLE_PATH;
-    }
-    console.warn('[Crawler] PUPPETEER_EXECUTABLE_PATH set but file not found:', process.env.PUPPETEER_EXECUTABLE_PATH);
-  }
-  
-  try {
-    const systemPath = execSync('which chromium', { encoding: 'utf8' }).trim();
-    if (systemPath && existsSync(systemPath)) {
-      console.log('[Crawler] Using system Chromium:', systemPath);
-      return systemPath;
-    }
-  } catch {
-  }
-  
-  try {
-    const puppeteerPath = puppeteer.executablePath();
-    if (puppeteerPath && existsSync(puppeteerPath)) {
-      console.log('[Crawler] Using Puppeteer bundled Chrome:', puppeteerPath);
-      return puppeteerPath;
-    } else if (puppeteerPath) {
-      console.warn('[Crawler] Puppeteer executablePath returned but file not found:', puppeteerPath);
-    }
-  } catch {
-  }
-  
-  console.warn('[Crawler] No valid Chrome/Chromium found. SmartBlock crawling will be disabled.');
-  console.warn('[Crawler] Run "npx puppeteer browsers install chrome" to install Chrome.');
-  return undefined;
-}
-
 async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
   let browser = null;
 
   try {
-    const executablePath = getChromiumPath();
+    const executablePath = findChromePath();
     browser = await puppeteer.launch({
       headless: true,
       executablePath,

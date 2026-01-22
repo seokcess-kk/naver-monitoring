@@ -1,7 +1,5 @@
 import { checkRedisConnection, isRedisAvailable } from "../queue/redis";
-import puppeteer from "puppeteer-core";
-import { existsSync } from "fs";
-import { execSync } from "child_process";
+import { findChromePath } from "../utils/chrome-finder";
 
 export interface ServiceStatus {
   name: string;
@@ -24,32 +22,8 @@ let cachedStatus: AllServicesStatus | null = null;
 let lastCheckTime: number = 0;
 const CACHE_TTL = 30000;
 
-function checkChromePath(): string | null {
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-    if (existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
-      return process.env.PUPPETEER_EXECUTABLE_PATH;
-    }
-  }
-  
-  try {
-    const systemPath = execSync('which chromium', { encoding: 'utf8' }).trim();
-    if (systemPath && existsSync(systemPath)) {
-      return systemPath;
-    }
-  } catch {}
-  
-  try {
-    const puppeteerPath = puppeteer.executablePath();
-    if (puppeteerPath && existsSync(puppeteerPath)) {
-      return puppeteerPath;
-    }
-  } catch {}
-  
-  return null;
-}
-
 async function checkChromeStatus(): Promise<ServiceStatus> {
-  const chromePath = checkChromePath();
+  const chromePath = findChromePath();
   const checkedAt = new Date().toISOString();
   
   if (chromePath) {
@@ -189,5 +163,5 @@ export function getQuickOpenAIStatus(): boolean {
 }
 
 export function getQuickChromeStatus(): boolean {
-  return checkChromePath() !== null;
+  return !!findChromePath();
 }
