@@ -10,7 +10,7 @@ export interface ExtractionResult {
   method?: string;
 }
 
-interface ExtractionStats {
+export interface ExtractionStats {
   blog: { success: number; failed: number };
   cafe: { success: number; failed: number };
   news: { success: number; failed: number };
@@ -19,14 +19,73 @@ interface ExtractionStats {
   other: { success: number; failed: number };
 }
 
-const extractionStats: ExtractionStats = {
-  blog: { success: 0, failed: 0 },
-  cafe: { success: 0, failed: 0 },
-  news: { success: 0, failed: 0 },
-  view: { success: 0, failed: 0 },
-  ad: { success: 0, failed: 0 },
-  other: { success: 0, failed: 0 },
-};
+function createEmptyStats(): ExtractionStats {
+  return {
+    blog: { success: 0, failed: 0 },
+    cafe: { success: 0, failed: 0 },
+    news: { success: 0, failed: 0 },
+    view: { success: 0, failed: 0 },
+    ad: { success: 0, failed: 0 },
+    other: { success: 0, failed: 0 },
+  };
+}
+
+export class ExtractionStatsCollector {
+  private stats: ExtractionStats;
+
+  constructor() {
+    this.stats = createEmptyStats();
+  }
+
+  update(urlType: string, success: boolean): void {
+    const type = urlType as keyof ExtractionStats;
+    if (this.stats[type]) {
+      if (success) {
+        this.stats[type].success++;
+      } else {
+        this.stats[type].failed++;
+      }
+    }
+  }
+
+  getStats(): ExtractionStats {
+    return { ...this.stats };
+  }
+
+  reset(): void {
+    this.stats = createEmptyStats();
+  }
+
+  logSummary(): void {
+    console.log("\n[Extractor] === Extraction Summary ===");
+
+    let totalSuccess = 0;
+    let totalFailed = 0;
+
+    for (const [type, data] of Object.entries(this.stats)) {
+      const total = data.success + data.failed;
+      if (total > 0) {
+        const rate = ((data.success / total) * 100).toFixed(1);
+        console.log(`[Extractor] ${type}: ${data.success}/${total} (${rate}%)`);
+        totalSuccess += data.success;
+        totalFailed += data.failed;
+      }
+    }
+
+    const total = totalSuccess + totalFailed;
+    if (total > 0) {
+      const overallRate = ((totalSuccess / total) * 100).toFixed(1);
+      console.log(`[Extractor] Overall: ${totalSuccess}/${total} (${overallRate}%)`);
+    }
+    console.log("[Extractor] ========================\n");
+  }
+}
+
+export function createExtractionStatsCollector(): ExtractionStatsCollector {
+  return new ExtractionStatsCollector();
+}
+
+const globalStatsCollector = new ExtractionStatsCollector();
 
 const browserLimit = pLimit(3);
 
@@ -142,24 +201,15 @@ export function getUrlType(url: string): "blog" | "view" | "news" | "cafe" | "ad
 }
 
 export function getExtractionStats(): ExtractionStats {
-  return { ...extractionStats };
+  return globalStatsCollector.getStats();
 }
 
 export function resetExtractionStats(): void {
-  Object.keys(extractionStats).forEach((key) => {
-    extractionStats[key as keyof ExtractionStats] = { success: 0, failed: 0 };
-  });
+  globalStatsCollector.reset();
 }
 
-function updateStats(urlType: string, success: boolean): void {
-  const type = urlType as keyof ExtractionStats;
-  if (extractionStats[type]) {
-    if (success) {
-      extractionStats[type].success++;
-    } else {
-      extractionStats[type].failed++;
-    }
-  }
+export function logExtractionSummary(): void {
+  globalStatsCollector.logSummary();
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
@@ -810,10 +860,16 @@ async function runExtraction(
   return { content, method };
 }
 
+export interface ExtractContentOptions {
+  statsCollector?: ExtractionStatsCollector;
+}
+
 export async function extractContent(
   url: string,
-  apiDescription?: string
+  apiDescription?: string,
+  options: ExtractContentOptions = {}
 ): Promise<ExtractionResult> {
+  const stats = options.statsCollector || globalStatsCollector;
   const urlType = getUrlType(url);
   console.log(`[Extractor] Starting extraction - Type: ${urlType}, URL: ${url}`);
 
@@ -836,19 +892,19 @@ export async function extractContent(
           const enhancedContent = adResult.sponsorName
             ? `[광고주: ${adResult.sponsorName}] ${content}`
             : content;
-          updateStats("ad", true);
+          stats.update("ad", true);
           console.log(`[Extractor] Success - Type: ad, Method: ${extractMethod}, Final: ${adResult.finalUrl}, Chars: ${enhancedContent.length}`);
           return { content: enhancedContent, status: "success", urlType: "ad", method: extractMethod };
         }
       }
 
       if (apiDescription && apiDescription.length > 50) {
-        updateStats("ad", true);
+        stats.update("ad", true);
         console.log(`[Extractor] Ad using API description fallback: ${apiDescription.length} chars`);
         return { content: apiDescription, status: "success_api", urlType: "ad", method: "api_fallback" };
       }
 
-      updateStats("ad", false);
+      stats.update("ad", false);
       console.log(`[Extractor] Failed - Type: ad, URL: ${url}`);
       return { content: null, status: "failed", urlType: "ad" };
     }
@@ -857,56 +913,31 @@ export async function extractContent(
     const { content: textContent, method } = await runExtraction(url, strategy);
 
     if (textContent && textContent.length > 100) {
-      updateStats(urlType, true);
+      stats.update(urlType, true);
       console.log(`[Extractor] Success - Type: ${urlType}, Method: ${method}, Chars: ${textContent.length}`);
       return { content: textContent, status: "success", urlType, method };
     }
 
     if (apiDescription && apiDescription.length > 50) {
-      updateStats(urlType, true);
+      stats.update(urlType, true);
       console.log(`[Extractor] Using API description fallback: ${apiDescription.length} chars`);
       return { content: apiDescription, status: "success_api", urlType, method: "api_fallback" };
     }
 
-    updateStats(urlType, false);
+    stats.update(urlType, false);
     console.log(`[Extractor] Failed - Type: ${urlType}, URL: ${url}`);
     return { content: null, status: "failed", urlType };
   } catch (error) {
     console.error("[Extractor] Extraction error:", error);
 
     if (apiDescription && apiDescription.length > 50) {
-      updateStats(urlType, true);
+      stats.update(urlType, true);
       return { content: apiDescription, status: "success_api", urlType, method: "api_fallback" };
     }
 
-    updateStats(urlType, false);
+    stats.update(urlType, false);
     return { content: null, status: "failed", urlType };
   }
-}
-
-export function logExtractionSummary(): void {
-  const stats = getExtractionStats();
-  console.log("\n[Extractor] === Extraction Summary ===");
-  
-  let totalSuccess = 0;
-  let totalFailed = 0;
-  
-  for (const [type, data] of Object.entries(stats)) {
-    const total = data.success + data.failed;
-    if (total > 0) {
-      const rate = ((data.success / total) * 100).toFixed(1);
-      console.log(`[Extractor] ${type}: ${data.success}/${total} (${rate}%)`);
-      totalSuccess += data.success;
-      totalFailed += data.failed;
-    }
-  }
-  
-  const total = totalSuccess + totalFailed;
-  if (total > 0) {
-    const overallRate = ((totalSuccess / total) * 100).toFixed(1);
-    console.log(`[Extractor] Overall: ${totalSuccess}/${total} (${overallRate}%)`);
-  }
-  console.log("[Extractor] ========================\n");
 }
 
 export interface MetadataResult {

@@ -7,6 +7,12 @@
 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록(플레이스, 뉴스 등) 노출 현황을 실시간으로 확인할 수 있습니다. SOV(Share of Voice) 분석으로 브랜드 점유율을 측정하세요.
 
 ## Recent Changes
+- 2026-01-23: ExtractionStatsCollector 클래스 기반 상태 관리
+  - 전역 mutable 상태를 클래스 인스턴스로 캡슐화
+  - `createExtractionStatsCollector()` 팩토리 함수로 요청별 독립 인스턴스 생성
+  - `extractContent`에 `statsCollector` 옵션 추가 (의존성 주입)
+  - SOV 분석에서 요청 단위 stats 격리로 동시성 안전성 확보
+
 - 2026-01-23: extractContent 전략 테이블 기반 리팩토링
   - `ExtractionStrategy` 인터페이스 및 `EXTRACTION_STRATEGIES` 테이블 추가
   - 타입별 전략 정의: handler, timeout, retries, retryDelay, method, fallback

@@ -18,9 +18,9 @@ import { findChromePath } from "./utils/chrome-finder";
 import { 
   extractContent as extractContentNew, 
   extractMetadata,
-  logExtractionSummary, 
-  resetExtractionStats,
-  type ExtractionResult 
+  createExtractionStatsCollector,
+  type ExtractionResult,
+  type ExtractionStatsCollector 
 } from "./content-extractor";
 import { logApiUsage } from "./services/api-usage-logger";
 
@@ -223,9 +223,10 @@ const OCR_ELIGIBLE_TYPES = ["blog", "cafe", "post"];
 
 async function extractContent(
   url: string, 
-  apiDescription?: string
+  apiDescription?: string,
+  statsCollector?: ExtractionStatsCollector
 ): Promise<{ content: string | null; status: string; urlType: string }> {
-  const result = await extractContentNew(url, apiDescription);
+  const result = await extractContentNew(url, apiDescription, { statsCollector });
   
   if (result.content) {
     return { content: result.content, status: result.status, urlType: result.urlType };
@@ -446,14 +447,13 @@ async function executeWithTimeout<T>(
 
 export async function executeSovRun(runId: string): Promise<void> {
   const startTime = Date.now();
+  const statsCollector = createExtractionStatsCollector();
   
   try {
     const run = await getSovRun(runId);
     if (!run) {
       throw new Error("Run not found");
     }
-
-    resetExtractionStats();
     await updateRunStatus(runId, "crawling", undefined, undefined, undefined, "검색 결과 크롤링 중...");
 
     const smartBlockSections = await executeWithTimeout(
@@ -555,7 +555,7 @@ export async function executeSovRun(runId: string): Promise<void> {
     const extractionTasks = exposures.map((exposure) =>
       contentExtractionLimit(async () => {
         const processExposure = async (): Promise<void> => {
-          const { content, status } = await extractContent(exposure.url, exposure.description || undefined);
+          const { content, status } = await extractContent(exposure.url, exposure.description || undefined, statsCollector);
 
           let finalContent = content;
           let finalStatus = status;
@@ -709,14 +709,14 @@ export async function executeSovRun(runId: string): Promise<void> {
     }
 
     const totalElapsedSec = Math.round((Date.now() - startTime) / 1000);
-    logExtractionSummary();
+    statsCollector.logSummary();
     await closeSovBrowser();
     await updateRunStatus(runId, "completed", totalExposures, totalExposures, undefined, 
       `분석 완료 (${totalElapsedSec}초 소요)`);
     console.log(`[SOV] Run ${runId} completed in ${totalElapsedSec}s`);
   } catch (error) {
     console.error("[SOV] Run execution failed:", error);
-    logExtractionSummary();
+    statsCollector.logSummary();
     await closeSovBrowser();
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     await updateRunStatus(runId, "failed", undefined, undefined, errorMessage, `분석 실패: ${errorMessage}`);
