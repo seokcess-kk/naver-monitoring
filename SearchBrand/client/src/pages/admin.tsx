@@ -1467,7 +1467,15 @@ function SolutionsTab() {
 }
 
 interface UserActivityInsights {
-  activeUsers: { period: number; totalSearches: number };
+  activeUsers: { 
+    period: number; 
+    totalActivities: number;
+    breakdown: {
+      searches: number;
+      sovAnalyses: number;
+      placeReviews: number;
+    };
+  };
   popularKeywords: { keyword: string; count: number }[];
   searchByType: { searchType: string; count: number }[];
   dailySearchTrend: { date: string; count: number }[];
@@ -1498,6 +1506,7 @@ function InsightsTab() {
   const [dateRange, setDateRange] = useState<DateRangeOption>("7d");
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
+  const [excludeInactive, setExcludeInactive] = useState<boolean>(true);
 
   const getDateParams = () => {
     const now = new Date();
@@ -1532,10 +1541,11 @@ function InsightsTab() {
   const dateParams = getDateParams();
   const queryParams = `?startDate=${encodeURIComponent(dateParams.startDate)}&endDate=${encodeURIComponent(dateParams.endDate)}`;
 
+  const userActivityParams = `${queryParams}&excludeInactive=${excludeInactive}`;
   const { data: userActivity, isLoading: loadingUser, refetch: refetchUser } = useQuery<UserActivityInsights>({
-    queryKey: ["/api/admin/insights/user-activity", dateRange, customStartDate, customEndDate],
+    queryKey: ["/api/admin/insights/user-activity", dateRange, customStartDate, customEndDate, excludeInactive],
     queryFn: async () => {
-      const res = await apiRequest("GET", `/api/admin/insights/user-activity${queryParams}`);
+      const res = await apiRequest("GET", `/api/admin/insights/user-activity${userActivityParams}`);
       return res.json();
     },
   });
@@ -1658,6 +1668,15 @@ function InsightsTab() {
               />
             </div>
           )}
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={excludeInactive}
+              onChange={(e) => setExcludeInactive(e.target.checked)}
+              className="w-3.5 h-3.5 rounded border-gray-300"
+            />
+            비활성 계정 제외
+          </label>
           <Button variant="outline" size="sm" onClick={handleRefreshAll} className="h-7">
             <RefreshCw className="w-3 h-3 mr-1" />
             새로고침
@@ -1673,19 +1692,34 @@ function InsightsTab() {
               활성 사용자
               <span className="text-xs font-normal text-muted-foreground">({getDateRangeLabel()})</span>
             </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">검색, SOV 분석, 리뷰 분석 중 하나 이상 사용한 사용자</p>
           </CardHeader>
           <CardContent>
             {loadingUser ? (
-              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-20 w-full" />
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">활성 사용자 수</span>
                   <span className="font-semibold">{userActivity?.activeUsers.period || 0}명</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">총 검색 수</span>
-                  <span className="font-semibold">{userActivity?.activeUsers.totalSearches || 0}회</span>
+                  <span className="text-sm text-muted-foreground">총 활동 수</span>
+                  <span className="font-semibold">{userActivity?.activeUsers.totalActivities || 0}건</span>
+                </div>
+                <div className="border-t pt-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">검색</span>
+                    <span>{userActivity?.activeUsers.breakdown?.searches || 0}건</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">SOV 분석</span>
+                    <span>{userActivity?.activeUsers.breakdown?.sovAnalyses || 0}건</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">리뷰 분석</span>
+                    <span>{userActivity?.activeUsers.breakdown?.placeReviews || 0}건</span>
+                  </div>
                 </div>
               </div>
             )}

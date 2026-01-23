@@ -784,24 +784,50 @@ router.delete("/user-solutions/:assignmentId", requireSuperAdmin, async (req: Ad
 
 router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, excludeInactive } = req.query;
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     const filterStart = startDate ? new Date(startDate as string) : new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
     const filterEnd = endDate ? new Date(endDate as string) : new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    const shouldExcludeInactive = excludeInactive === "true";
 
-    const dateCondition = and(gte(searchLogs.createdAt, filterStart), lt(searchLogs.createdAt, filterEnd));
+    const searchCondition = and(gte(searchLogs.createdAt, filterStart), lt(searchLogs.createdAt, filterEnd));
+    const sovCondition = and(gte(sovRuns.createdAt, filterStart), lt(sovRuns.createdAt, filterEnd));
+    const placeReviewCondition = and(gte(placeReviewJobs.createdAt, filterStart), lt(placeReviewJobs.createdAt, filterEnd));
 
-    const [periodActive] = await db
-      .select({ count: sql<number>`count(distinct ${searchLogs.userId})` })
-      .from(searchLogs)
-      .where(dateCondition);
+    const statusFilter = shouldExcludeInactive 
+      ? sql`AND cu.user_id IN (SELECT id FROM users WHERE status = 'active')`
+      : sql``;
 
-    const [totalSearchCount] = await db
+    const [periodActive] = await db.execute(sql`
+      SELECT COUNT(DISTINCT cu.user_id)::int as count FROM (
+        SELECT user_id FROM search_logs 
+        WHERE created_at >= ${filterStart} AND created_at < ${filterEnd} AND user_id IS NOT NULL
+        UNION
+        SELECT user_id FROM sov_runs 
+        WHERE created_at >= ${filterStart} AND created_at < ${filterEnd} AND user_id IS NOT NULL
+        UNION
+        SELECT user_id FROM place_review_jobs 
+        WHERE created_at >= ${filterStart} AND created_at < ${filterEnd} AND user_id IS NOT NULL
+      ) cu
+      WHERE 1=1 ${statusFilter}
+    `);
+
+    const [searchCount] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(searchLogs)
-      .where(dateCondition);
+      .where(searchCondition);
+
+    const [sovCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(sovRuns)
+      .where(sovCondition);
+
+    const [placeReviewCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(placeReviewJobs)
+      .where(placeReviewCondition);
 
     const popularKeywords = await db
       .select({
@@ -833,10 +859,17 @@ router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, re
       .groupBy(sql`date_trunc('day', ${searchLogs.createdAt})`)
       .orderBy(sql`date_trunc('day', ${searchLogs.createdAt})`);
 
+    const totalActivities = (searchCount?.count || 0) + (sovCount?.count || 0) + (placeReviewCount?.count || 0);
+
     res.json({
       activeUsers: {
-        period: periodActive?.count || 0,
-        totalSearches: totalSearchCount?.count || 0,
+        period: (periodActive as any)?.count || 0,
+        totalActivities,
+        breakdown: {
+          searches: searchCount?.count || 0,
+          sovAnalyses: sovCount?.count || 0,
+          placeReviews: placeReviewCount?.count || 0,
+        },
       },
       popularKeywords,
       searchByType,
