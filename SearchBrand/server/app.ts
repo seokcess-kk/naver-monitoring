@@ -70,6 +70,22 @@ export async function initializeApp(app: Express, httpServer: Server) {
 
   app.use(requestLoggerMiddleware);
 
+  const SENSITIVE_ROUTES = [
+    "/api/auth/",
+    "/api/login",
+    "/api/register",
+    "/api/user",
+    "/api/apikeys",
+    "/api/admin/users",
+    "/api/password",
+    "/api/verify",
+    "/api/reset",
+  ];
+
+  const isSensitiveRoute = (path: string): boolean => {
+    return SENSITIVE_ROUTES.some(route => path.startsWith(route) || path.includes(route));
+  };
+
   app.use((req, res, next) => {
     const start = Date.now();
     const path = req.path;
@@ -85,7 +101,7 @@ export async function initializeApp(app: Express, httpServer: Server) {
       const duration = Date.now() - start;
       if (path.startsWith("/api")) {
         let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-        if (capturedJsonResponse) {
+        if (capturedJsonResponse && !isSensitiveRoute(path)) {
           logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
         }
         log(logLine);
