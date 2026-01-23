@@ -7,6 +7,12 @@
 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록(플레이스, 뉴스 등) 노출 현황을 실시간으로 확인할 수 있습니다. SOV(Share of Voice) 분석으로 브랜드 점유율을 측정하세요.
 
 ## Recent Changes
+- 2026-01-23: 공통 상태 컴포넌트 도입
+  - StateComponents.tsx: LoadingState, TableLoading, EmptyState, ErrorState
+  - EmptyState 타입 분리: no-data (데이터 없음), no-filter-results (필터 결과 없음)
+  - 필터 적용 시 "필터 초기화" 액션 표시
+  - SearchLogsTab, SovRunsTab, AuditLogsTab에 적용
+
 - 2026-01-23: 탭별 액션 버튼 위치/스타일 통일
   - ActionButton, ExportButton 공통 컴포넌트 추가
   - 모든 탭에서 테이블 상단 우측에 액션 배치
