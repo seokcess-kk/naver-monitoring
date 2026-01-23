@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronUp, Filter, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Filter, X, Download, type LucideIcon } from "lucide-react";
 
 interface SummaryItem {
   label: string;
@@ -143,5 +143,28 @@ export function FilterField({ label, children }: FilterFieldProps) {
       <label className="text-xs text-muted-foreground font-medium">{label}</label>
       {children}
     </div>
+  );
+}
+
+interface ActionButtonProps {
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+  variant?: "default" | "outline" | "secondary" | "ghost";
+  disabled?: boolean;
+}
+
+export function ActionButton({ icon: Icon, label, onClick, variant = "outline", disabled }: ActionButtonProps) {
+  return (
+    <Button variant={variant} size="sm" onClick={onClick} disabled={disabled} className="h-8">
+      <Icon className="w-4 h-4 mr-1.5" />
+      <span className="hidden sm:inline">{label}</span>
+    </Button>
+  );
+}
+
+export function ExportButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
+  return (
+    <ActionButton icon={Download} label="CSV 내보내기" onClick={onClick} disabled={disabled} />
   );
 }

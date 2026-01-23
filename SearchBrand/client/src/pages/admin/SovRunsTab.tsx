@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import { TabPageLayout, FilterRow, FilterField } from "./TabPageLayout";
+import { TabPageLayout, FilterRow, FilterField, ExportButton } from "./TabPageLayout";
 import type { SovRunAdmin } from "./types";
 
 export function SovRunsTab() {
@@ -110,12 +110,7 @@ export function SovRunsTab() {
         { label: "완료", value: completedCount, variant: "success" },
         { label: "실패", value: failedCount, variant: failedCount > 0 ? "destructive" : "default" },
       ] : undefined}
-      actions={
-        <Button variant="outline" size="sm" onClick={handleExport}>
-          <Download className="w-4 h-4 mr-1" />
-          CSV 내보내기
-        </Button>
-      }
+      actions={<ExportButton onClick={handleExport} />}
       filterContent={
         <FilterRow onApply={handleApplyFilters} onReset={handleResetFilters}>
           <FilterField label="상태">

@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import { TabPageLayout, FilterRow, FilterField } from "./TabPageLayout";
+import { TabPageLayout, FilterRow, FilterField, ExportButton } from "./TabPageLayout";
 import type { AuditLogAdmin } from "./types";
 
 const actionOptions = [
@@ -164,11 +164,32 @@ export function AuditLogsTab() {
     }
   };
 
+  const handleExport = () => {
+    if (!data?.logs.length) return;
+    const headers = ["관리자", "작업", "대상", "상세", "시간"];
+    const rows = data.logs.map((log) => [
+      log.adminEmail || "알 수 없음",
+      getActionLabel(log.action),
+      getTargetTypeLabel(log.targetType),
+      formatDetails(log.details).replace(/,/g, ";"),
+      new Date(log.createdAt).toLocaleString("ko-KR"),
+    ]);
+    const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `audit-logs-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <TabPageLayout
       summary={data ? [
         { label: "전체", value: data.total },
       ] : undefined}
+      actions={<ExportButton onClick={handleExport} disabled={!data?.logs.length} />}
       filterContent={
         <FilterRow onApply={handleApplyFilters} onReset={handleResetFilters}>
           <FilterField label="작업 유형">
