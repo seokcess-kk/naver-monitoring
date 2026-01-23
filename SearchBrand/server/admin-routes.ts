@@ -973,6 +973,11 @@ router.get("/insights/place-reviews", requireAdmin, async (req: AdminRequest, re
       .from(placeReviews)
       .where(and(gte(placeReviews.createdAt, filterStart), lt(placeReviews.createdAt, filterEnd)));
 
+    const [analyzedReviews] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(placeReviewAnalyses)
+      .where(analysisDateCondition);
+
     const sentimentDistribution = await db
       .select({
         sentiment: placeReviewAnalyses.sentiment,
@@ -1011,6 +1016,7 @@ router.get("/insights/place-reviews", requireAdmin, async (req: AdminRequest, re
         totalJobs: totalJobs?.count || 0,
         completedJobs: completedJobs?.count || 0,
         totalReviews: totalReviews?.count || 0,
+        analyzedReviews: analyzedReviews?.count || 0,
       },
       sentimentDistribution,
       popularPlaces,

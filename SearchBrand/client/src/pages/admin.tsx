@@ -1488,7 +1488,7 @@ interface SovTrendInsights {
 }
 
 interface PlaceReviewInsights {
-  summary: { totalJobs: number; completedJobs: number; totalReviews: number };
+  summary: { totalJobs: number; completedJobs: number; totalReviews: number; analyzedReviews: number };
   sentimentDistribution: { sentiment: string; count: number }[];
   popularPlaces: { placeId: string; placeName: string | null; jobCount: number; totalReviews: number }[];
   dailyJobTrend: { date: string; total: number; completed: number }[];
@@ -1839,12 +1839,15 @@ function InsightsTab() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">리뷰 감성 분포</CardTitle>
+            <p className="text-xs text-muted-foreground">분석된 리뷰 기준 ({placeReviews?.summary.analyzedReviews || 0}건)</p>
           </CardHeader>
           <CardContent>
             {loadingPlace ? (
               <Skeleton className="h-24 w-full" />
+            ) : (placeReviews?.summary.analyzedReviews || 0) === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">분석된 리뷰가 없습니다</p>
             ) : placeReviews?.sentimentDistribution.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">데이터가 없습니다</p>
+              <p className="text-sm text-muted-foreground text-center py-4">감성 분석 데이터가 없습니다</p>
             ) : (
               <div className="space-y-3">
                 {placeReviews?.sentimentDistribution.map((item) => (
@@ -1856,10 +1859,12 @@ function InsightsTab() {
                       <div className="w-32 bg-muted rounded-full h-2">
                         <div 
                           className={`h-2 rounded-full ${item.sentiment === "Positive" ? "bg-green-500" : item.sentiment === "Negative" ? "bg-red-500" : "bg-gray-500"}`}
-                          style={{ width: `${Math.min(100, (item.count / (placeReviews.summary.totalReviews || 1)) * 100)}%` }}
+                          style={{ width: `${Math.min(100, (item.count / (placeReviews.summary.analyzedReviews || 1)) * 100)}%` }}
                         />
                       </div>
-                      <span className="text-sm font-medium w-12 text-right">{item.count}개</span>
+                      <span className="text-sm font-medium w-16 text-right">
+                        {item.count}개 ({Math.round((item.count / (placeReviews.summary.analyzedReviews || 1)) * 100)}%)
+                      </span>
                     </div>
                   </div>
                 ))}
