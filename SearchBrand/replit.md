@@ -7,6 +7,11 @@
 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록(플레이스, 뉴스 등) 노출 현황을 실시간으로 확인할 수 있습니다. SOV(Share of Voice) 분석으로 브랜드 점유율을 측정하세요.
 
 ## Recent Changes
+- 2026-01-23: XSS 방지를 위한 HTML sanitization 적용
+  - DOMPurify 라이브러리 도입
+  - 허용 태그: b, strong, em, i, mark, br (하이라이트용)
+  - ApiResultsSection, SmartBlockSection에 적용
+
 - 2026-01-23: 스마트블록 URL 매칭 성능 최적화
   - O(N*M) → O(N+M): Set 기반 O(1) 조회로 변경
   - useMemo로 URL Set, 하이라이트 정규식 캐싱

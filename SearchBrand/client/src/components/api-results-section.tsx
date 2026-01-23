@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -297,14 +298,14 @@ function ChannelCard({
                       <div className="flex items-center gap-2">
                         <h4
                           className="text-xs md:text-sm font-medium leading-snug line-clamp-2 group-hover:text-primary transition-colors"
-                          dangerouslySetInnerHTML={{ __html: highlightTerm ? applyHighlight(item.title) : item.title }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(highlightTerm ? applyHighlight(item.title) : item.title) }}
                         />
                         <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                       </div>
                       {item.description && (
                         <p
                           className="text-[10px] md:text-xs text-muted-foreground/80 line-clamp-2 mt-1 md:mt-1.5 leading-relaxed"
-                          dangerouslySetInnerHTML={{ __html: item.description }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.description) }}
                         />
                       )}
                       {(channel.getName(item) || item.postdate || item.pubDate) && (

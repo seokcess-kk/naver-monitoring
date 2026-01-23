@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -227,14 +228,14 @@ export function SmartBlockSection({
                             <div className="flex items-center gap-2">
                               <h4
                                 className="text-xs md:text-sm font-medium leading-snug line-clamp-1 group-hover:text-primary transition-colors"
-                                dangerouslySetInnerHTML={{ __html: highlightTerm ? highlightText(post.title, highlightTerm) : post.title }}
+                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(highlightTerm ? highlightText(post.title, highlightTerm) : post.title) }}
                               />
                               <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                             </div>
                             {post.summary && (
                               <p
                                 className="text-[10px] md:text-xs text-muted-foreground/80 line-clamp-2 mt-1 md:mt-1.5 leading-relaxed"
-                                dangerouslySetInnerHTML={{ __html: highlightTerm ? highlightText(post.summary, highlightTerm) : post.summary }}
+                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(highlightTerm ? highlightText(post.summary, highlightTerm) : post.summary) }}
                               />
                             )}
                             {post.isNews && (post.press || post.date) && (
