@@ -404,9 +404,15 @@ export function ApiResultsSection({
           </div>
         </div>
         {onExportCSV && (
-          <Button variant="outline" size="sm" onClick={onExportCSV} className="shrink-0">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onExportCSV} 
+            className="shrink-0"
+            title="현재 페이지 결과만 내보냅니다"
+          >
             <Download className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">CSV 내보내기</span>
+            <span className="hidden sm:inline">현재 페이지 CSV</span>
             <span className="sm:hidden">CSV</span>
           </Button>
         )}

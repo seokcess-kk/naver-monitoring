@@ -325,7 +325,7 @@ export default function Dashboard() {
     link.download = `search-${currentKeyword}-${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    toast({ title: "CSV 다운로드 완료" });
+    toast({ title: "CSV 다운로드 완료", description: "현재 페이지 결과가 저장되었습니다" });
   };
 
   const handleChannelPageChange = async (channel: ChannelKey, newPage: number) => {
