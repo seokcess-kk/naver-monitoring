@@ -17,6 +17,7 @@ import {
   toApiKeyPublic 
 } from "./utils/request-helpers";
 import adminRoutes from "./admin-routes";
+import { requireAdmin } from "./admin-middleware";
 import placeReviewRoutes, { initPlaceReviewWorker } from "./place-review-routes";
 import { getAllServicesStatus, getQuickRedisStatus, getQuickOpenAIStatus, getQuickChromeStatus } from "./services/service-status";
 
@@ -96,7 +97,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/services/quick-status", (_req, res) => {
+  app.get("/api/services/quick-status", requireAdmin, (_req, res) => {
     res.json({
       redis: getQuickRedisStatus(),
       openai: getQuickOpenAIStatus(),
