@@ -246,13 +246,22 @@ export default function Dashboard() {
 
     try {
       const searchResponse = await fetch(`/api/search?keyword=${encodeURIComponent(keyword)}&sort=${sort}&page=1`);
-      if (!searchResponse.ok) throw new Error("검색 실패");
+      if (!searchResponse.ok) {
+        const errorData = await searchResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || "검색 실패");
+      }
       const data = await searchResponse.json();
       setSearchResults(data);
       
       fetchKeywordVolume(keyword);
     } catch (error) {
       console.error("Search error:", error);
+      const message = error instanceof Error ? error.message : "검색 중 오류가 발생했습니다";
+      toast({ 
+        title: "검색 실패", 
+        description: `${message}. 잠시 후 다시 시도해주세요.`,
+        variant: "destructive" 
+      });
     } finally {
       setIsSearching(false);
     }
@@ -325,6 +334,12 @@ export default function Dashboard() {
     } catch (error) {
       console.error("Channel search error:", error);
       setChannelPages(prev => ({ ...prev, [channel]: previousPage }));
+      const channelNames: Record<string, string> = { blog: "블로그", cafe: "카페", kin: "지식iN", news: "뉴스" };
+      toast({ 
+        title: `${channelNames[channel]} 페이지 로드 실패`, 
+        description: "잠시 후 다시 시도해주세요.",
+        variant: "destructive" 
+      });
     } finally {
       setChannelLoading(prev => ({ ...prev, [channel]: false }));
     }
