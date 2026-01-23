@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect } from "wouter";
@@ -37,7 +37,14 @@ import {
   TrendingUp,
   MessageSquare,
   Download,
+  Zap,
+  Eye,
+  Clock,
 } from "lucide-react";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  BarChart, Bar, PieChart, Pie, Cell,
+} from "recharts";
 import { apiRequest } from "@/lib/queryClient";
 
 interface AdminStats {
@@ -184,6 +191,7 @@ function UsersTab() {
   const [solutionUser, setSolutionUser] = useState<AdminUser | null>(null);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [newAssignment, setNewAssignment] = useState({ solutionId: "", expiresAt: "" });
+  const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
   const limit = 10;
 
   const { data, isLoading } = useQuery({
@@ -390,6 +398,9 @@ function UsersTab() {
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => setDetailUser(user)} title="상세 보기">
+                      <Eye className="w-4 h-4" />
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => handleEdit(user)}>
                       수정
                     </Button>
@@ -647,6 +658,12 @@ function UsersTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <UserDetailModal 
+        user={detailUser} 
+        open={!!detailUser} 
+        onClose={() => setDetailUser(null)} 
+      />
     </div>
   );
 }
@@ -1997,6 +2014,370 @@ interface AllServicesStatus {
   checkedAt: string;
 }
 
+interface ApiUsageStats {
+  byApiType: Array<{
+    apiType: string;
+    totalCalls: number;
+    successCalls: number;
+    failedCalls: number;
+    totalTokens: number;
+    avgResponseTime: number;
+    successRate: number;
+  }>;
+  dailyTrend: Array<{
+    date: string;
+    apiType: string;
+    count: number;
+  }>;
+  topUsers: Array<{
+    userId: string;
+    email: string;
+    totalCalls: number;
+    totalTokens: number;
+  }>;
+}
+
+const API_TYPE_LABELS: Record<string, string> = {
+  naver_search: "네이버 검색",
+  naver_ad: "네이버 광고",
+  openai: "OpenAI",
+  browserless: "Browserless",
+};
+
+const API_TYPE_COLORS: Record<string, string> = {
+  naver_search: "#22c55e",
+  naver_ad: "#3b82f6",
+  openai: "#8b5cf6",
+  browserless: "#f59e0b",
+};
+
+function ApiUsageTab() {
+  const [dateRange, setDateRange] = useState<string>("7days");
+  
+  const getDateRange = () => {
+    const end = new Date();
+    const start = new Date();
+    switch (dateRange) {
+      case "today": start.setHours(0,0,0,0); break;
+      case "7days": start.setDate(start.getDate() - 7); break;
+      case "30days": start.setDate(start.getDate() - 30); break;
+      default: start.setDate(start.getDate() - 7);
+    }
+    return { startDate: start.toISOString(), endDate: end.toISOString() };
+  };
+  
+  const { startDate, endDate } = getDateRange();
+  
+  const { data: stats, isLoading } = useQuery<ApiUsageStats>({
+    queryKey: ["admin-api-usage-stats", dateRange],
+    queryFn: async () => {
+      const params = new URLSearchParams({ startDate, endDate });
+      const res = await apiRequest("GET", `/api/admin/api-usage/stats?${params}`);
+      return res.json();
+    },
+  });
+  
+  const chartData = useMemo(() => {
+    if (!stats?.dailyTrend) return [];
+    const grouped: Record<string, Record<string, number>> = {};
+    stats.dailyTrend.forEach(d => {
+      if (!grouped[d.date]) grouped[d.date] = {};
+      grouped[d.date][d.apiType] = d.count;
+    });
+    return Object.entries(grouped)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, counts]) => ({
+        date: new Date(date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
+        ...counts,
+      }));
+  }, [stats?.dailyTrend]);
+  
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-40" />
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
+  
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Zap className="w-5 h-5" />
+          API 사용량 모니터링
+        </h2>
+        <Select value={dateRange} onValueChange={setDateRange}>
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="today">오늘</SelectItem>
+            <SelectItem value="7days">최근 7일</SelectItem>
+            <SelectItem value="30days">최근 30일</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {stats?.byApiType.map(api => (
+          <Card key={api.apiType}>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div 
+                  className="w-3 h-3 rounded-full" 
+                  style={{ backgroundColor: API_TYPE_COLORS[api.apiType] || "#888" }}
+                />
+                <span className="text-sm text-muted-foreground">
+                  {API_TYPE_LABELS[api.apiType] || api.apiType}
+                </span>
+              </div>
+              <p className="text-2xl font-bold">{api.totalCalls.toLocaleString()}</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="text-green-600">성공 {api.successRate}%</span>
+                {api.totalTokens > 0 && (
+                  <span>| 토큰 {api.totalTokens.toLocaleString()}</span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                평균 응답 {api.avgResponseTime}ms
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">일별 API 호출 추이</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Area type="monotone" dataKey="naver_search" name="네이버 검색" stackId="1" stroke="#22c55e" fill="#22c55e" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="naver_ad" name="네이버 광고" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="openai" name="OpenAI" stackId="1" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="browserless" name="Browserless" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-muted-foreground">
+              데이터가 없습니다
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">사용자별 API 사용량 순위</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>순위</TableHead>
+                <TableHead>이메일</TableHead>
+                <TableHead className="text-right">호출 횟수</TableHead>
+                <TableHead className="text-right">토큰 사용량</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {stats?.topUsers.map((user, idx) => (
+                <TableRow key={user.userId || idx}>
+                  <TableCell>{idx + 1}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell className="text-right">{user.totalCalls.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{user.totalTokens.toLocaleString()}</TableCell>
+                </TableRow>
+              ))}
+              {(!stats?.topUsers || stats.topUsers.length === 0) && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    데이터가 없습니다
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+interface UserUsageStats {
+  apiUsage: Array<{
+    apiType: string;
+    totalCalls: number;
+    successCalls: number;
+    failedCalls: number;
+    totalTokens: number;
+    avgResponseTime: number;
+  }>;
+  recentActivity: {
+    searches: Array<{ id: string; searchType: string; keyword: string; createdAt: string }>;
+    sovRuns: Array<{ id: string; marketKeyword: string; status: string; createdAt: string }>;
+    placeReviews: Array<{ id: string; placeId: string; placeName: string | null; status: string; createdAt: string }>;
+  };
+  dailyActivity: Array<{ date: string; count: number }>;
+  lastActivityAt: string | null;
+}
+
+function UserDetailModal({ 
+  user, 
+  open, 
+  onClose 
+}: { 
+  user: AdminUser | null; 
+  open: boolean; 
+  onClose: () => void;
+}) {
+  const { data: usageStats, isLoading } = useQuery<UserUsageStats>({
+    queryKey: ["admin-user-usage", user?.id],
+    queryFn: async () => {
+      if (!user) throw new Error("No user");
+      const res = await apiRequest("GET", `/api/admin/users/${user.id}/usage`);
+      return res.json();
+    },
+    enabled: !!user && open,
+  });
+  
+  if (!user) return null;
+  
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Eye className="w-5 h-5" />
+            사용자 상세 정보
+          </DialogTitle>
+          <DialogDescription>{user.email}</DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-muted p-3 rounded-lg">
+              <p className="text-xs text-muted-foreground">역할</p>
+              <p className="font-medium">{user.role}</p>
+            </div>
+            <div className="bg-muted p-3 rounded-lg">
+              <p className="text-xs text-muted-foreground">상태</p>
+              <p className="font-medium">{user.status}</p>
+            </div>
+            <div className="bg-muted p-3 rounded-lg">
+              <p className="text-xs text-muted-foreground">이메일 인증</p>
+              <p className="font-medium">{user.emailVerified ? "완료" : "미완료"}</p>
+            </div>
+            <div className="bg-muted p-3 rounded-lg">
+              <p className="text-xs text-muted-foreground">마지막 활동</p>
+              <p className="font-medium text-sm">
+                {usageStats?.lastActivityAt 
+                  ? new Date(usageStats.lastActivityAt).toLocaleDateString('ko-KR')
+                  : "없음"}
+              </p>
+            </div>
+          </div>
+          
+          {isLoading ? (
+            <Skeleton className="h-40" />
+          ) : (
+            <>
+              <div>
+                <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <Zap className="w-4 h-4" />
+                  API 사용량
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {usageStats?.apiUsage.map(api => (
+                    <div key={api.apiType} className="border rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">
+                        {API_TYPE_LABELS[api.apiType] || api.apiType}
+                      </p>
+                      <p className="text-lg font-bold">{api.totalCalls}</p>
+                      <p className="text-xs text-muted-foreground">
+                        토큰: {api.totalTokens.toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                  {(!usageStats?.apiUsage || usageStats.apiUsage.length === 0) && (
+                    <p className="col-span-4 text-center text-muted-foreground py-4">
+                      API 사용 기록이 없습니다
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  최근 활동
+                </h3>
+                <Tabs defaultValue="searches" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="searches">검색 ({usageStats?.recentActivity.searches.length || 0})</TabsTrigger>
+                    <TabsTrigger value="sov">SOV ({usageStats?.recentActivity.sovRuns.length || 0})</TabsTrigger>
+                    <TabsTrigger value="reviews">리뷰 ({usageStats?.recentActivity.placeReviews.length || 0})</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="searches" className="mt-3">
+                    <div className="max-h-40 overflow-y-auto space-y-2">
+                      {usageStats?.recentActivity.searches.map(s => (
+                        <div key={s.id} className="flex justify-between items-center text-sm border-b pb-2">
+                          <span className="truncate max-w-[200px]">{s.keyword}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(s.createdAt).toLocaleDateString('ko-KR')}
+                          </span>
+                        </div>
+                      ))}
+                      {(!usageStats?.recentActivity.searches || usageStats.recentActivity.searches.length === 0) && (
+                        <p className="text-center text-muted-foreground py-4">없음</p>
+                      )}
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="sov" className="mt-3">
+                    <div className="max-h-40 overflow-y-auto space-y-2">
+                      {usageStats?.recentActivity.sovRuns.map(s => (
+                        <div key={s.id} className="flex justify-between items-center text-sm border-b pb-2">
+                          <span className="truncate max-w-[200px]">{s.marketKeyword}</span>
+                          <Badge variant={s.status === 'completed' ? 'default' : 'secondary'}>{s.status}</Badge>
+                        </div>
+                      ))}
+                      {(!usageStats?.recentActivity.sovRuns || usageStats.recentActivity.sovRuns.length === 0) && (
+                        <p className="text-center text-muted-foreground py-4">없음</p>
+                      )}
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="reviews" className="mt-3">
+                    <div className="max-h-40 overflow-y-auto space-y-2">
+                      {usageStats?.recentActivity.placeReviews.map(s => (
+                        <div key={s.id} className="flex justify-between items-center text-sm border-b pb-2">
+                          <span className="truncate max-w-[200px]">{s.placeName || s.placeId}</span>
+                          <Badge variant={s.status === 'completed' ? 'default' : 'secondary'}>{s.status}</Badge>
+                        </div>
+                      ))}
+                      {(!usageStats?.recentActivity.placeReviews || usageStats.recentActivity.placeReviews.length === 0) && (
+                        <p className="text-center text-muted-foreground py-4">없음</p>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function SystemStatusTab() {
   const { data: status, isLoading, refetch, isFetching } = useQuery<AllServicesStatus>({
     queryKey: ["admin-services-status"],
@@ -2260,6 +2641,10 @@ export default function AdminPage() {
               <Server className="w-4 h-4" />
               시스템 상태
             </TabsTrigger>
+            <TabsTrigger value="api-usage" className="gap-2">
+              <Zap className="w-4 h-4" />
+              API 사용량
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="users">
@@ -2285,6 +2670,9 @@ export default function AdminPage() {
           </TabsContent>
           <TabsContent value="system">
             <SystemStatusTab />
+          </TabsContent>
+          <TabsContent value="api-usage">
+            <ApiUsageTab />
           </TabsContent>
         </Tabs>
       </main>

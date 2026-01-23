@@ -12,6 +12,7 @@ import {
   placeReviewJobs,
   placeReviewAnalyses,
   placeReviews,
+  apiUsageLogs,
   type UserRole,
   type UserStatus,
 } from "@shared/schema";
@@ -1290,6 +1291,285 @@ router.post("/place-review-jobs/sync-place-names", requireSuperAdmin, async (req
   } catch (error) {
     console.error("[Admin] Failed to sync place names:", error);
     res.status(500).json({ error: "플레이스명 동기화 실패" });
+  }
+});
+
+// API 사용량 통계 엔드포인트
+router.get("/api-usage/stats", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { startDate, endDate, apiType } = req.query;
+    
+    const conditions = [];
+    
+    if (startDate && typeof startDate === "string") {
+      conditions.push(gte(apiUsageLogs.createdAt, new Date(startDate)));
+    }
+    if (endDate && typeof endDate === "string") {
+      conditions.push(lte(apiUsageLogs.createdAt, new Date(endDate)));
+    }
+    if (apiType && typeof apiType === "string") {
+      conditions.push(eq(apiUsageLogs.apiType, apiType));
+    }
+    
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    // API별 통계
+    const byApiType = await db
+      .select({
+        apiType: apiUsageLogs.apiType,
+        totalCalls: sql<number>`count(*)`,
+        successCalls: sql<number>`sum(case when ${apiUsageLogs.success} = 'true' then 1 else 0 end)`,
+        failedCalls: sql<number>`sum(case when ${apiUsageLogs.success} = 'false' then 1 else 0 end)`,
+        totalTokens: sql<number>`sum(cast(${apiUsageLogs.tokensUsed} as integer))`,
+        avgResponseTime: sql<number>`avg(cast(${apiUsageLogs.responseTimeMs} as integer))`,
+      })
+      .from(apiUsageLogs)
+      .where(whereClause)
+      .groupBy(apiUsageLogs.apiType);
+    
+    // 일별 추이 (최근 14일)
+    const dailyTrend = await db
+      .select({
+        date: sql<string>`date(${apiUsageLogs.createdAt})`,
+        apiType: apiUsageLogs.apiType,
+        count: sql<number>`count(*)`,
+      })
+      .from(apiUsageLogs)
+      .where(
+        conditions.length > 0 
+          ? and(...conditions, gte(apiUsageLogs.createdAt, sql`now() - interval '14 days'`))
+          : gte(apiUsageLogs.createdAt, sql`now() - interval '14 days'`)
+      )
+      .groupBy(sql`date(${apiUsageLogs.createdAt})`, apiUsageLogs.apiType)
+      .orderBy(sql`date(${apiUsageLogs.createdAt})`);
+    
+    // 사용자별 사용량 순위 (상위 10명)
+    const topUsers = await db
+      .select({
+        userId: apiUsageLogs.userId,
+        email: users.email,
+        totalCalls: sql<number>`count(*)`,
+        totalTokens: sql<number>`sum(cast(${apiUsageLogs.tokensUsed} as integer))`,
+      })
+      .from(apiUsageLogs)
+      .leftJoin(users, eq(apiUsageLogs.userId, users.id))
+      .where(whereClause)
+      .groupBy(apiUsageLogs.userId, users.email)
+      .orderBy(sql`count(*) desc`)
+      .limit(10);
+    
+    res.json({
+      byApiType: byApiType.map(stat => ({
+        ...stat,
+        totalCalls: Number(stat.totalCalls),
+        successCalls: Number(stat.successCalls || 0),
+        failedCalls: Number(stat.failedCalls || 0),
+        totalTokens: Number(stat.totalTokens || 0),
+        avgResponseTime: Math.round(Number(stat.avgResponseTime || 0)),
+        successRate: stat.totalCalls > 0 
+          ? Math.round((Number(stat.successCalls || 0) / Number(stat.totalCalls)) * 100)
+          : 0,
+      })),
+      dailyTrend: dailyTrend.map(d => ({
+        date: d.date,
+        apiType: d.apiType,
+        count: Number(d.count),
+      })),
+      topUsers: topUsers.map(u => ({
+        userId: u.userId,
+        email: u.email || "알 수 없음",
+        totalCalls: Number(u.totalCalls),
+        totalTokens: Number(u.totalTokens || 0),
+      })),
+    });
+  } catch (error) {
+    console.error("[Admin] Failed to get API usage stats:", error);
+    res.status(500).json({ error: "API 사용량 통계 조회 실패" });
+  }
+});
+
+// API 사용 로그 목록 조회
+router.get("/api-usage/logs", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { apiType, userId, success, startDate, endDate } = req.query;
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
+    
+    const conditions = [];
+    
+    if (apiType && typeof apiType === "string") {
+      conditions.push(eq(apiUsageLogs.apiType, apiType));
+    }
+    if (userId && typeof userId === "string") {
+      conditions.push(eq(apiUsageLogs.userId, userId));
+    }
+    if (success && typeof success === "string") {
+      conditions.push(eq(apiUsageLogs.success, success));
+    }
+    if (startDate && typeof startDate === "string") {
+      conditions.push(gte(apiUsageLogs.createdAt, new Date(startDate)));
+    }
+    if (endDate && typeof endDate === "string") {
+      conditions.push(lte(apiUsageLogs.createdAt, new Date(endDate)));
+    }
+    
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    const [logs, countResult] = await Promise.all([
+      db
+        .select({
+          id: apiUsageLogs.id,
+          userId: apiUsageLogs.userId,
+          email: users.email,
+          apiType: apiUsageLogs.apiType,
+          endpoint: apiUsageLogs.endpoint,
+          success: apiUsageLogs.success,
+          errorMessage: apiUsageLogs.errorMessage,
+          tokensUsed: apiUsageLogs.tokensUsed,
+          responseTimeMs: apiUsageLogs.responseTimeMs,
+          metadata: apiUsageLogs.metadata,
+          createdAt: apiUsageLogs.createdAt,
+        })
+        .from(apiUsageLogs)
+        .leftJoin(users, eq(apiUsageLogs.userId, users.id))
+        .where(whereClause)
+        .orderBy(desc(apiUsageLogs.createdAt))
+        .limit(limit)
+        .offset(offset),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(apiUsageLogs)
+        .where(whereClause),
+    ]);
+    
+    res.json({
+      logs: logs.map(log => ({
+        ...log,
+        metadata: log.metadata ? JSON.parse(log.metadata) : null,
+      })),
+      total: Number(countResult[0]?.count || 0),
+      limit,
+      offset,
+    });
+  } catch (error) {
+    console.error("[Admin] Failed to get API usage logs:", error);
+    res.status(500).json({ error: "API 사용 로그 조회 실패" });
+  }
+});
+
+// 사용자 상세 정보 확장 (개별 사용자 사용량 통계 포함)
+router.get("/users/:userId/usage", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const { startDate, endDate } = req.query;
+    
+    const conditions = [eq(apiUsageLogs.userId, userId)];
+    
+    if (startDate && typeof startDate === "string") {
+      conditions.push(gte(apiUsageLogs.createdAt, new Date(startDate)));
+    }
+    if (endDate && typeof endDate === "string") {
+      conditions.push(lte(apiUsageLogs.createdAt, new Date(endDate)));
+    }
+    
+    const whereClause = and(...conditions);
+    
+    // API별 사용량
+    const apiUsageByType = await db
+      .select({
+        apiType: apiUsageLogs.apiType,
+        totalCalls: sql<number>`count(*)`,
+        successCalls: sql<number>`sum(case when ${apiUsageLogs.success} = 'true' then 1 else 0 end)`,
+        failedCalls: sql<number>`sum(case when ${apiUsageLogs.success} = 'false' then 1 else 0 end)`,
+        totalTokens: sql<number>`sum(cast(${apiUsageLogs.tokensUsed} as integer))`,
+        avgResponseTime: sql<number>`avg(cast(${apiUsageLogs.responseTimeMs} as integer))`,
+      })
+      .from(apiUsageLogs)
+      .where(whereClause)
+      .groupBy(apiUsageLogs.apiType);
+    
+    // 최근 활동 (검색, SOV, 리뷰)
+    const [recentSearches, recentSovRuns, recentPlaceReviews] = await Promise.all([
+      db
+        .select({
+          id: searchLogs.id,
+          searchType: searchLogs.searchType,
+          keyword: searchLogs.keyword,
+          createdAt: searchLogs.createdAt,
+        })
+        .from(searchLogs)
+        .where(eq(searchLogs.userId, userId))
+        .orderBy(desc(searchLogs.createdAt))
+        .limit(10),
+      db
+        .select({
+          id: sovRuns.id,
+          marketKeyword: sovRuns.marketKeyword,
+          status: sovRuns.status,
+          createdAt: sovRuns.createdAt,
+        })
+        .from(sovRuns)
+        .where(eq(sovRuns.userId, userId))
+        .orderBy(desc(sovRuns.createdAt))
+        .limit(10),
+      db
+        .select({
+          id: placeReviewJobs.id,
+          placeId: placeReviewJobs.placeId,
+          placeName: placeReviewJobs.placeName,
+          status: placeReviewJobs.status,
+          createdAt: placeReviewJobs.createdAt,
+        })
+        .from(placeReviewJobs)
+        .where(eq(placeReviewJobs.userId, userId))
+        .orderBy(desc(placeReviewJobs.createdAt))
+        .limit(10),
+    ]);
+    
+    // 일별 활동 추이 (최근 30일)
+    const dailyActivity = await db
+      .select({
+        date: sql<string>`date(${searchLogs.createdAt})`,
+        searchCount: sql<number>`count(*)`,
+      })
+      .from(searchLogs)
+      .where(and(
+        eq(searchLogs.userId, userId),
+        gte(searchLogs.createdAt, sql`now() - interval '30 days'`)
+      ))
+      .groupBy(sql`date(${searchLogs.createdAt})`)
+      .orderBy(sql`date(${searchLogs.createdAt})`);
+    
+    // 마지막 활동 시간
+    const [lastSearch] = await db
+      .select({ createdAt: searchLogs.createdAt })
+      .from(searchLogs)
+      .where(eq(searchLogs.userId, userId))
+      .orderBy(desc(searchLogs.createdAt))
+      .limit(1);
+    
+    res.json({
+      apiUsage: apiUsageByType.map(stat => ({
+        apiType: stat.apiType,
+        totalCalls: Number(stat.totalCalls),
+        successCalls: Number(stat.successCalls || 0),
+        failedCalls: Number(stat.failedCalls || 0),
+        totalTokens: Number(stat.totalTokens || 0),
+        avgResponseTime: Math.round(Number(stat.avgResponseTime || 0)),
+      })),
+      recentActivity: {
+        searches: recentSearches,
+        sovRuns: recentSovRuns,
+        placeReviews: recentPlaceReviews,
+      },
+      dailyActivity: dailyActivity.map(d => ({
+        date: d.date,
+        count: Number(d.searchCount),
+      })),
+      lastActivityAt: lastSearch?.createdAt || null,
+    });
+  } catch (error) {
+    console.error("[Admin] Failed to get user usage stats:", error);
+    res.status(500).json({ error: "사용자 사용량 통계 조회 실패" });
   }
 });
 

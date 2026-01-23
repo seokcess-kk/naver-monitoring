@@ -22,6 +22,7 @@ import {
   resetExtractionStats,
   type ExtractionResult 
 } from "./content-extractor";
+import { logApiUsage } from "./services/api-usage-logger";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -173,6 +174,7 @@ async function extractTextFromImages(imageUrls: string[]): Promise<string | null
       });
     }
 
+    const startTime = Date.now();
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -184,6 +186,19 @@ async function extractTextFromImages(imageUrls: string[]): Promise<string | null
       max_tokens: 1000,
     });
 
+    const responseTimeMs = Date.now() - startTime;
+    const tokensUsed = response.usage?.total_tokens || 0;
+    
+    logApiUsage({
+      userId: null,
+      apiType: "openai",
+      endpoint: "chat.completions/vision",
+      success: true,
+      tokensUsed,
+      responseTimeMs,
+      metadata: { model: "gpt-4o", imageCount: imageUrls.length },
+    });
+
     const extractedText = response.choices[0]?.message?.content;
     if (extractedText && extractedText.length > 10) {
       console.log(`[SOV] Vision API extracted: ${extractedText.length} chars`);
@@ -192,6 +207,13 @@ async function extractTextFromImages(imageUrls: string[]): Promise<string | null
     
     return null;
   } catch (error) {
+    logApiUsage({
+      userId: null,
+      apiType: "openai",
+      endpoint: "chat.completions/vision",
+      success: false,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
     console.error("[SOV] Vision API error:", error);
     return null;
   }
@@ -236,15 +258,42 @@ async function extractContent(
   return { content: result.content, status: result.status, urlType: result.urlType };
 }
 
-async function getEmbedding(text: string): Promise<number[]> {
+async function getEmbedding(text: string, userId?: string | null): Promise<number[]> {
   const truncatedText = text.slice(0, 8000);
   
-  const response = await openai.embeddings.create({
-    model: "text-embedding-3-small",
-    input: truncatedText,
-  });
+  const startTime = Date.now();
+  try {
+    const response = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: truncatedText,
+    });
 
-  return response.data[0].embedding;
+    const responseTimeMs = Date.now() - startTime;
+    const tokensUsed = response.usage?.total_tokens || 0;
+    
+    logApiUsage({
+      userId,
+      apiType: "openai",
+      endpoint: "embeddings",
+      success: true,
+      tokensUsed,
+      responseTimeMs,
+      metadata: { model: "text-embedding-3-small", inputLength: truncatedText.length },
+    });
+
+    return response.data[0].embedding;
+  } catch (error) {
+    const responseTimeMs = Date.now() - startTime;
+    logApiUsage({
+      userId,
+      apiType: "openai",
+      endpoint: "embeddings",
+      success: false,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      responseTimeMs,
+    });
+    throw error;
+  }
 }
 
 function cosineSimilarity(a: number[], b: number[]): number {

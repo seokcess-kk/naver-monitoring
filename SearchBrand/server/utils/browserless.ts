@@ -1,5 +1,6 @@
 import puppeteer, { Browser } from "puppeteer-core";
 import { findChromePath } from "./chrome-finder";
+import { logApiUsage } from "../services/api-usage-logger";
 
 const BROWSERLESS_URL = "wss://production-sfo.browserless.io";
 
@@ -20,14 +21,36 @@ export async function connectBrowser(): Promise<BrowserConnection> {
   if (isProduction) {
     // 프로덕션: Browserless 우선
     if (browserlessApiKey) {
+      const startTime = Date.now();
       try {
         console.log("[Browser] Production mode - connecting to Browserless cloud...");
         const browser = await puppeteer.connect({
           browserWSEndpoint: `${BROWSERLESS_URL}?token=${browserlessApiKey}`,
         });
+        const responseTimeMs = Date.now() - startTime;
         console.log("[Browser] Browserless connected successfully");
+        
+        logApiUsage({
+          userId: null,
+          apiType: "browserless",
+          endpoint: "connect",
+          success: true,
+          responseTimeMs,
+          metadata: { environment: "production" },
+        });
+        
         return { browser, isBrowserless: true };
       } catch (error: any) {
+        const responseTimeMs = Date.now() - startTime;
+        logApiUsage({
+          userId: null,
+          apiType: "browserless",
+          endpoint: "connect",
+          success: false,
+          errorMessage: error?.message || String(error),
+          responseTimeMs,
+          metadata: { environment: "production" },
+        });
         console.warn("[Browser] Browserless connection failed:", error?.message || error);
         console.log("[Browser] Falling back to local Chrome...");
       }
@@ -47,14 +70,36 @@ export async function connectBrowser(): Promise<BrowserConnection> {
       
       // 개발환경 fallback: Browserless
       if (browserlessApiKey) {
+        const startTime = Date.now();
         try {
           console.log("[Browser] Falling back to Browserless cloud...");
           const browser = await puppeteer.connect({
             browserWSEndpoint: `${BROWSERLESS_URL}?token=${browserlessApiKey}`,
           });
+          const responseTimeMs = Date.now() - startTime;
           console.log("[Browser] Browserless connected successfully");
+          
+          logApiUsage({
+            userId: null,
+            apiType: "browserless",
+            endpoint: "connect",
+            success: true,
+            responseTimeMs,
+            metadata: { environment: "development", fallback: true },
+          });
+          
           return { browser, isBrowserless: true };
         } catch (browserlessError: any) {
+          const responseTimeMs = Date.now() - startTime;
+          logApiUsage({
+            userId: null,
+            apiType: "browserless",
+            endpoint: "connect",
+            success: false,
+            errorMessage: browserlessError?.message || String(browserlessError),
+            responseTimeMs,
+            metadata: { environment: "development", fallback: true },
+          });
           console.error("[Browser] Browserless fallback also failed:", browserlessError?.message || browserlessError);
         }
       }

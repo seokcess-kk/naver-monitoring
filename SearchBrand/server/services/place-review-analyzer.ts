@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { logApiUsage } from "./api-usage-logger";
 
 interface AspectSentiment {
   aspect: string;
@@ -155,6 +156,7 @@ export async function analyzeReview(review: string): Promise<AnalysisResult> {
     "summary": "한 문장 요약"
 }`;
 
+    const startTime = Date.now();
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -163,6 +165,19 @@ export async function analyzeReview(review: string): Promise<AnalysisResult> {
       ],
       response_format: { type: "json_object" },
       temperature: 0.1,
+    });
+
+    const responseTimeMs = Date.now() - startTime;
+    const tokensUsed = response.usage?.total_tokens || 0;
+    
+    logApiUsage({
+      userId: null,
+      apiType: "openai",
+      endpoint: "chat.completions/review-analysis",
+      success: true,
+      tokensUsed,
+      responseTimeMs,
+      metadata: { model: "gpt-4o-mini", reviewLength: review.length },
     });
 
     const content = response.choices[0].message.content;
@@ -188,6 +203,13 @@ export async function analyzeReview(review: string): Promise<AnalysisResult> {
 
     return { sentiment, aspects, keywords, summary };
   } catch (error) {
+    logApiUsage({
+      userId: null,
+      apiType: "openai",
+      endpoint: "chat.completions/review-analysis",
+      success: false,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
     console.error("[PlaceReviewAnalyzer] OpenAI analysis failed, using fallback:", error);
     return fallbackAnalysis(review);
   }

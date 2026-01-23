@@ -1,5 +1,6 @@
 import axios, { AxiosError } from "axios";
 import LRUCache from "lru-cache";
+import { logApiUsage } from "./services/api-usage-logger";
 
 export type NaverChannel = "blog" | "cafe" | "kin" | "news";
 
@@ -57,7 +58,8 @@ function logApiError(channel: string, error: unknown, query: string): void {
 export async function callNaverApi(
   endpoint: string,
   params: NaverApiParams,
-  credentials: NaverApiCredentials
+  credentials: NaverApiCredentials,
+  userId?: string | null
 ) {
   const { query, display = 10, start = 1, sort = "sim" } = params;
   const cacheKey = buildCacheKey(endpoint, { query, display, start, sort });
@@ -68,47 +70,73 @@ export async function callNaverApi(
     return cached;
   }
   
-  const response = await axios.get(endpoint, {
-    params: { query, display, start, sort },
-    headers: {
-      "X-Naver-Client-Id": credentials.clientId,
-      "X-Naver-Client-Secret": credentials.clientSecret,
-    },
-    timeout: 10000,
-  });
-  
-  apiCache.set(cacheKey, response.data);
-  return response.data;
+  const startTime = Date.now();
+  try {
+    const response = await axios.get(endpoint, {
+      params: { query, display, start, sort },
+      headers: {
+        "X-Naver-Client-Id": credentials.clientId,
+        "X-Naver-Client-Secret": credentials.clientSecret,
+      },
+      timeout: 10000,
+    });
+    
+    const responseTimeMs = Date.now() - startTime;
+    logApiUsage({
+      userId,
+      apiType: "naver_search",
+      endpoint,
+      success: true,
+      responseTimeMs,
+      metadata: { query: query.substring(0, 50), display, start },
+    });
+    
+    apiCache.set(cacheKey, response.data);
+    return response.data;
+  } catch (error) {
+    const responseTimeMs = Date.now() - startTime;
+    logApiUsage({
+      userId,
+      apiType: "naver_search",
+      endpoint,
+      success: false,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      responseTimeMs,
+      metadata: { query: query.substring(0, 50) },
+    });
+    throw error;
+  }
 }
 
 export async function searchChannel(
   channel: NaverChannel,
   params: NaverApiParams,
-  credentials: NaverApiCredentials
+  credentials: NaverApiCredentials,
+  userId?: string | null
 ) {
   const config = CHANNEL_CONFIG[channel];
   try {
-    return await callNaverApi(config.endpoint, params, credentials);
+    return await callNaverApi(config.endpoint, params, credentials, userId);
   } catch (error) {
     logApiError(channel, error, params.query);
     throw error;
   }
 }
 
-export async function searchBlog(params: NaverApiParams, credentials: NaverApiCredentials) {
-  return searchChannel("blog", params, credentials);
+export async function searchBlog(params: NaverApiParams, credentials: NaverApiCredentials, userId?: string | null) {
+  return searchChannel("blog", params, credentials, userId);
 }
 
-export async function searchCafe(params: NaverApiParams, credentials: NaverApiCredentials) {
-  return searchChannel("cafe", params, credentials);
+export async function searchCafe(params: NaverApiParams, credentials: NaverApiCredentials, userId?: string | null) {
+  return searchChannel("cafe", params, credentials, userId);
 }
 
-export async function searchKin(params: NaverApiParams, credentials: NaverApiCredentials) {
-  return searchChannel("kin", params, credentials);
+export async function searchKin(params: NaverApiParams, credentials: NaverApiCredentials, userId?: string | null) {
+  return searchChannel("kin", params, credentials, userId);
 }
 
-export async function searchNews(params: NaverApiParams, credentials: NaverApiCredentials) {
-  return searchChannel("news", params, credentials);
+export async function searchNews(params: NaverApiParams, credentials: NaverApiCredentials, userId?: string | null) {
+  return searchChannel("news", params, credentials, userId);
 }
 
 const EMPTY_RESULT = { total: 0, items: [] };
@@ -117,7 +145,8 @@ export async function searchAllChannels(
   query: string,
   sort: "sim" | "date",
   page: number,
-  credentials: NaverApiCredentials
+  credentials: NaverApiCredentials,
+  userId?: string | null
 ) {
   const display = 10;
   const start = (page - 1) * display + 1;
@@ -125,7 +154,7 @@ export async function searchAllChannels(
 
   const results = await Promise.all(
     NAVER_CHANNELS.map((channel) =>
-      searchChannel(channel, params, credentials).catch(() => EMPTY_RESULT)
+      searchChannel(channel, params, credentials, userId).catch(() => EMPTY_RESULT)
     )
   );
 
@@ -139,11 +168,12 @@ export async function searchSingleChannel(
   query: string,
   sort: "sim" | "date",
   page: number,
-  credentials: NaverApiCredentials
+  credentials: NaverApiCredentials,
+  userId?: string | null
 ) {
   const display = 10;
   const start = (page - 1) * display + 1;
   const params = { query, display, start, sort };
 
-  return searchChannel(channel, params, credentials).catch(() => EMPTY_RESULT);
+  return searchChannel(channel, params, credentials, userId).catch(() => EMPTY_RESULT);
 }

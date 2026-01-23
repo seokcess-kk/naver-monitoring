@@ -351,3 +351,32 @@ export type InsertPlaceReviewAnalysis = z.infer<typeof insertPlaceReviewAnalysis
 export type PlaceReviewAnalysis = typeof placeReviewAnalyses.$inferSelect;
 
 export type PlaceReviewMode = "QTY" | "DATE" | "DATE_RANGE";
+
+// API 사용량 로그 테이블
+export const apiUsageLogs = pgTable("api_usage_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  apiType: varchar("api_type", { length: 30 }).notNull(), // 'naver_search' | 'naver_ad' | 'openai' | 'browserless'
+  endpoint: text("endpoint"), // API 엔드포인트 또는 작업 설명
+  success: varchar("success", { length: 5 }).notNull().default("true"), // 'true' | 'false'
+  errorMessage: text("error_message"),
+  tokensUsed: varchar("tokens_used"), // OpenAI 토큰 사용량
+  responseTimeMs: varchar("response_time_ms"), // 응답 시간 (밀리초)
+  metadata: text("metadata"), // 추가 정보 (JSON)
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_api_usage_logs_user_id").on(table.userId),
+  index("idx_api_usage_logs_api_type").on(table.apiType),
+  index("idx_api_usage_logs_created_at").on(table.createdAt),
+  index("idx_api_usage_logs_success").on(table.success),
+]);
+
+export const insertApiUsageLogSchema = createInsertSchema(apiUsageLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertApiUsageLog = z.infer<typeof insertApiUsageLogSchema>;
+export type ApiUsageLog = typeof apiUsageLogs.$inferSelect;
+
+export type ApiType = "naver_search" | "naver_ad" | "openai" | "browserless";

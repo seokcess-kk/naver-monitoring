@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { logApiUsage } from "./services/api-usage-logger";
 
 const NAVER_AD_API_BASE_URL = "https://api.searchad.naver.com";
 
@@ -48,7 +49,7 @@ export function isConfigured(): boolean {
   );
 }
 
-export async function getKeywordVolume(keyword: string): Promise<KeywordVolumeResult | null> {
+export async function getKeywordVolume(keyword: string, userId?: string | null): Promise<KeywordVolumeResult | null> {
   if (!isConfigured()) {
     console.log("[NaverAdAPI] Credentials not configured, skipping keyword volume fetch");
     return null;
@@ -64,40 +65,79 @@ export async function getKeywordVolume(keyword: string): Promise<KeywordVolumeRe
   
   console.log(`[NaverAdAPI] Fetching keyword volume for: ${keyword}`);
   
-  const response = await fetch(url.toString(), {
-    method,
-    headers,
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`[NaverAdAPI] Error response: ${response.status} - ${errorText}`);
-    throw new Error(`Naver Ad API error: ${response.status}`);
+  const startTime = Date.now();
+  try {
+    const response = await fetch(url.toString(), {
+      method,
+      headers,
+    });
+    
+    const responseTimeMs = Date.now() - startTime;
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[NaverAdAPI] Error response: ${response.status} - ${errorText}`);
+      
+      logApiUsage({
+        userId,
+        apiType: "naver_ad",
+        endpoint: path,
+        success: false,
+        errorMessage: `${response.status}: ${errorText.substring(0, 100)}`,
+        responseTimeMs,
+        metadata: { keyword: keyword.substring(0, 50) },
+      });
+      
+      throw new Error(`Naver Ad API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    logApiUsage({
+      userId,
+      apiType: "naver_ad",
+      endpoint: path,
+      success: true,
+      responseTimeMs,
+      metadata: { keyword: keyword.substring(0, 50), resultCount: data.keywordList?.length || 0 },
+    });
+    
+    if (!data.keywordList || data.keywordList.length === 0) {
+      console.log(`[NaverAdAPI] No data found for keyword: ${keyword}`);
+      return null;
+    }
+    
+    const exactMatch = data.keywordList.find(
+      (item: any) => item.relKeyword.toLowerCase() === keyword.toLowerCase()
+    );
+    
+    const targetKeyword = exactMatch || data.keywordList[0];
+    
+    const pcCount = targetKeyword.monthlyPcQcCnt;
+    const mobileCount = targetKeyword.monthlyMobileQcCnt;
+    
+    const result: KeywordVolumeResult = {
+      keyword: targetKeyword.relKeyword,
+      monthlyPcQcCnt: pcCount === "< 10" ? 5 : Number(pcCount) || 0,
+      monthlyMobileQcCnt: mobileCount === "< 10" ? 5 : Number(mobileCount) || 0,
+    };
+    
+    console.log(`[NaverAdAPI] Volume result: PC=${result.monthlyPcQcCnt}, MO=${result.monthlyMobileQcCnt}`);
+    
+    return result;
+  } catch (error) {
+    if (!(error instanceof Error && error.message.includes("Naver Ad API error"))) {
+      const responseTimeMs = Date.now() - startTime;
+      logApiUsage({
+        userId,
+        apiType: "naver_ad",
+        endpoint: path,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        responseTimeMs,
+        metadata: { keyword: keyword.substring(0, 50) },
+      });
+    }
+    throw error;
   }
-  
-  const data = await response.json();
-  
-  if (!data.keywordList || data.keywordList.length === 0) {
-    console.log(`[NaverAdAPI] No data found for keyword: ${keyword}`);
-    return null;
-  }
-  
-  const exactMatch = data.keywordList.find(
-    (item: any) => item.relKeyword.toLowerCase() === keyword.toLowerCase()
-  );
-  
-  const targetKeyword = exactMatch || data.keywordList[0];
-  
-  const pcCount = targetKeyword.monthlyPcQcCnt;
-  const mobileCount = targetKeyword.monthlyMobileQcCnt;
-  
-  const result: KeywordVolumeResult = {
-    keyword: targetKeyword.relKeyword,
-    monthlyPcQcCnt: pcCount === "< 10" ? 5 : Number(pcCount) || 0,
-    monthlyMobileQcCnt: mobileCount === "< 10" ? 5 : Number(mobileCount) || 0,
-  };
-  
-  console.log(`[NaverAdAPI] Volume result: PC=${result.monthlyPcQcCnt}, MO=${result.monthlyMobileQcCnt}`);
-  
-  return result;
 }
