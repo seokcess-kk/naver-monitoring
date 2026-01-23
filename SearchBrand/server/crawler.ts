@@ -327,10 +327,14 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
     return sections;
   } catch (error: any) {
     const errorMessage = error?.message || String(error);
-    if (errorMessage.includes('Browser was not found') || errorMessage.includes('executablePath')) {
-      console.error("[Crawler] Chrome browser not found. SmartBlock crawling disabled. Run 'npx puppeteer browsers install chrome' to fix.");
+    if (errorMessage.includes('Browser was not found') || 
+        errorMessage.includes('executablePath') ||
+        errorMessage.includes('No browser available') ||
+        errorMessage.includes('No Chrome/Chromium')) {
+      console.error("[Crawler] Browser unavailable. SmartBlock crawling disabled.");
+      console.error("[Crawler] Solutions: 1) Install Chrome locally, or 2) Set BROWSERLESS_API_KEY for cloud browser");
     } else {
-      console.error("Crawling error:", error);
+      console.error("[Crawler] Crawling error:", errorMessage);
     }
     return [];
   } finally {

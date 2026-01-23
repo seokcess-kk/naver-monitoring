@@ -7,6 +7,13 @@
 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록(플레이스, 뉴스 등) 노출 현황을 실시간으로 확인할 수 있습니다. SOV(Share of Voice) 분석으로 브랜드 점유율을 측정하세요.
 
 ## Recent Changes
+- 2026-01-23: Browserless 클라우드 브라우저 서비스 연동
+  - 프로덕션 환경에서 안정적인 크롤링을 위해 Browserless 통합
+  - 환경별 우선순위: 프로덕션은 Browserless 우선, 개발환경은 로컬 Chrome 우선
+  - 자동 fallback 로직 (Browserless ↔ 로컬 Chrome)
+  - 스마트블록 크롤링 및 플레이스 리뷰 스크래핑 모두 적용
+  - 새 파일: server/utils/browserless.ts (브라우저 연결 유틸리티)
+
 - 2026-01-14: 모바일 반응형 디자인 및 UI 개선
   - CSS 애니메이션 추가 (fadeIn, fadeInUp, scaleIn)
   - 유틸리티 클래스 추가 (glass-card, hover-lift, gradient-text, mobile-horizontal-scroll)

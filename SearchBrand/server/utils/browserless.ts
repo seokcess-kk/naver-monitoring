@@ -9,34 +9,68 @@ export interface BrowserConnection {
 }
 
 /**
- * Browserless 또는 로컬 Chrome에 연결
- * 프로덕션에서는 Browserless 우선, 개발환경에서는 로컬 Chrome 우선
+ * 브라우저 연결 (환경별 우선순위)
+ * - 프로덕션: Browserless 우선 → 로컬 Chrome fallback
+ * - 개발환경: 로컬 Chrome 우선 → Browserless fallback
  */
 export async function connectBrowser(): Promise<BrowserConnection> {
   const browserlessApiKey = process.env.BROWSERLESS_API_KEY;
+  const isProduction = process.env.NODE_ENV === "production";
   
-  // 프로덕션 환경이거나 BROWSERLESS_API_KEY가 있으면 Browserless 사용
-  if (browserlessApiKey) {
+  if (isProduction) {
+    // 프로덕션: Browserless 우선
+    if (browserlessApiKey) {
+      try {
+        console.log("[Browser] Production mode - connecting to Browserless cloud...");
+        const browser = await puppeteer.connect({
+          browserWSEndpoint: `${BROWSERLESS_URL}?token=${browserlessApiKey}`,
+        });
+        console.log("[Browser] Browserless connected successfully");
+        return { browser, isBrowserless: true };
+      } catch (error: any) {
+        console.warn("[Browser] Browserless connection failed:", error?.message || error);
+        console.log("[Browser] Falling back to local Chrome...");
+      }
+    } else {
+      console.warn("[Browser] BROWSERLESS_API_KEY not set in production - trying local Chrome");
+    }
+    
+    // 프로덕션 fallback: 로컬 Chrome
+    return launchLocalChrome();
+  } else {
+    // 개발환경: 로컬 Chrome 우선
     try {
-      console.log("[Browserless] Connecting to Browserless cloud...");
-      const browser = await puppeteer.connect({
-        browserWSEndpoint: `${BROWSERLESS_URL}?token=${browserlessApiKey}`,
-      });
-      console.log("[Browserless] Connected successfully");
-      return { browser, isBrowserless: true };
-    } catch (error) {
-      console.warn("[Browserless] Failed to connect:", error);
-      console.log("[Browserless] Falling back to local Chrome...");
+      console.log("[Browser] Development mode - trying local Chrome first...");
+      return await launchLocalChrome();
+    } catch (localError: any) {
+      console.warn("[Browser] Local Chrome failed:", localError?.message || localError);
+      
+      // 개발환경 fallback: Browserless
+      if (browserlessApiKey) {
+        try {
+          console.log("[Browser] Falling back to Browserless cloud...");
+          const browser = await puppeteer.connect({
+            browserWSEndpoint: `${BROWSERLESS_URL}?token=${browserlessApiKey}`,
+          });
+          console.log("[Browser] Browserless connected successfully");
+          return { browser, isBrowserless: true };
+        } catch (browserlessError: any) {
+          console.error("[Browser] Browserless fallback also failed:", browserlessError?.message || browserlessError);
+        }
+      }
+      
+      throw new Error("No browser available. Install Chrome locally or set BROWSERLESS_API_KEY.");
     }
   }
-  
-  // 로컬 Chrome 사용
+}
+
+async function launchLocalChrome(): Promise<BrowserConnection> {
   const executablePath = findChromePath();
   if (!executablePath) {
-    throw new Error("No Chrome/Chromium found. Set BROWSERLESS_API_KEY for cloud browser.");
+    throw new Error("No Chrome/Chromium found locally.");
   }
   
-  console.log("[Chrome] Launching local browser:", executablePath);
+  console.log("[Browser] Launching local Chrome:", executablePath);
   const browser = await puppeteer.launch({
     headless: true,
     executablePath,
@@ -51,6 +85,7 @@ export async function connectBrowser(): Promise<BrowserConnection> {
     ],
   });
   
+  console.log("[Browser] Local Chrome launched successfully");
   return { browser, isBrowserless: false };
 }
 
