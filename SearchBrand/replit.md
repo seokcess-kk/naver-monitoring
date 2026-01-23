@@ -7,6 +7,15 @@
 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록(플레이스, 뉴스 등) 노출 현황을 실시간으로 확인할 수 있습니다. SOV(Share of Voice) 분석으로 브랜드 점유율을 측정하세요.
 
 ## Recent Changes
+- 2026-01-23: 어드민 API 사용량 모니터링 시스템 구현
+  - 외부 API 호출 로깅 (Naver 검색/광고, OpenAI, Browserless)
+  - apiUsageLogs 테이블 추가 (userId, apiType, endpoint, success, tokens, responseTime, metadata)
+  - 성능 최적화 인덱스 4개 추가 (userId, apiType, createdAt, success)
+  - 어드민 대시보드 API 사용량 탭 추가 (API별 통계, 일별 추이, 상위 사용자)
+  - 사용자 상세 보기 모달 추가 (프로필, API 사용량, 최근 활동)
+  - 새 파일: server/services/api-usage-logger.ts
+  - 새 엔드포인트: /api/admin/api-usage/stats, /api/admin/api-usage/logs, /api/admin/users/:userId/usage
+
 - 2026-01-23: Browserless 클라우드 브라우저 서비스 연동
   - 프로덕션 환경에서 안정적인 크롤링을 위해 Browserless 통합
   - 환경별 우선순위: 프로덕션은 Browserless 우선, 개발환경은 로컬 Chrome 우선
@@ -100,6 +109,7 @@
 - `sov_exposures` - 분석된 콘텐츠 노출 정보
 - `sov_scores` - 브랜드별 관련성 점수
 - `sov_results` - 최종 SOV 퍼센트 결과
+- `api_usage_logs` - API 사용량 로그 (userId, apiType, endpoint, success, tokens, responseTime)
 
 ## API Endpoints
 
@@ -128,6 +138,11 @@
 - `GET /api/sov/status/:runId` - 분석 상태 조회
 - `GET /api/sov/result/:runId` - 분석 결과 조회
 - `GET /api/sov/runs` - 사용자의 분석 기록 목록
+
+### 어드민 API 사용량
+- `GET /api/admin/api-usage/stats` - API 사용량 통계 (타입별, 일별)
+- `GET /api/admin/api-usage/logs` - API 사용량 로그 목록
+- `GET /api/admin/users/:userId/usage` - 사용자별 API 사용량 상세
 
 ### 기타
 - `GET /api/health` - 서버 상태 확인
