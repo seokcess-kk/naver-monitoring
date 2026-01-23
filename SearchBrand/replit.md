@@ -7,249 +7,96 @@
 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록(플레이스, 뉴스 등) 노출 현황을 실시간으로 확인할 수 있습니다. SOV(Share of Voice) 분석으로 브랜드 점유율을 측정하세요.
 
 ## Recent Changes
-- 2026-01-23: CSV 내보내기 범위 명확화
-  - 버튼 라벨: "CSV 내보내기" → "현재 페이지 CSV"
-  - 툴팁과 완료 메시지에 "현재 페이지 결과만" 명시
 
-- 2026-01-23: XSS 방지를 위한 HTML sanitization 적용
-  - DOMPurify 라이브러리 도입
-  - 허용 태그: b, strong, em, i, mark, br (하이라이트용)
-  - ApiResultsSection, SmartBlockSection에 적용
+### 2026-01-23 보안 및 성능 개선
+- **XSS 방지**: DOMPurify로 외부 HTML sanitization (허용: b, strong, em, i, mark, br)
+- **레이스 컨디션 방지**: AbortController로 빠른 연속 검색 시 이전 요청 취소
+- **성능 최적화**: 스마트블록 URL 매칭 O(N*M) → O(1) Set 조회, useMemo 캐싱
+- **프로덕션 보안 강화**: SESSION_SECRET 필수화, 민감 API 응답 로깅 제외
+- **서비스 상태 API**: /api/services/quick-status 관리자 인증 추가
+- **검색 실패 피드백**: toast 알림, 채널 페이지 자동 복원
+- **CSV 내보내기**: 범위 명확화 ("현재 페이지 CSV")
+- **코드 정리**: 미사용 디버그 파일 삭제, 서버 엔트리포인트 단일화
 
-- 2026-01-23: 스마트블록 URL 매칭 성능 최적화
-  - O(N*M) → O(N+M): Set 기반 O(1) 조회로 변경
-  - useMemo로 URL Set, 하이라이트 정규식 캐싱
+### 2026-01-23 어드민 대시보드 개선
+- **레이아웃 리팩토링**: 3367줄 → 130줄 + 17개 모듈 파일
+- **사이드바 네비게이션**: 그룹화된 탭, 검색, 즐겨찾기(핀) 기능
+- **통일된 탭 레이아웃**: 요약 → 필터 → 리스트 구조
+- **공통 컴포넌트**: StateComponents, TabPageLayout, FilterRow
+- **새 탭**: API 사용량 모니터링, 데이터 품질, 시스템 상태
+- **Draft/Applied 필터 패턴**: 불필요한 API 호출 방지
 
-- 2026-01-23: 검색 레이스 컨디션 방지 (AbortController)
-  - handleSearch, handleChannelPageChange에 AbortController 적용
-  - 빠른 연속 검색/페이지 이동 시 이전 요청 자동 취소
-  - 취소된 요청은 상태 업데이트 없이 무시
+### 2026-01-23 크롤링 안정성 개선
+- **Browserless 연동**: 프로덕션에서 클라우드 브라우저 사용
+- **Puppeteer 리팩토링**: withBrowserPage 헬퍼, 전략 테이블 기반 추출
+- **동시성 관리**: ExtractionStatsCollector 클래스 기반 상태 격리
 
-- 2026-01-23: 검색 실패 시 사용자 피드백 추가
-  - handleSearch, handleChannelPageChange 실패 시 toast 알림 표시
-  - 채널 페이지 로드 실패 시 이전 페이지로 자동 복원
-
-- 2026-01-23: 미사용 디버그/테스트 파일 정리
-  - debug-dom*.{cjs,mjs}, test-date-extraction.mjs 삭제
-
-- 2026-01-23: 서비스 상태 엔드포인트 접근 제어
-  - /api/services/quick-status에 관리자 인증 추가
-
-- 2026-01-23: API 로깅 민감정보 보호
-  - 인증/사용자/API키 관련 라우트 응답 본문 로깅 제외
-  - SENSITIVE_ROUTES 패턴 기반 필터링 적용
-
-- 2026-01-23: 서버 엔트리포인트 단일화
-  - 미사용 server/index.ts 제거
-  - 실제 엔트리: server/bootstrap.ts → server/app.ts
-
-- 2026-01-23: 프로덕션 SESSION_SECRET 필수화 (보안 강화)
-  - 프로덕션에서 SESSION_SECRET 미설정 시 앱 시작 실패
-  - 개발 환경에서는 경고 로그와 함께 기본값 사용
-  - crypto.ts 암호화 키도 동일 정책 적용
-
-- 2026-01-23: 공통 상태 컴포넌트 도입
-  - StateComponents.tsx: LoadingState, TableLoading, EmptyState, ErrorState
-  - EmptyState 타입 분리: no-data (데이터 없음), no-filter-results (필터 결과 없음)
-  - 필터 적용 시 "필터 초기화" 액션 표시
-  - SearchLogsTab, SovRunsTab, AuditLogsTab에 적용
-
-- 2026-01-23: 탭별 액션 버튼 위치/스타일 통일
-  - ActionButton, ExportButton 공통 컴포넌트 추가
-  - 모든 탭에서 테이블 상단 우측에 액션 배치
-  - 아이콘+텍스트 스타일 일관 적용
-  - AuditLogsTab에 CSV 내보내기 기능 추가
-
-- 2026-01-23: 어드민 헤더 정보 구조 재정렬
-  - 좌측: 페이지 타이틀 + 역할 배지 (secondary 스타일)
-  - 우측: 최근 업데이트 시간 + 새로고침 버튼
-  - 새로고침 시 로딩 애니메이션 추가
-
-- 2026-01-23: 시스템/감사 관련 메뉴 그룹 통합
-  - "시스템"과 "더보기" 그룹을 "보안/운영 감사" 그룹으로 통합
-  - 탭 순서: 시스템 상태 → 데이터 품질 → 감사 로그
-  - 각 그룹에 설명 추가 (툴팁 + 펼침 시 표시)
-
-- 2026-01-23: 어드민 메뉴 탐색 보조 기능 추가
-  - 사이드바 상단에 메뉴 검색 입력 추가 (label/id 기반 필터링)
-  - 즐겨찾기(핀) 기능 추가 (localStorage 저장)
-  - 즐겨찾기된 탭 상단 고정 표시
-  - 모바일 드롭다운에서도 즐겨찾기 그룹 표시
-
-- 2026-01-23: 어드민 탭별 레이아웃 통일 (요약 → 필터 → 리스트)
-  - TabPageLayout 공통 레이아웃 컴포넌트 생성
-  - FilterRow, FilterField 헬퍼 컴포넌트 생성
-  - 접이식 필터 (Collapsible) + 적용 필터 배지 표시
-  - SearchLogsTab, SovRunsTab, AuditLogsTab 리팩토링
-  - 기존 HTML select → shadcn Select 컴포넌트 통일
-
-- 2026-01-23: 어드민 탭 우선순위 및 기본 진입 탭 재정의
-  - TabConfig에 priority, isDefault 속성 추가
-  - TabGroup에 priority, collapsed 속성 추가
-  - 저빈도 메뉴(데이터 품질, 감사 로그)를 "더보기" 그룹으로 분리
-  - 기본 진입 탭: 사용자 (isDefault: true)
-  - 탭 렌더링 순서 priority 기준 자동 정렬
-
-- 2026-01-23: 어드민 페이지 반응형 사이드바 레이아웃
-  - 수평 탭 밀집 문제 해결 → 좌측 사이드바 + 우측 콘텐츠 레이아웃
-  - AdminSidebar.tsx 컴포넌트 추가
-  - 데스크톱 (lg+): 수직 사이드바, 그룹 접기/펼치기 지원
-  - 모바일/태블릿: Select 드롭다운으로 탭 선택
-  - Radix TabsList/TabsTrigger 유지로 키보드 접근성 보장
-
-- 2026-01-23: 어드민 페이지 모듈화 리팩토링
-  - 3367줄 admin.tsx를 130줄로 축소 (thin wrapper)
-  - admin/ 디렉토리에 17개 모듈 파일 분리
-  - 그룹화된 탭 네비게이션: 운영/관리, 분석, 시스템
-  - types.ts: 공유 TypeScript 인터페이스
-  - adminTabs.ts: 탭 그룹 설정
-  - 탭 컴포넌트: UsersTab, SovRunsTab, SearchLogsTab, AuditLogsTab, ApiKeysTab, SolutionsTab, InsightsTab, ApiUsageTab, DataQualityTab, SystemStatusTab
-  - 공유 컴포넌트: StatsCards, UserDetailModal, AdminSidebar
-  - Radix TabsContent 사용으로 접근성 보장
-
-- 2026-01-23: ExtractionStatsCollector 클래스 기반 상태 관리
-  - 전역 mutable 상태를 클래스 인스턴스로 캡슐화
-  - `createExtractionStatsCollector()` 팩토리 함수로 요청별 독립 인스턴스 생성
-  - `extractContent`에 `statsCollector` 옵션 추가 (의존성 주입)
-  - SOV 분석에서 요청 단위 stats 격리로 동시성 안전성 확보
-
-- 2026-01-23: extractContent 전략 테이블 기반 리팩토링
-  - `ExtractionStrategy` 인터페이스 및 `EXTRACTION_STRATEGIES` 테이블 추가
-  - 타입별 전략 정의: handler, timeout, retries, retryDelay, method, fallback
-  - `runExtraction` 헬퍼로 retry/timeout/fallback 로직 통합
-  - 신규 URL 타입 추가 시 테이블에 항목만 추가하면 됨
-
-- 2026-01-23: Puppeteer 초기화 로직 리팩토링
-  - `withBrowserPage` 헬퍼 함수 추가 (공통 브라우저/페이지 초기화 캡슐화)
-  - 지원 옵션: URL, UA(mobile/desktop), viewport, extra headers, timeout, delay
-  - 6개 추출 함수 리팩토링: extractBlogContent, extractCafeContentMobile/PC, extractNewsContent, extractViewContent, extractWithPuppeteer
-  - 코드 중복 약 150줄 감소, 일관된 오류 로그 포맷
-
-- 2026-01-23: 감사 로그 탭 필터링 및 관리자 정보 추가
-  - 작업 유형/대상 유형/기간/관리자 이메일 필터 UI 추가
-  - 관리자 이메일 컬럼 추가 (작업 수행자 표시)
-  - 적용된 필터 요약 Badge 표시
-  - 서버: adminEmail 필터 파라미터 지원 (부분 일치 검색)
-
-- 2026-01-23: SOV 분석 탭 에러 메시지 확장 표시
-  - 실패 건 에러 메시지 펼쳐보기/접기 기능 추가
-  - 에러 원인 분석을 위한 상세 정보 제공
-
-- 2026-01-23: 데이터 품질 탭 추가 (superadmin 전용)
-  - 플레이스명 누락 작업 관리 기능
-  - 개별 플레이스명 편집 (superadmin 전용)
-  - 일괄 동기화 기능 (동일 placeId의 기존 데이터에서 복사)
-  - 감사 로그 기록
-
-- 2026-01-23: 어드민 필터링 UX 개선 (Draft/Applied 패턴)
-  - SearchLogs, SovRuns, AuditLogs 탭에 Draft/Applied 필터 패턴 적용
-  - 입력 변경 시 즉시 쿼리 방지, "적용" 버튼 클릭 시에만 쿼리 실행
-  - 적용된 필터 요약 Badge 표시
-  - 불필요한 API 호출 감소 및 UX 명확화
-
-- 2026-01-23: 어드민 API 사용량 모니터링 시스템 구현
-  - 외부 API 호출 로깅 (Naver 검색/광고, OpenAI, Browserless)
-  - apiUsageLogs 테이블 추가 (userId, apiType, endpoint, success, tokens, responseTime, metadata)
-  - 성능 최적화 인덱스 4개 추가 (userId, apiType, createdAt, success)
-  - 어드민 대시보드 API 사용량 탭 추가 (API별 통계, 일별 추이, 상위 사용자)
-  - 사용자 상세 보기 모달 추가 (프로필, API 사용량, 최근 활동)
-  - 새 파일: server/services/api-usage-logger.ts
-  - 새 엔드포인트: /api/admin/api-usage/stats, /api/admin/api-usage/logs, /api/admin/users/:userId/usage
-
-- 2026-01-23: Browserless 클라우드 브라우저 서비스 연동
-  - 프로덕션 환경에서 안정적인 크롤링을 위해 Browserless 통합
-  - 환경별 우선순위: 프로덕션은 Browserless 우선, 개발환경은 로컬 Chrome 우선
-  - 자동 fallback 로직 (Browserless ↔ 로컬 Chrome)
-  - 스마트블록 크롤링 및 플레이스 리뷰 스크래핑 모두 적용
-  - 새 파일: server/utils/browserless.ts (브라우저 연결 유틸리티)
-
-- 2026-01-14: 모바일 반응형 디자인 및 UI 개선
-  - CSS 애니메이션 추가 (fadeIn, fadeInUp, scaleIn)
-  - 유틸리티 클래스 추가 (glass-card, hover-lift, gradient-text, mobile-horizontal-scroll)
-  - 랜딩 페이지: 데모 카드 md+ 전용, 기능 카드 모바일 가로 스크롤
-  - 대시보드: 검색량 카드 인라인 레이아웃, API 결과 모바일 탭 UI
-  - 스마트블록: 모바일 가로 스크롤 레이아웃
-  - 검색 패널/API 키 설정: 모바일 컴팩트 레이아웃
-  - 전체 컴포넌트 반응형 텍스트/패딩/아이콘 크기 적용
-
-- 2026-01-13: 이메일/비밀번호 인증 시스템으로 변경
-  - Replit Auth에서 이메일/비밀번호 기반 인증으로 전환
-  - SendGrid 통합으로 이메일 인증 및 비밀번호 재설정 지원
-  - bcryptjs를 사용한 비밀번호 해시
-  - 새 DB 테이블: verification_tokens
-  - 새 컬럼: users.password_hash, users.email_verified
-  - 로그인/회원가입/비밀번호 찾기 UI 구현
-
-- 2026-01-13: SOV 본문 추출 로직 개선
-  - URL 타입별 분기 처리 (blog/view/news/other)
-  - 네이버 블로그 전용 추출: 모바일 URL 변환 + 다양한 URL 형식 지원
-  - VIEW 페이지 전용 추출: 모바일 UA + VIEW 셀렉터
-  - 상세 로깅 추가 (URL 타입, 추출 문자 수)
-
-- 2026-01-12: SOV (Share of Voice) 분석 기능 추가
-  - 시장 키워드에서 브랜드별 노출 점유율 분석
-  - 네이버 스마트블록(뉴스, VIEW, 블로그) 콘텐츠 크롤링
-  - 하이브리드 콘텐츠 추출 (HTTP 우선, Puppeteer 폴백)
-  - OpenAI text-embedding-3-small 기반 시맨틱 관련성 계산
-  - 규칙 기반 점수(0.4) + 시맨틱 점수(0.6) 조합, 임계값 0.72
-  - 백그라운드 비동기 처리로 대용량 분석 지원
-  - 새 DB 테이블: sov_runs, sov_exposures, sov_scores, sov_results
-
-- 2026-01-12: 프로덕션 보안 및 운영 강화
-  - Ticket 1: API 응답에서 clientSecret 비노출 (hasClientSecret 플래그만 반환)
-  - Ticket 2: Zod 스키마로 검색 파라미터 검증 (keyword, sort, page, channel)
-  - Ticket 3: express-rate-limit으로 엔드포인트별 요청 제한 적용
-  - Ticket 4: p-limit으로 크롤링 동시성 2개 제한 + LRU 캐시(5분 TTL)
-  - Ticket 5: 네이버 API 응답 캐시(3분 TTL) + 표준화된 에러 로깅
-  - Ticket 6: AES-256-GCM으로 clientSecret 암호화 저장
-  - Ticket 7: requestId/latency 로깅, 민감정보 마스킹 미들웨어
-
-- 2026-01-12: 채널별 페이지네이션 및 UI/UX 개선
-  - 채널별 독립 페이지네이션: 스마트블록 재크롤링 없이 개별 채널 페이지 이동
-  - GET /api/search/channel 엔드포인트 추가
-  - 채널별 로딩 상태 및 오류 복구 로직 구현
-  - UI/UX 전면 개선: 그라디언트 브랜딩, 섹션별 색상 코딩, 카드 레이아웃 개선
-  
-- 2026-01-12: 초기 MVP 구현
-  - 회원별 네이버 API 키 등록/관리 기능
-  - 네이버 검색 API 4채널 통합 검색
-  - Puppeteer 기반 스마트블록 크롤링
-  - 검색 결과 매칭 하이라이트 기능
+### 2026-01-14 이전 주요 변경
+- 모바일 반응형 디자인 전면 개선
+- 이메일/비밀번호 인증 시스템 (SendGrid)
+- SOV 분석 기능 (OpenAI 임베딩)
+- 채널별 독립 페이지네이션
+- 프로덕션 보안 강화 (rate-limit, 암호화, 캐싱)
 
 ## Project Architecture
 
 ### Frontend (React + Vite)
-- `/client/src/App.tsx` - 메인 앱 컴포넌트, 라우팅
-- `/client/src/pages/landing.tsx` - 비로그인 사용자용 랜딩 페이지
-- `/client/src/pages/auth.tsx` - 로그인/회원가입 페이지
-- `/client/src/pages/dashboard.tsx` - 로그인 사용자용 대시보드
-- `/client/src/components/header.tsx` - 공통 헤더 (네비게이션, 사용자 메뉴)
-- `/client/src/components/api-key-setup.tsx` - API 키 등록/수정 컴포넌트
-- `/client/src/components/search-panel.tsx` - 검색 입력 패널
-- `/client/src/components/smart-block-section.tsx` - 스마트블록 결과 표시
-- `/client/src/components/api-results-section.tsx` - API 4채널 결과 그리드
-- `/client/src/components/sov-panel.tsx` - SOV 분석 패널 (대시보드 탭)
+```
+/client/src/
+├── pages/
+│   ├── landing.tsx       # 비로그인 랜딩
+│   ├── auth.tsx          # 로그인/회원가입
+│   ├── dashboard.tsx     # 메인 대시보드
+│   ├── sov.tsx           # SOV 분석
+│   ├── place-review.tsx  # 플레이스 리뷰
+│   ├── profile.tsx       # 사용자 프로필
+│   └── admin/            # 어드민 모듈 (17개 파일)
+├── components/
+│   ├── header.tsx        # 공통 헤더
+│   ├── search-panel.tsx  # 검색 입력
+│   ├── smart-block-section.tsx
+│   ├── api-results-section.tsx
+│   └── ui/               # shadcn/ui 컴포넌트
+├── hooks/
+│   └── use-auth.ts       # 인증 훅
+└── lib/
+    ├── utils.ts          # 유틸리티
+    └── sanitize.ts       # HTML sanitization
+```
 
 ### Backend (Express + PostgreSQL)
-- `/server/routes.ts` - API 엔드포인트 정의
-- `/server/auth-routes.ts` - 인증 관련 API 엔드포인트
-- `/server/auth-service.ts` - 인증 서비스 (회원가입, 로그인, 이메일 인증)
-- `/server/email-service.ts` - SendGrid 이메일 발송 서비스
-- `/server/storage.ts` - 데이터베이스 CRUD 작업
-- `/server/naver-api.ts` - 네이버 검색 API 호출
-- `/server/crawler.ts` - Puppeteer 기반 스마트블록 크롤링
-- `/server/sov-service.ts` - SOV 분석 서비스 (임베딩, 관련성 계산)
+```
+/server/
+├── bootstrap.ts          # 엔트리포인트
+├── app.ts                # Express 앱 설정
+├── routes.ts             # API 라우트
+├── auth-routes.ts        # 인증 API
+├── admin-routes.ts       # 어드민 API
+├── storage.ts            # DB CRUD
+├── naver-api.ts          # 네이버 API
+├── crawler.ts            # Puppeteer 크롤링
+├── sov-service.ts        # SOV 분석
+├── crypto.ts             # 암호화
+├── services/
+│   ├── api-usage-logger.ts  # API 사용량 로깅
+│   └── service-status.ts    # 서비스 상태 체크
+├── queue/                # BullMQ 작업 큐
+└── utils/
+    └── browserless.ts    # Browserless 연결
+```
 
 ### Database Schema
-- `users` - 사용자 정보 (email, password_hash, email_verified)
-- `sessions` - 세션 저장소
-- `verification_tokens` - 이메일 인증 및 비밀번호 재설정 토큰
-- `api_keys` - 사용자별 네이버 API 키 저장
-- `sov_runs` - SOV 분석 실행 기록
-- `sov_exposures` - 분석된 콘텐츠 노출 정보
-- `sov_scores` - 브랜드별 관련성 점수
-- `sov_results` - 최종 SOV 퍼센트 결과
-- `api_usage_logs` - API 사용량 로그 (userId, apiType, endpoint, success, tokens, responseTime)
+| 테이블 | 설명 |
+|--------|------|
+| users | 사용자 (email, password_hash, role) |
+| sessions | 세션 저장소 |
+| verification_tokens | 이메일 인증/비밀번호 재설정 |
+| api_keys | 네이버 API 키 (암호화) |
+| search_logs | 검색 로그 |
+| sov_runs/exposures/scores/results | SOV 분석 데이터 |
+| place_review_analyses/results | 플레이스 리뷰 분석 |
+| api_usage_logs | API 사용량 로그 |
+| audit_logs | 감사 로그 |
 
 ## API Endpoints
 
@@ -257,85 +104,54 @@
 - `POST /api/auth/register` - 회원가입
 - `POST /api/auth/login` - 로그인
 - `POST /api/auth/logout` - 로그아웃
-- `GET /api/auth/user` - 현재 로그인 사용자 정보
+- `GET /api/auth/user` - 현재 사용자
 - `GET /api/auth/verify-email` - 이메일 인증
-- `POST /api/auth/resend-verification` - 인증 이메일 재발송
 - `POST /api/auth/forgot-password` - 비밀번호 재설정 요청
-- `POST /api/auth/reset-password` - 비밀번호 재설정
-
-### API 키 관리
-- `GET /api/api-keys` - 사용자의 API 키 조회
-- `POST /api/api-keys` - API 키 등록
-- `PUT /api/api-keys` - API 키 수정
-- `DELETE /api/api-keys` - API 키 삭제
 
 ### 검색
 - `GET /api/search` - 통합 검색 (스마트블록 + API 4채널)
-- `GET /api/search/channel` - 채널별 단일 검색 (페이지네이션용)
+- `GET /api/search/channel` - 채널별 단일 검색
 
 ### SOV 분석
-- `POST /api/sov/run` - SOV 분석 시작
-- `GET /api/sov/status/:runId` - 분석 상태 조회
-- `GET /api/sov/result/:runId` - 분석 결과 조회
-- `GET /api/sov/runs` - 사용자의 분석 기록 목록
+- `POST /api/sov/run` - 분석 시작
+- `GET /api/sov/status/:runId` - 상태 조회
+- `GET /api/sov/result/:runId` - 결과 조회
+- `GET /api/sov/runs` - 분석 기록
 
-### 어드민 API 사용량
-- `GET /api/admin/api-usage/stats` - API 사용량 통계 (타입별, 일별)
-- `GET /api/admin/api-usage/logs` - API 사용량 로그 목록
-- `GET /api/admin/users/:userId/usage` - 사용자별 API 사용량 상세
+### 플레이스 리뷰
+- `POST /api/place-review/analyze` - 분석 시작
+- `GET /api/place-review/status/:analysisId` - 상태 조회
+- `GET /api/place-review/analyses` - 분석 목록
 
-### 기타
-- `GET /api/health` - 서버 상태 확인
+### 어드민
+- `GET /api/admin/users` - 사용자 목록
+- `GET /api/admin/search-logs` - 검색 로그
+- `GET /api/admin/sov-runs` - SOV 실행 기록
+- `GET /api/admin/audit-logs` - 감사 로그
+- `GET /api/admin/api-usage/stats` - API 사용량 통계
+- `GET /api/services/quick-status` - 서비스 상태 (관리자 전용)
+
+## Environment Variables
+
+| 변수 | 필수 | 설명 |
+|------|------|------|
+| `DATABASE_URL` | ✅ 필수 | PostgreSQL 연결 |
+| `SESSION_SECRET` | ✅ 필수 | 세션 암호화 키 (프로덕션 필수) |
+| `ENCRYPTION_KEY` | 선택 | API 키 암호화 (미설정 시 SESSION_SECRET 파생) |
+| `OPENAI_API_KEY` | 선택 | SOV 분석용 |
+| `BROWSERLESS_API_KEY` | 선택 | 클라우드 브라우저 |
+| `SENDGRID_API_KEY` | 선택 | 이메일 발송 |
+
+**주의:** 프로덕션에서 `SESSION_SECRET` 미설정 시 앱 시작 실패
+
+## Development Commands
+```bash
+npm run dev          # 개발 서버
+npm run build        # 프로덕션 빌드
+npm run db:push      # DB 스키마 동기화
+```
 
 ## User Preferences
 - 한국어 UI
 - Noto Sans KR 폰트
-- 다크 모드 지원 (예정)
-
-## Development Commands
-- `npm run dev` - 개발 서버 실행
-- `npm run db:push` - 데이터베이스 스키마 동기화
-
-## 개발/배포 전 체크리스트
-
-기능 변경 시 반드시 아래 항목들을 확인하세요:
-
-### 환경 설정
-- [ ] Puppeteer Chrome 브라우저 설치 확인 (`npx puppeteer browsers install chrome`)
-- [ ] 워크플로우 재시작 및 서버 정상 동작 확인
-- [ ] 콘솔 로그에 에러 없는지 확인
-
-### 핵심 기능 테스트
-- [ ] 스마트블록 크롤링 정상 동작 (검색 시 smartBlock 결과 확인)
-- [ ] API 결과 4채널(블로그, 카페, 지식iN, 뉴스) 정상 표시
-- [ ] 키워드 검색량(PC/MO) 표시 확인
-- [ ] SOV 분석 기능 동작 확인 (필요시)
-
-### UI/UX
-- [ ] 모바일 반응형 레이아웃 정상 동작
-- [ ] 데스크톱 레이아웃 정상 동작
-- [ ] 탭/그리드 전환이 md 브레이크포인트에서 올바르게 동작
-
-### 인증
-- [ ] 로그인/로그아웃 정상 동작
-- [ ] 이메일 인증 흐름 정상 동작 (신규 가입 시)
-
-### 배포 전 (프로덕션)
-- [ ] `npm run build` 성공 확인
-- [ ] 빌드 시 Chrome 자동 설치 확인
-- [ ] **필수 환경 변수 설정 확인** (아래 참조)
-
-## 프로덕션 필수 환경 변수
-
-| 변수 | 필수 | 설명 |
-|------|------|------|
-| `DATABASE_URL` | ✅ 필수 | PostgreSQL 연결 문자열 |
-| `SESSION_SECRET` | ✅ 필수 | 세션 암호화 키 (32자 이상 권장) |
-| `ENCRYPTION_KEY` | 선택 | API 키 암호화용 (미설정 시 SESSION_SECRET에서 파생) |
-| `OPENAI_API_KEY` | 선택 | SOV 분석용 (미설정 시 기능 비활성화) |
-| `BROWSERLESS_API_KEY` | 선택 | 클라우드 브라우저 (미설정 시 로컬 Chrome 사용) |
-
-**주의:** 프로덕션(`NODE_ENV=production`)에서 `SESSION_SECRET`이 없으면 앱이 시작되지 않습니다.
-
-## Architecture Documentation
-자세한 아키텍처 문서는 [ARCHITECTURE.md](./ARCHITECTURE.md)를 참조하세요.
+- 간결하고 일상적인 언어로 소통
