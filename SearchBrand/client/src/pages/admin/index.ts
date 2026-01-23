@@ -12,3 +12,4 @@ export { ApiUsageTab } from "./ApiUsageTab";
 export { DataQualityTab } from "./DataQualityTab";
 export { SystemStatusTab } from "./SystemStatusTab";
 export { UserDetailModal } from "./UserDetailModal";
+export { AdminSidebar } from "./AdminSidebar";

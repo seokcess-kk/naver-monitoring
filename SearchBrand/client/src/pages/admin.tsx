@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Redirect } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Shield, ArrowLeft, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -19,13 +20,14 @@ import {
   ApiUsageTab,
   DataQualityTab,
   SystemStatusTab,
-  TAB_GROUPS,
+  AdminSidebar,
   DEFAULT_TAB,
   type AdminStats,
 } from "./admin/index";
 
 export default function AdminPage() {
   const { user, isLoading, isAuthenticated } = useAuth();
+  const [activeTab, setActiveTab] = useState(DEFAULT_TAB);
 
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ["/api/admin/stats/overview"],
@@ -67,64 +69,51 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="border-b bg-card shrink-0">
+        <div className="px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => window.location.href = "/"}>
               <ArrowLeft className="w-4 h-4 mr-2" />
-              대시보드
+              <span className="hidden sm:inline">대시보드</span>
             </Button>
-            <div className="h-6 w-px bg-border" />
-            <h1 className="text-xl font-bold">Admin Console</h1>
-            <Badge variant={user?.role === "superadmin" ? "destructive" : "default"}>
+            <div className="h-6 w-px bg-border hidden sm:block" />
+            <h1 className="text-lg font-bold">Admin Console</h1>
+            <Badge variant={user?.role === "superadmin" ? "destructive" : "default"} className="hidden sm:inline-flex">
               {user?.role === "superadmin" ? "슈퍼 관리자" : "관리자"}
             </Badge>
           </div>
           <Button variant="outline" size="sm" onClick={() => refetchStats()}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            새로고침
+            <RefreshCw className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">새로고침</span>
           </Button>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 space-y-6">
-        <StatsCards stats={stats} />
-
-        <Tabs defaultValue={DEFAULT_TAB} className="space-y-4">
-          <div className="flex flex-wrap gap-6 border-b pb-4">
-            {TAB_GROUPS.map((group) => (
-              <div key={group.id} className="space-y-2">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  {group.label}
-                </span>
-                <TabsList className="grid" style={{ gridTemplateColumns: `repeat(${group.tabs.length}, minmax(0, 1fr))` }}>
-                  {group.tabs.map((tab) => {
-                    const IconComponent = tab.icon;
-                    return (
-                      <TabsTrigger key={tab.id} value={tab.id} className="gap-2">
-                        <IconComponent className="w-4 h-4" />
-                        <span className="hidden sm:inline">{tab.label}</span>
-                      </TabsTrigger>
-                    );
-                  })}
-                </TabsList>
-              </div>
-            ))}
+      <div className="flex-1 flex flex-col lg:flex-row">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col lg:flex-row">
+          <div className="p-4 lg:p-0">
+            <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
           </div>
 
-          <TabsContent value="users"><UsersTab /></TabsContent>
-          <TabsContent value="sov"><SovRunsTab /></TabsContent>
-          <TabsContent value="logs"><SearchLogsTab /></TabsContent>
-          <TabsContent value="audit"><AuditLogsTab /></TabsContent>
-          <TabsContent value="apikeys"><ApiKeysTab /></TabsContent>
-          <TabsContent value="solutions"><SolutionsTab /></TabsContent>
-          <TabsContent value="insights"><InsightsTab /></TabsContent>
-          <TabsContent value="api-usage"><ApiUsageTab /></TabsContent>
-          <TabsContent value="data-quality"><DataQualityTab /></TabsContent>
-          <TabsContent value="system"><SystemStatusTab /></TabsContent>
+          <main className="flex-1 p-4 lg:p-6 overflow-auto">
+            <div className="space-y-6">
+              <StatsCards stats={stats} />
+
+              <TabsContent value="users" className="mt-0"><UsersTab /></TabsContent>
+              <TabsContent value="sov" className="mt-0"><SovRunsTab /></TabsContent>
+              <TabsContent value="logs" className="mt-0"><SearchLogsTab /></TabsContent>
+              <TabsContent value="audit" className="mt-0"><AuditLogsTab /></TabsContent>
+              <TabsContent value="apikeys" className="mt-0"><ApiKeysTab /></TabsContent>
+              <TabsContent value="solutions" className="mt-0"><SolutionsTab /></TabsContent>
+              <TabsContent value="insights" className="mt-0"><InsightsTab /></TabsContent>
+              <TabsContent value="api-usage" className="mt-0"><ApiUsageTab /></TabsContent>
+              <TabsContent value="data-quality" className="mt-0"><DataQualityTab /></TabsContent>
+              <TabsContent value="system" className="mt-0"><SystemStatusTab /></TabsContent>
+            </div>
+          </main>
         </Tabs>
-      </main>
+      </div>
     </div>
   );
 }
