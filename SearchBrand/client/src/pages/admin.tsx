@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Redirect } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { Shield, ArrowLeft, RefreshCw } from "lucide-react";
+import { Shield, ArrowLeft, RefreshCw, Clock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import {
   StatsCards,
@@ -28,8 +28,9 @@ import {
 export default function AdminPage() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState(DEFAULT_TAB);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  const { data: stats, refetch: refetchStats } = useQuery({
+  const { data: stats, refetch: refetchStats, isFetching, dataUpdatedAt } = useQuery({
     queryKey: ["/api/admin/stats/overview"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/admin/stats/overview");
@@ -37,6 +38,12 @@ export default function AdminPage() {
     },
     enabled: isAuthenticated && (user?.role === "admin" || user?.role === "superadmin"),
   });
+
+  useEffect(() => {
+    if (dataUpdatedAt) {
+      setLastUpdated(new Date(dataUpdatedAt));
+    }
+  }, [dataUpdatedAt]);
 
   if (isLoading) {
     return (
@@ -68,25 +75,39 @@ export default function AdminPage() {
     );
   }
 
+  const formatLastUpdated = (date: Date) => {
+    return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b bg-card shrink-0">
         <div className="px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => window.location.href = "/"}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">대시보드</span>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.location.href = "/"}>
+              <ArrowLeft className="w-4 h-4" />
             </Button>
-            <div className="h-6 w-px bg-border hidden sm:block" />
-            <h1 className="text-lg font-bold">Admin Console</h1>
-            <Badge variant={user?.role === "superadmin" ? "destructive" : "default"} className="hidden sm:inline-flex">
+            <h1 className="text-base font-semibold">Admin Console</h1>
+            <Badge variant="secondary" className="text-xs font-normal hidden sm:inline-flex">
               {user?.role === "superadmin" ? "슈퍼 관리자" : "관리자"}
             </Badge>
           </div>
-          <Button variant="outline" size="sm" onClick={() => refetchStats()}>
-            <RefreshCw className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">새로고침</span>
-          </Button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Clock className="w-3.5 h-3.5" />
+              <span>{formatLastUpdated(lastUpdated)}</span>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => refetchStats()}
+              disabled={isFetching}
+              className="h-8"
+            >
+              <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline ml-1.5">새로고침</span>
+            </Button>
+          </div>
         </div>
       </header>
 
