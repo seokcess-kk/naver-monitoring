@@ -238,7 +238,7 @@ router.patch("/users/:userId", requireAdmin, async (req: AdminRequest, res: Resp
 
 router.get("/sov-runs", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
-    const { userId, status, startDate, endDate } = req.query;
+    const { userId, status, startDate, endDate, keyword } = req.query;
     const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
     
     const conditions = [];
@@ -254,6 +254,9 @@ router.get("/sov-runs", requireAdmin, async (req: AdminRequest, res: Response) =
     }
     if (endDate && typeof endDate === "string") {
       conditions.push(lte(sovRuns.createdAt, new Date(endDate)));
+    }
+    if (keyword && typeof keyword === "string") {
+      conditions.push(ilike(sovRuns.marketKeyword, `%${keyword}%`));
     }
     
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
