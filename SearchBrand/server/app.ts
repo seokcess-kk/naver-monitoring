@@ -8,6 +8,20 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { requestIdMiddleware, requestLoggerMiddleware, errorLoggerMiddleware } from "./middleware/observability";
 
+const isProduction = process.env.NODE_ENV === "production";
+
+function getSessionSecret(): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    if (isProduction) {
+      throw new Error("[FATAL] SESSION_SECRET 환경 변수가 설정되지 않았습니다. 프로덕션에서는 필수입니다.");
+    }
+    console.warn("[Security] SESSION_SECRET이 설정되지 않았습니다. 개발용 기본값을 사용합니다. 프로덕션에서는 반드시 설정하세요.");
+    return "dev-only-session-secret-do-not-use-in-production";
+  }
+  return secret;
+}
+
 function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -40,7 +54,7 @@ export async function initializeApp(app: Express, httpServer: Server) {
         tableName: "sessions",
         createTableIfMissing: true,
       }),
-      secret: process.env.SESSION_SECRET || "naver-monitor-session-secret-key-2024",
+      secret: getSessionSecret(),
       resave: false,
       saveUninitialized: false,
       name: "naver_monitor_sid",

@@ -6,10 +6,19 @@ const TAG_LENGTH = 16;
 
 function getEncryptionKey(): Buffer {
   const key = process.env.ENCRYPTION_KEY;
+  const isProduction = process.env.NODE_ENV === "production";
+  
   if (!key) {
-    console.warn("[Crypto] ENCRYPTION_KEY not set. Using derived fallback key.");
-    const fallback = process.env.SESSION_SECRET || "naver-monitoring-default-key-32";
-    return crypto.createHash("sha256").update(fallback).digest();
+    const sessionSecret = process.env.SESSION_SECRET;
+    if (!sessionSecret) {
+      if (isProduction) {
+        throw new Error("[FATAL] ENCRYPTION_KEY 또는 SESSION_SECRET이 설정되지 않았습니다. 프로덕션에서는 필수입니다.");
+      }
+      console.warn("[Crypto] ENCRYPTION_KEY/SESSION_SECRET 미설정. 개발용 기본값 사용.");
+      return crypto.createHash("sha256").update("dev-only-encryption-key").digest();
+    }
+    console.warn("[Crypto] ENCRYPTION_KEY 미설정. SESSION_SECRET에서 키를 파생합니다.");
+    return crypto.createHash("sha256").update(sessionSecret).digest();
   }
   
   if (key.length === 64) {

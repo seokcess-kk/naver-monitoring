@@ -7,6 +7,11 @@
 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록(플레이스, 뉴스 등) 노출 현황을 실시간으로 확인할 수 있습니다. SOV(Share of Voice) 분석으로 브랜드 점유율을 측정하세요.
 
 ## Recent Changes
+- 2026-01-23: 프로덕션 SESSION_SECRET 필수화 (보안 강화)
+  - 프로덕션에서 SESSION_SECRET 미설정 시 앱 시작 실패
+  - 개발 환경에서는 경고 로그와 함께 기본값 사용
+  - crypto.ts 암호화 키도 동일 정책 적용
+
 - 2026-01-23: 공통 상태 컴포넌트 도입
   - StateComponents.tsx: LoadingState, TableLoading, EmptyState, ErrorState
   - EmptyState 타입 분리: no-data (데이터 없음), no-filter-results (필터 결과 없음)
@@ -282,7 +287,19 @@
 ### 배포 전 (프로덕션)
 - [ ] `npm run build` 성공 확인
 - [ ] 빌드 시 Chrome 자동 설치 확인
-- [ ] 환경 변수 설정 확인 (DATABASE_URL, SESSION_SECRET 등)
+- [ ] **필수 환경 변수 설정 확인** (아래 참조)
+
+## 프로덕션 필수 환경 변수
+
+| 변수 | 필수 | 설명 |
+|------|------|------|
+| `DATABASE_URL` | ✅ 필수 | PostgreSQL 연결 문자열 |
+| `SESSION_SECRET` | ✅ 필수 | 세션 암호화 키 (32자 이상 권장) |
+| `ENCRYPTION_KEY` | 선택 | API 키 암호화용 (미설정 시 SESSION_SECRET에서 파생) |
+| `OPENAI_API_KEY` | 선택 | SOV 분석용 (미설정 시 기능 비활성화) |
+| `BROWSERLESS_API_KEY` | 선택 | 클라우드 브라우저 (미설정 시 로컬 Chrome 사용) |
+
+**주의:** 프로덕션(`NODE_ENV=production`)에서 `SESSION_SECRET`이 없으면 앱이 시작되지 않습니다.
 
 ## Architecture Documentation
 자세한 아키텍처 문서는 [ARCHITECTURE.md](./ARCHITECTURE.md)를 참조하세요.

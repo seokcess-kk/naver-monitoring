@@ -111,7 +111,17 @@ async function initializeApp() {
         tableName: "sessions",
         createTableIfMissing: true,
       }),
-      secret: process.env.SESSION_SECRET || "naver-monitor-session-secret-key-2024",
+      secret: (() => {
+        const secret = process.env.SESSION_SECRET;
+        if (!secret) {
+          if (process.env.NODE_ENV === "production") {
+            throw new Error("[FATAL] SESSION_SECRET 환경 변수가 설정되지 않았습니다. 프로덕션에서는 필수입니다.");
+          }
+          console.warn("[Security] SESSION_SECRET이 설정되지 않았습니다. 개발용 기본값을 사용합니다.");
+          return "dev-only-session-secret-do-not-use-in-production";
+        }
+        return secret;
+      })(),
       resave: false,
       saveUninitialized: false,
       cookie: {
