@@ -7,6 +7,16 @@
 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록(플레이스, 뉴스 등) 노출 현황을 실시간으로 확인할 수 있습니다. SOV(Share of Voice) 분석으로 브랜드 점유율을 측정하세요.
 
 ## Recent Changes
+- 2026-01-23: 어드민 페이지 모듈화 리팩토링
+  - 3367줄 admin.tsx를 130줄로 축소 (thin wrapper)
+  - admin/ 디렉토리에 16개 모듈 파일 분리
+  - 그룹화된 탭 네비게이션: 운영/관리, 분석, 시스템
+  - types.ts: 공유 TypeScript 인터페이스
+  - adminTabs.ts: 탭 그룹 설정
+  - 탭 컴포넌트: UsersTab, SovRunsTab, SearchLogsTab, AuditLogsTab, ApiKeysTab, SolutionsTab, InsightsTab, ApiUsageTab, DataQualityTab, SystemStatusTab
+  - 공유 컴포넌트: StatsCards, UserDetailModal
+  - Radix TabsContent 사용으로 접근성 보장
+
 - 2026-01-23: ExtractionStatsCollector 클래스 기반 상태 관리
   - 전역 mutable 상태를 클래스 인스턴스로 캡슐화
   - `createExtractionStatsCollector()` 팩토리 함수로 요청별 독립 인스턴스 생성
