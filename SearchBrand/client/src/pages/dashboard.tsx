@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/header";
@@ -181,6 +181,11 @@ export default function Dashboard() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [highlightTerm, setHighlightTerm] = useState(savedState?.highlightTerm ?? "");
 
+  const searchAbortControllerRef = useRef<AbortController | null>(null);
+  const channelAbortControllersRef = useRef<Record<ChannelKey, AbortController | null>>({
+    blog: null, cafe: null, kin: null, news: null
+  });
+
   useEffect(() => {
     setRecentSearches(getRecentSearches());
   }, []);
@@ -235,6 +240,12 @@ export default function Dashboard() {
   const handleSearch = async (keyword: string, sort: "sim" | "date") => {
     if (!apiKey?.hasClientSecret) return;
     
+    if (searchAbortControllerRef.current) {
+      searchAbortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    searchAbortControllerRef.current = abortController;
+    
     setIsSearching(true);
     setCurrentKeyword(keyword);
     setCurrentSort(sort);
@@ -245,16 +256,24 @@ export default function Dashboard() {
     setRecentSearches(getRecentSearches());
 
     try {
-      const searchResponse = await fetch(`/api/search?keyword=${encodeURIComponent(keyword)}&sort=${sort}&page=1`);
+      const searchResponse = await fetch(
+        `/api/search?keyword=${encodeURIComponent(keyword)}&sort=${sort}&page=1`,
+        { signal: abortController.signal }
+      );
       if (!searchResponse.ok) {
         const errorData = await searchResponse.json().catch(() => ({}));
         throw new Error(errorData.message || "검색 실패");
       }
       const data = await searchResponse.json();
-      setSearchResults(data);
       
-      fetchKeywordVolume(keyword);
+      if (!abortController.signal.aborted) {
+        setSearchResults(data);
+        fetchKeywordVolume(keyword);
+      }
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("Search error:", error);
       const message = error instanceof Error ? error.message : "검색 중 오류가 발생했습니다";
       toast({ 
@@ -263,7 +282,9 @@ export default function Dashboard() {
         variant: "destructive" 
       });
     } finally {
-      setIsSearching(false);
+      if (!abortController.signal.aborted) {
+        setIsSearching(false);
+      }
     }
   };
 
@@ -310,28 +331,40 @@ export default function Dashboard() {
   const handleChannelPageChange = async (channel: ChannelKey, newPage: number) => {
     if (!currentKeyword || !searchResults) return;
 
+    if (channelAbortControllersRef.current[channel]) {
+      channelAbortControllersRef.current[channel]!.abort();
+    }
+    const abortController = new AbortController();
+    channelAbortControllersRef.current[channel] = abortController;
+
     const previousPage = channelPages[channel];
     setChannelLoading(prev => ({ ...prev, [channel]: true }));
     setChannelPages(prev => ({ ...prev, [channel]: newPage }));
 
     try {
       const response = await fetch(
-        `/api/search/channel?keyword=${encodeURIComponent(currentKeyword)}&channel=${channel}&sort=${currentSort}&page=${newPage}`
+        `/api/search/channel?keyword=${encodeURIComponent(currentKeyword)}&channel=${channel}&sort=${currentSort}&page=${newPage}`,
+        { signal: abortController.signal }
       );
       if (!response.ok) throw new Error("채널 검색 실패");
       const data = await response.json();
       
-      setSearchResults(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          apiResults: {
-            ...prev.apiResults,
-            [channel]: data.result,
-          },
-        };
-      });
+      if (!abortController.signal.aborted) {
+        setSearchResults(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            apiResults: {
+              ...prev.apiResults,
+              [channel]: data.result,
+            },
+          };
+        });
+      }
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("Channel search error:", error);
       setChannelPages(prev => ({ ...prev, [channel]: previousPage }));
       const channelNames: Record<string, string> = { blog: "블로그", cafe: "카페", kin: "지식iN", news: "뉴스" };
@@ -341,7 +374,9 @@ export default function Dashboard() {
         variant: "destructive" 
       });
     } finally {
-      setChannelLoading(prev => ({ ...prev, [channel]: false }));
+      if (!abortController.signal.aborted) {
+        setChannelLoading(prev => ({ ...prev, [channel]: false }));
+      }
     }
   };
 

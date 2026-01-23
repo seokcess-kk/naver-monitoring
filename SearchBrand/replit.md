@@ -7,6 +7,11 @@
 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록(플레이스, 뉴스 등) 노출 현황을 실시간으로 확인할 수 있습니다. SOV(Share of Voice) 분석으로 브랜드 점유율을 측정하세요.
 
 ## Recent Changes
+- 2026-01-23: 검색 레이스 컨디션 방지 (AbortController)
+  - handleSearch, handleChannelPageChange에 AbortController 적용
+  - 빠른 연속 검색/페이지 이동 시 이전 요청 자동 취소
+  - 취소된 요청은 상태 업데이트 없이 무시
+
 - 2026-01-23: 검색 실패 시 사용자 피드백 추가
   - handleSearch, handleChannelPageChange 실패 시 toast 알림 표시
   - 채널 페이지 로드 실패 시 이전 페이지로 자동 복원
