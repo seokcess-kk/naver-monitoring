@@ -1,7 +1,6 @@
-import puppeteer from "puppeteer-core";
 import pLimit from "p-limit";
 import LRUCache from "lru-cache";
-import { findChromePath } from "./utils/chrome-finder";
+import { connectBrowser, disconnectBrowser, BrowserConnection } from "./utils/browserless";
 
 interface SmartBlockPost {
   rank: number | null;
@@ -27,25 +26,12 @@ const crawlCache = new LRUCache<string, SmartBlockSection[]>({
 });
 
 async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
-  let browser = null;
+  let connection: BrowserConnection | null = null;
 
   try {
-    const executablePath = findChromePath();
-    browser = await puppeteer.launch({
-      headless: true,
-      executablePath,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--no-first-run",
-        "--no-zygote",
-        "--single-process",
-      ],
-    });
+    connection = await connectBrowser();
 
-    const page = await browser.newPage();
+    const page = await connection.browser.newPage();
     await page.setViewport({ width: 1280, height: 1080 });
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -348,8 +334,8 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
     }
     return [];
   } finally {
-    if (browser) {
-      await browser.close();
+    if (connection) {
+      await disconnectBrowser(connection);
     }
   }
 }

@@ -1,6 +1,6 @@
-import puppeteer, { Browser, Page } from "puppeteer-core";
+import { Browser, Page } from "puppeteer-core";
 import pLimit from "p-limit";
-import { findChromePath } from "../utils/chrome-finder";
+import { connectBrowser, disconnectBrowser, BrowserConnection } from "../utils/browserless";
 
 const MOBILE_USER_AGENT =
   "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
@@ -28,29 +28,15 @@ interface ScrapeOptions {
 
 const browserLimit = pLimit(2);
 
-async function launchBrowser(): Promise<Browser> {
+async function launchBrowser(): Promise<BrowserConnection> {
   console.log(`[PlaceReviewScraper] Launching browser...`);
   console.log(`[PlaceReviewScraper] NODE_ENV: ${process.env.NODE_ENV}`);
   
   try {
-    const executablePath = findChromePath();
-    const browser = await puppeteer.launch({
-      headless: true,
-      executablePath,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--no-first-run",
-        "--no-zygote",
-        "--disable-blink-features=AutomationControlled",
-      ],
-    });
-    
-    const version = await browser.version();
+    const connection = await connectBrowser();
+    const version = await connection.browser.version();
     console.log(`[PlaceReviewScraper] Browser launched successfully: ${version}`);
-    return browser;
+    return connection;
   } catch (error) {
     console.error(`[PlaceReviewScraper] Failed to launch browser:`, error);
     throw error;
@@ -557,14 +543,14 @@ export async function scrapePlaceReviews(options: ScrapeOptions): Promise<Scrape
   console.log(`[PlaceReviewScraper] scrapePlaceReviews called with mode=${mode}, limitQty=${limitQty}, placeId=${placeId}`);
 
   return browserLimit(async () => {
-    let browser: Browser | null = null;
+    let connection: BrowserConnection | null = null;
 
     try {
       const reviewUrl = `https://m.place.naver.com/place/${placeId}/review/visitor`;
       console.log(`[PlaceReviewScraper] Starting scrape: ${reviewUrl}`);
 
-      browser = await launchBrowser();
-      const page = await browser.newPage();
+      connection = await launchBrowser();
+      const page = await connection.browser.newPage();
       await page.setUserAgent(MOBILE_USER_AGENT);
       await page.setViewport({ width: 412, height: 915 });
 
@@ -686,8 +672,8 @@ export async function scrapePlaceReviews(options: ScrapeOptions): Promise<Scrape
       console.error("[PlaceReviewScraper] Scraping failed:", error);
       throw error;
     } finally {
-      if (browser) {
-        await browser.close();
+      if (connection) {
+        await disconnectBrowser(connection);
       }
     }
   });
