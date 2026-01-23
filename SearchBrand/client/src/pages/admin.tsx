@@ -1467,7 +1467,7 @@ function SolutionsTab() {
 }
 
 interface UserActivityInsights {
-  activeUsers: { daily: number; weekly: number; monthly: number };
+  activeUsers: { period: number; totalSearches: number };
   popularKeywords: { keyword: string; count: number }[];
   searchByType: { searchType: string; count: number }[];
   dailySearchTrend: { date: string; count: number }[];
@@ -1492,35 +1492,74 @@ interface SystemPerformanceInsights {
   placeReviewQueue: { total: number; completed: number; failed: number; pending: number; processing: number; successRate: number };
 }
 
+type DateRangeOption = "today" | "7d" | "30d" | "custom";
+
 function InsightsTab() {
+  const [dateRange, setDateRange] = useState<DateRangeOption>("7d");
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
+
+  const getDateParams = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let startDate: Date;
+    let endDate: Date = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+    switch (dateRange) {
+      case "today":
+        startDate = today;
+        break;
+      case "7d":
+        startDate = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case "30d":
+        startDate = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case "custom":
+        startDate = customStartDate ? new Date(customStartDate) : new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        endDate = customEndDate ? new Date(new Date(customEndDate).getTime() + 24 * 60 * 60 * 1000) : endDate;
+        break;
+      default:
+        startDate = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    return {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    };
+  };
+
+  const dateParams = getDateParams();
+  const queryParams = `?startDate=${encodeURIComponent(dateParams.startDate)}&endDate=${encodeURIComponent(dateParams.endDate)}`;
+
   const { data: userActivity, isLoading: loadingUser, refetch: refetchUser } = useQuery<UserActivityInsights>({
-    queryKey: ["/api/admin/insights/user-activity"],
+    queryKey: ["/api/admin/insights/user-activity", dateRange, customStartDate, customEndDate],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/admin/insights/user-activity");
+      const res = await apiRequest("GET", `/api/admin/insights/user-activity${queryParams}`);
       return res.json();
     },
   });
 
   const { data: sovTrends, isLoading: loadingSov, refetch: refetchSov } = useQuery<SovTrendInsights>({
-    queryKey: ["/api/admin/insights/sov-trends"],
+    queryKey: ["/api/admin/insights/sov-trends", dateRange, customStartDate, customEndDate],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/admin/insights/sov-trends");
+      const res = await apiRequest("GET", `/api/admin/insights/sov-trends${queryParams}`);
       return res.json();
     },
   });
 
   const { data: placeReviews, isLoading: loadingPlace, refetch: refetchPlace } = useQuery<PlaceReviewInsights>({
-    queryKey: ["/api/admin/insights/place-reviews"],
+    queryKey: ["/api/admin/insights/place-reviews", dateRange, customStartDate, customEndDate],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/admin/insights/place-reviews");
+      const res = await apiRequest("GET", `/api/admin/insights/place-reviews${queryParams}`);
       return res.json();
     },
   });
 
   const { data: systemPerf, isLoading: loadingSystem, refetch: refetchSystem } = useQuery<SystemPerformanceInsights>({
-    queryKey: ["/api/admin/insights/system-performance"],
+    queryKey: ["/api/admin/insights/system-performance", dateRange, customStartDate, customEndDate],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/admin/insights/system-performance");
+      const res = await apiRequest("GET", `/api/admin/insights/system-performance${queryParams}`);
       return res.json();
     },
   });
@@ -1530,6 +1569,20 @@ function InsightsTab() {
     refetchSov();
     refetchPlace();
     refetchSystem();
+  };
+
+  const getDateRangeLabel = () => {
+    switch (dateRange) {
+      case "today": return "오늘";
+      case "7d": return "최근 7일";
+      case "30d": return "최근 30일";
+      case "custom": 
+        if (customStartDate && customEndDate) {
+          return `${customStartDate} ~ ${customEndDate}`;
+        }
+        return "사용자 지정";
+      default: return "최근 7일";
+    }
   };
 
   const getSentimentLabel = (sentiment: string) => {
@@ -1551,12 +1604,65 @@ function InsightsTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h3 className="text-lg font-medium">데이터 인사이트</h3>
-        <Button variant="outline" size="sm" onClick={handleRefreshAll}>
-          <RefreshCw className="w-4 h-4 mr-2" />
-          새로고침
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+            <Button 
+              variant={dateRange === "today" ? "secondary" : "ghost"} 
+              size="sm" 
+              onClick={() => setDateRange("today")}
+              className="h-7 px-2 text-xs"
+            >
+              오늘
+            </Button>
+            <Button 
+              variant={dateRange === "7d" ? "secondary" : "ghost"} 
+              size="sm" 
+              onClick={() => setDateRange("7d")}
+              className="h-7 px-2 text-xs"
+            >
+              7일
+            </Button>
+            <Button 
+              variant={dateRange === "30d" ? "secondary" : "ghost"} 
+              size="sm" 
+              onClick={() => setDateRange("30d")}
+              className="h-7 px-2 text-xs"
+            >
+              30일
+            </Button>
+            <Button 
+              variant={dateRange === "custom" ? "secondary" : "ghost"} 
+              size="sm" 
+              onClick={() => setDateRange("custom")}
+              className="h-7 px-2 text-xs"
+            >
+              지정
+            </Button>
+          </div>
+          {dateRange === "custom" && (
+            <div className="flex items-center gap-1">
+              <Input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="h-7 w-32 text-xs"
+              />
+              <span className="text-muted-foreground">~</span>
+              <Input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="h-7 w-32 text-xs"
+              />
+            </div>
+          )}
+          <Button variant="outline" size="sm" onClick={handleRefreshAll} className="h-7">
+            <RefreshCw className="w-3 h-3 mr-1" />
+            새로고침
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1565,6 +1671,7 @@ function InsightsTab() {
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Users className="w-4 h-4" />
               활성 사용자
+              <span className="text-xs font-normal text-muted-foreground">({getDateRangeLabel()})</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1573,16 +1680,12 @@ function InsightsTab() {
             ) : (
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">오늘</span>
-                  <span className="font-semibold">{userActivity?.activeUsers.daily || 0}명</span>
+                  <span className="text-sm text-muted-foreground">활성 사용자 수</span>
+                  <span className="font-semibold">{userActivity?.activeUsers.period || 0}명</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">최근 7일</span>
-                  <span className="font-semibold">{userActivity?.activeUsers.weekly || 0}명</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">최근 30일</span>
-                  <span className="font-semibold">{userActivity?.activeUsers.monthly || 0}명</span>
+                  <span className="text-sm text-muted-foreground">총 검색 수</span>
+                  <span className="font-semibold">{userActivity?.activeUsers.totalSearches || 0}회</span>
                 </div>
               </div>
             )}
@@ -1594,6 +1697,7 @@ function InsightsTab() {
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
               SOV 분석 현황
+              <span className="text-xs font-normal text-muted-foreground">({getDateRangeLabel()})</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1602,7 +1706,7 @@ function InsightsTab() {
             ) : (
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">전체 분석</span>
+                  <span className="text-sm text-muted-foreground">분석 건수</span>
                   <span className="font-semibold">{sovTrends?.summary.total || 0}건</span>
                 </div>
                 <div className="flex justify-between">
@@ -1623,6 +1727,7 @@ function InsightsTab() {
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <MessageSquare className="w-4 h-4" />
               플레이스 리뷰 현황
+              <span className="text-xs font-normal text-muted-foreground">({getDateRangeLabel()})</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1647,7 +1752,7 @@ function InsightsTab() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">인기 검색 키워드 (최근 7일)</CardTitle>
+            <CardTitle className="text-base">인기 검색 키워드 ({getDateRangeLabel()})</CardTitle>
           </CardHeader>
           <CardContent>
             {loadingUser ? (
@@ -1672,7 +1777,7 @@ function InsightsTab() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">SOV 인기 키워드 (최근 7일)</CardTitle>
+            <CardTitle className="text-base">SOV 인기 키워드 ({getDateRangeLabel()})</CardTitle>
           </CardHeader>
           <CardContent>
             {loadingSov ? (
@@ -1758,7 +1863,7 @@ function InsightsTab() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">채널별 검색 현황 (최근 7일)</CardTitle>
+            <CardTitle className="text-base">채널별 검색 현황 ({getDateRangeLabel()})</CardTitle>
           </CardHeader>
           <CardContent>
             {loadingUser ? (
@@ -1797,7 +1902,7 @@ function InsightsTab() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">일별 검색 추이 (최근 7일)</CardTitle>
+            <CardTitle className="text-base">일별 검색 추이 ({getDateRangeLabel()})</CardTitle>
           </CardHeader>
           <CardContent>
             {loadingUser ? (
@@ -1831,7 +1936,7 @@ function InsightsTab() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">SOV 일별 분석 추이 (최근 7일)</CardTitle>
+            <CardTitle className="text-base">SOV 일별 분석 추이 ({getDateRangeLabel()})</CardTitle>
           </CardHeader>
           <CardContent>
             {loadingSov ? (
@@ -1860,7 +1965,7 @@ function InsightsTab() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">플레이스 리뷰 일별 분석 (최근 7일)</CardTitle>
+            <CardTitle className="text-base">플레이스 리뷰 일별 분석 ({getDateRangeLabel()})</CardTitle>
           </CardHeader>
           <CardContent>
             {loadingPlace ? (
@@ -1890,7 +1995,7 @@ function InsightsTab() {
       <div className="mt-8 border-t pt-6">
         <h4 className="text-base font-medium mb-4 flex items-center gap-2">
           <Activity className="w-4 h-4" />
-          시스템 성능 모니터링 (최근 7일)
+          시스템 성능 모니터링 ({getDateRangeLabel()})
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
@@ -1943,12 +2048,15 @@ function InsightsTab() {
               {loadingSystem ? (
                 <Skeleton className="h-12 w-full" />
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">성공률</span>
                     <span className={`font-semibold ${(systemPerf?.placeReviewQueue.successRate || 0) >= 80 ? "text-green-600" : "text-yellow-600"}`}>
                       {systemPerf?.placeReviewQueue.successRate || 0}%
                     </span>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground border-t pt-2">
+                    <span>현재 큐 상태</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-blue-600">대기: {systemPerf?.placeReviewQueue.pending || 0}</span>
@@ -1963,7 +2071,7 @@ function InsightsTab() {
 
         <Card className="mt-4">
           <CardHeader>
-            <CardTitle className="text-base">일별 API 사용량</CardTitle>
+            <CardTitle className="text-base">일별 API 사용량 ({getDateRangeLabel()})</CardTitle>
           </CardHeader>
           <CardContent>
             {loadingSystem ? (

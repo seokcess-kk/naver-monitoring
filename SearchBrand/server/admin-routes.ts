@@ -18,7 +18,7 @@ import {
 } from "@shared/schema";
 import { requireAdmin, requireSuperAdmin, type AdminRequest } from "./admin-middleware";
 import { logAudit, getAuditLogs } from "./audit-service";
-import { desc, eq, and, or, ilike, sql, gte, lte, count, isNull, not } from "drizzle-orm";
+import { desc, eq, and, or, ilike, sql, gte, lte, lt, count, isNull, not } from "drizzle-orm";
 import { z } from "zod";
 
 const router = Router();
@@ -784,25 +784,24 @@ router.delete("/user-solutions/:assignmentId", requireSuperAdmin, async (req: Ad
 
 router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
+    const { startDate, endDate } = req.query;
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    const filterStart = startDate ? new Date(startDate as string) : new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const filterEnd = endDate ? new Date(endDate as string) : new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
-    const [dailyActive] = await db
+    const dateCondition = and(gte(searchLogs.createdAt, filterStart), lt(searchLogs.createdAt, filterEnd));
+
+    const [periodActive] = await db
       .select({ count: sql<number>`count(distinct ${searchLogs.userId})` })
       .from(searchLogs)
-      .where(gte(searchLogs.createdAt, today));
+      .where(dateCondition);
 
-    const [weeklyActive] = await db
-      .select({ count: sql<number>`count(distinct ${searchLogs.userId})` })
+    const [totalSearchCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
       .from(searchLogs)
-      .where(gte(searchLogs.createdAt, weekAgo));
-
-    const [monthlyActive] = await db
-      .select({ count: sql<number>`count(distinct ${searchLogs.userId})` })
-      .from(searchLogs)
-      .where(gte(searchLogs.createdAt, monthAgo));
+      .where(dateCondition);
 
     const popularKeywords = await db
       .select({
@@ -810,7 +809,7 @@ router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, re
         count: sql<number>`count(*)::int`,
       })
       .from(searchLogs)
-      .where(gte(searchLogs.createdAt, weekAgo))
+      .where(and(gte(searchLogs.createdAt, filterStart), lt(searchLogs.createdAt, filterEnd)))
       .groupBy(searchLogs.keyword)
       .orderBy(sql`count(*) desc`)
       .limit(10);
@@ -821,7 +820,7 @@ router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, re
         count: sql<number>`count(*)::int`,
       })
       .from(searchLogs)
-      .where(gte(searchLogs.createdAt, weekAgo))
+      .where(and(gte(searchLogs.createdAt, filterStart), lt(searchLogs.createdAt, filterEnd)))
       .groupBy(searchLogs.searchType);
 
     const dailySearchTrend = await db
@@ -830,15 +829,14 @@ router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, re
         count: sql<number>`count(*)::int`,
       })
       .from(searchLogs)
-      .where(gte(searchLogs.createdAt, weekAgo))
+      .where(and(gte(searchLogs.createdAt, filterStart), lt(searchLogs.createdAt, filterEnd)))
       .groupBy(sql`date_trunc('day', ${searchLogs.createdAt})`)
       .orderBy(sql`date_trunc('day', ${searchLogs.createdAt})`);
 
     res.json({
       activeUsers: {
-        daily: dailyActive?.count || 0,
-        weekly: weeklyActive?.count || 0,
-        monthly: monthlyActive?.count || 0,
+        period: periodActive?.count || 0,
+        totalSearches: totalSearchCount?.count || 0,
       },
       popularKeywords,
       searchByType,
@@ -852,21 +850,29 @@ router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, re
 
 router.get("/insights/sov-trends", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const { startDate, endDate } = req.query;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const filterStart = startDate ? new Date(startDate as string) : new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const filterEnd = endDate ? new Date(endDate as string) : new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+    const dateCondition = and(gte(sovRuns.createdAt, filterStart), lt(sovRuns.createdAt, filterEnd));
 
     const [totalRuns] = await db
       .select({ count: sql<number>`count(*)::int` })
-      .from(sovRuns);
+      .from(sovRuns)
+      .where(dateCondition);
 
     const [completedRuns] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(sovRuns)
-      .where(eq(sovRuns.status, "completed"));
+      .where(and(dateCondition, eq(sovRuns.status, "completed")));
 
     const [failedRuns] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(sovRuns)
-      .where(eq(sovRuns.status, "failed"));
+      .where(and(dateCondition, eq(sovRuns.status, "failed")));
 
     const recentKeywords = await db
       .select({
@@ -874,7 +880,7 @@ router.get("/insights/sov-trends", requireAdmin, async (req: AdminRequest, res: 
         count: sql<number>`count(*)::int`,
       })
       .from(sovRuns)
-      .where(gte(sovRuns.createdAt, weekAgo))
+      .where(dateCondition)
       .groupBy(sovRuns.marketKeyword)
       .orderBy(sql`count(*) desc`)
       .limit(10);
@@ -887,7 +893,7 @@ router.get("/insights/sov-trends", requireAdmin, async (req: AdminRequest, res: 
         failed: sql<number>`count(*) filter (where ${sovRuns.status} = 'failed')::int`,
       })
       .from(sovRuns)
-      .where(gte(sovRuns.createdAt, weekAgo))
+      .where(dateCondition)
       .groupBy(sql`date_trunc('day', ${sovRuns.createdAt})`)
       .orderBy(sql`date_trunc('day', ${sovRuns.createdAt})`);
 
@@ -909,20 +915,30 @@ router.get("/insights/sov-trends", requireAdmin, async (req: AdminRequest, res: 
 
 router.get("/insights/place-reviews", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const { startDate, endDate } = req.query;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const filterStart = startDate ? new Date(startDate as string) : new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const filterEnd = endDate ? new Date(endDate as string) : new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+    const jobDateCondition = and(gte(placeReviewJobs.createdAt, filterStart), lt(placeReviewJobs.createdAt, filterEnd));
+    const analysisDateCondition = and(gte(placeReviewAnalyses.createdAt, filterStart), lt(placeReviewAnalyses.createdAt, filterEnd));
 
     const [totalJobs] = await db
       .select({ count: sql<number>`count(*)::int` })
-      .from(placeReviewJobs);
+      .from(placeReviewJobs)
+      .where(jobDateCondition);
 
     const [completedJobs] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(placeReviewJobs)
-      .where(eq(placeReviewJobs.status, "completed"));
+      .where(and(jobDateCondition, eq(placeReviewJobs.status, "completed")));
 
     const [totalReviews] = await db
       .select({ count: sql<number>`count(*)::int` })
-      .from(placeReviews);
+      .from(placeReviews)
+      .where(and(gte(placeReviews.createdAt, filterStart), lt(placeReviews.createdAt, filterEnd)));
 
     const sentimentDistribution = await db
       .select({
@@ -930,6 +946,7 @@ router.get("/insights/place-reviews", requireAdmin, async (req: AdminRequest, re
         count: sql<number>`count(*)::int`,
       })
       .from(placeReviewAnalyses)
+      .where(analysisDateCondition)
       .groupBy(placeReviewAnalyses.sentiment);
 
     const popularPlaces = await db
@@ -940,7 +957,7 @@ router.get("/insights/place-reviews", requireAdmin, async (req: AdminRequest, re
         totalReviews: sql<number>`sum(${placeReviewJobs.analyzedReviews}::int)::int`,
       })
       .from(placeReviewJobs)
-      .where(eq(placeReviewJobs.status, "completed"))
+      .where(and(jobDateCondition, eq(placeReviewJobs.status, "completed")))
       .groupBy(placeReviewJobs.placeId, placeReviewJobs.placeName)
       .orderBy(sql`count(*) desc`)
       .limit(10);
@@ -952,7 +969,7 @@ router.get("/insights/place-reviews", requireAdmin, async (req: AdminRequest, re
         completed: sql<number>`count(*) filter (where ${placeReviewJobs.status} = 'completed')::int`,
       })
       .from(placeReviewJobs)
-      .where(gte(placeReviewJobs.createdAt, weekAgo))
+      .where(jobDateCondition)
       .groupBy(sql`date_trunc('day', ${placeReviewJobs.createdAt})`)
       .orderBy(sql`date_trunc('day', ${placeReviewJobs.createdAt})`);
 
@@ -974,43 +991,51 @@ router.get("/insights/place-reviews", requireAdmin, async (req: AdminRequest, re
 
 router.get("/insights/system-performance", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
-    const today = new Date();
-    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const { startDate, endDate } = req.query;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const filterStart = startDate ? new Date(startDate as string) : new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const filterEnd = endDate ? new Date(endDate as string) : new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+    const searchDateCondition = and(gte(searchLogs.createdAt, filterStart), lt(searchLogs.createdAt, filterEnd));
+    const sovDateCondition = and(gte(sovRuns.createdAt, filterStart), lt(sovRuns.createdAt, filterEnd));
+    const jobDateCondition = and(gte(placeReviewJobs.createdAt, filterStart), lt(placeReviewJobs.createdAt, filterEnd));
 
     const [totalSearches] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(searchLogs)
-      .where(gte(searchLogs.createdAt, weekAgo));
+      .where(searchDateCondition);
 
     const [totalSovRuns] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(sovRuns)
-      .where(gte(sovRuns.createdAt, weekAgo));
+      .where(sovDateCondition);
 
     const [completedSovRuns] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(sovRuns)
-      .where(and(gte(sovRuns.createdAt, weekAgo), eq(sovRuns.status, "completed")));
+      .where(and(sovDateCondition, eq(sovRuns.status, "completed")));
 
     const [failedSovRuns] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(sovRuns)
-      .where(and(gte(sovRuns.createdAt, weekAgo), eq(sovRuns.status, "failed")));
+      .where(and(sovDateCondition, eq(sovRuns.status, "failed")));
 
     const [totalPlaceJobs] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(placeReviewJobs)
-      .where(gte(placeReviewJobs.createdAt, weekAgo));
+      .where(jobDateCondition);
 
     const [completedPlaceJobs] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(placeReviewJobs)
-      .where(and(gte(placeReviewJobs.createdAt, weekAgo), eq(placeReviewJobs.status, "completed")));
+      .where(and(jobDateCondition, eq(placeReviewJobs.status, "completed")));
 
     const [failedPlaceJobs] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(placeReviewJobs)
-      .where(and(gte(placeReviewJobs.createdAt, weekAgo), eq(placeReviewJobs.status, "failed")));
+      .where(and(jobDateCondition, eq(placeReviewJobs.status, "failed")));
 
     const [pendingPlaceJobs] = await db
       .select({ count: sql<number>`count(*)::int` })
@@ -1028,7 +1053,7 @@ router.get("/insights/system-performance", requireAdmin, async (req: AdminReques
         searches: sql<number>`count(*)::int`,
       })
       .from(searchLogs)
-      .where(gte(searchLogs.createdAt, weekAgo))
+      .where(searchDateCondition)
       .groupBy(sql`date_trunc('day', ${searchLogs.createdAt})`)
       .orderBy(sql`date_trunc('day', ${searchLogs.createdAt})`);
 
