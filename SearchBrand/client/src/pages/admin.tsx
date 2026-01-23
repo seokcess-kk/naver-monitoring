@@ -769,25 +769,36 @@ function SovRunsTab() {
 
 function SearchLogsTab() {
   const [page, setPage] = useState(0);
-  const [searchType, setSearchType] = useState<string>("");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
-  const [keywordFilter, setKeywordFilter] = useState<string>("");
-  const [userIdFilter, setUserIdFilter] = useState<string>("");
   const limit = 30;
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ["/api/admin/search-logs", page, searchType, startDate, endDate, keywordFilter, userIdFilter],
+  // 입력 중 필터 상태 (draft)
+  const [draftSearchType, setDraftSearchType] = useState<string>("");
+  const [draftStartDate, setDraftStartDate] = useState<string>("");
+  const [draftEndDate, setDraftEndDate] = useState<string>("");
+  const [draftKeywordFilter, setDraftKeywordFilter] = useState<string>("");
+  const [draftUserIdFilter, setDraftUserIdFilter] = useState<string>("");
+
+  // 적용된 필터 상태 (쿼리에 사용)
+  const [appliedFilters, setAppliedFilters] = useState({
+    searchType: "",
+    startDate: "",
+    endDate: "",
+    keyword: "",
+    userId: "",
+  });
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["/api/admin/search-logs", page, appliedFilters],
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: limit.toString(),
         offset: (page * limit).toString(),
       });
-      if (searchType) params.append("searchType", searchType);
-      if (startDate) params.append("startDate", startDate);
-      if (endDate) params.append("endDate", endDate);
-      if (keywordFilter) params.append("keyword", keywordFilter);
-      if (userIdFilter) params.append("userId", userIdFilter);
+      if (appliedFilters.searchType) params.append("searchType", appliedFilters.searchType);
+      if (appliedFilters.startDate) params.append("startDate", appliedFilters.startDate);
+      if (appliedFilters.endDate) params.append("endDate", appliedFilters.endDate);
+      if (appliedFilters.keyword) params.append("keyword", appliedFilters.keyword);
+      if (appliedFilters.userId) params.append("userId", appliedFilters.userId);
       const res = await apiRequest("GET", `/api/admin/search-logs?${params}`);
       return res.json() as Promise<{ logs: SearchLogAdmin[]; total: number }>;
     },
@@ -796,16 +807,29 @@ function SearchLogsTab() {
   const totalPages = data ? Math.ceil(data.total / limit) : 0;
 
   const handleApplyFilters = () => {
+    setAppliedFilters({
+      searchType: draftSearchType,
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+      keyword: draftKeywordFilter,
+      userId: draftUserIdFilter,
+    });
     setPage(0);
-    refetch();
   };
 
   const handleResetFilters = () => {
-    setSearchType("");
-    setStartDate("");
-    setEndDate("");
-    setKeywordFilter("");
-    setUserIdFilter("");
+    setDraftSearchType("");
+    setDraftStartDate("");
+    setDraftEndDate("");
+    setDraftKeywordFilter("");
+    setDraftUserIdFilter("");
+    setAppliedFilters({
+      searchType: "",
+      startDate: "",
+      endDate: "",
+      keyword: "",
+      userId: "",
+    });
     setPage(0);
   };
 
@@ -817,8 +841,8 @@ function SearchLogsTab() {
             <label className="text-xs text-muted-foreground">검색 타입</label>
             <select 
               className="border rounded px-2 py-1 text-sm"
-              value={searchType}
-              onChange={(e) => setSearchType(e.target.value)}
+              value={draftSearchType}
+              onChange={(e) => setDraftSearchType(e.target.value)}
             >
               <option value="">전체</option>
               <option value="unified">통합검색</option>
@@ -834,8 +858,8 @@ function SearchLogsTab() {
             <input 
               type="date" 
               className="border rounded px-2 py-1 text-sm"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              value={draftStartDate}
+              onChange={(e) => setDraftStartDate(e.target.value)}
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -843,8 +867,8 @@ function SearchLogsTab() {
             <input 
               type="date" 
               className="border rounded px-2 py-1 text-sm"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              value={draftEndDate}
+              onChange={(e) => setDraftEndDate(e.target.value)}
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -853,8 +877,8 @@ function SearchLogsTab() {
               type="text" 
               className="border rounded px-2 py-1 text-sm w-32"
               placeholder="키워드..."
-              value={keywordFilter}
-              onChange={(e) => setKeywordFilter(e.target.value)}
+              value={draftKeywordFilter}
+              onChange={(e) => setDraftKeywordFilter(e.target.value)}
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -863,8 +887,8 @@ function SearchLogsTab() {
               type="text" 
               className="border rounded px-2 py-1 text-sm w-28"
               placeholder="ID..."
-              value={userIdFilter}
-              onChange={(e) => setUserIdFilter(e.target.value)}
+              value={draftUserIdFilter}
+              onChange={(e) => setDraftUserIdFilter(e.target.value)}
             />
           </div>
           <Button variant="outline" size="sm" onClick={handleApplyFilters}>
@@ -879,11 +903,11 @@ function SearchLogsTab() {
               size="sm"
               onClick={() => {
                 const params = new URLSearchParams();
-                if (searchType) params.append("searchType", searchType);
-                if (startDate) params.append("startDate", startDate);
-                if (endDate) params.append("endDate", endDate);
-                if (keywordFilter) params.append("keyword", keywordFilter);
-                if (userIdFilter) params.append("userId", userIdFilter);
+                if (appliedFilters.searchType) params.append("searchType", appliedFilters.searchType);
+                if (appliedFilters.startDate) params.append("startDate", appliedFilters.startDate);
+                if (appliedFilters.endDate) params.append("endDate", appliedFilters.endDate);
+                if (appliedFilters.keyword) params.append("keyword", appliedFilters.keyword);
+                if (appliedFilters.userId) params.append("userId", appliedFilters.userId);
                 window.open(`/api/admin/export/search-logs?${params}`, "_blank");
               }}
             >
