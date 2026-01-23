@@ -7,6 +7,9 @@
 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록(플레이스, 뉴스 등) 노출 현황을 실시간으로 확인할 수 있습니다. SOV(Share of Voice) 분석으로 브랜드 점유율을 측정하세요.
 
 ## Recent Changes
+- 2026-01-23: 미사용 디버그/테스트 파일 정리
+  - debug-dom*.{cjs,mjs}, test-date-extraction.mjs 삭제
+
 - 2026-01-23: 서비스 상태 엔드포인트 접근 제어
   - /api/services/quick-status에 관리자 인증 추가
 
