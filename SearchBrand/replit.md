@@ -7,6 +7,10 @@
 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록(플레이스, 뉴스 등) 노출 현황을 실시간으로 확인할 수 있습니다. SOV(Share of Voice) 분석으로 브랜드 점유율을 측정하세요.
 
 ## Recent Changes
+- 2026-01-23: 서버 엔트리포인트 단일화
+  - 미사용 server/index.ts 제거
+  - 실제 엔트리: server/bootstrap.ts → server/app.ts
+
 - 2026-01-23: 프로덕션 SESSION_SECRET 필수화 (보안 강화)
   - 프로덕션에서 SESSION_SECRET 미설정 시 앱 시작 실패
   - 개발 환경에서는 경고 로그와 함께 기본값 사용
