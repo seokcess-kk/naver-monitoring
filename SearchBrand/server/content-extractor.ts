@@ -717,17 +717,107 @@ async function extractWithPuppeteer(url: string): Promise<string | null> {
   );
 }
 
+interface ExtractionStrategy {
+  handler: (url: string) => Promise<string | null>;
+  timeout: number;
+  retries?: number;
+  retryDelay?: number;
+  method: string;
+  fallback?: {
+    handler: (url: string) => Promise<string | null>;
+    timeout: number;
+    method: string;
+  };
+}
+
+const EXTRACTION_STRATEGIES: Record<string, ExtractionStrategy> = {
+  blog: {
+    handler: extractBlogContent,
+    timeout: 40000,
+    retries: 2,
+    retryDelay: 1000,
+    method: "blog_puppeteer",
+  },
+  view: {
+    handler: extractViewContent,
+    timeout: 40000,
+    retries: 2,
+    retryDelay: 1000,
+    method: "view_puppeteer",
+  },
+  cafe: {
+    handler: extractCafeContent,
+    timeout: 60000,
+    retries: 2,
+    retryDelay: 1500,
+    method: "cafe_puppeteer",
+  },
+  news: {
+    handler: extractNewsContent,
+    timeout: 35000,
+    method: "news_puppeteer",
+    fallback: {
+      handler: extractGenericContent,
+      timeout: 20000,
+      method: "news_http",
+    },
+  },
+  other: {
+    handler: extractGenericContent,
+    timeout: 20000,
+    method: "generic_http",
+    fallback: {
+      handler: extractWithPuppeteer,
+      timeout: 35000,
+      method: "generic_puppeteer",
+    },
+  },
+};
+
+interface RunExtractionOptions {
+  skipFallback?: boolean;
+}
+
+async function runExtraction(
+  url: string,
+  strategy: ExtractionStrategy,
+  options: RunExtractionOptions = {}
+): Promise<{ content: string | null; method: string }> {
+  let content: string | null = null;
+  let method = strategy.method;
+
+  if (strategy.retries && strategy.retries > 0) {
+    content = await retryWithBackoff(
+      () => withTimeout(strategy.handler(url), strategy.timeout, null),
+      strategy.retries,
+      strategy.retryDelay ?? 1000
+    );
+  } else {
+    content = await withTimeout(strategy.handler(url), strategy.timeout, null);
+  }
+
+  if (!content && strategy.fallback && !options.skipFallback) {
+    content = await withTimeout(
+      strategy.fallback.handler(url),
+      strategy.fallback.timeout,
+      null
+    );
+    if (content) {
+      method = strategy.fallback.method;
+    }
+  }
+
+  return { content, method };
+}
+
 export async function extractContent(
-  url: string, 
+  url: string,
   apiDescription?: string
 ): Promise<ExtractionResult> {
   const urlType = getUrlType(url);
   console.log(`[Extractor] Starting extraction - Type: ${urlType}, URL: ${url}`);
-  
+
   try {
-    let textContent: string | null = null;
-    let method: string = "";
-    
     if (urlType === "ad") {
       const adResult = await withTimeout(followAdRedirect(url), 45000, null);
       if (adResult && adResult.finalUrl) {
@@ -735,122 +825,60 @@ export async function extractContent(
         if (adResult.sponsorName) {
           console.log(`[Extractor] Ad sponsor: ${adResult.sponsorName}`);
         }
-        
+
         const finalUrlType = getUrlType(adResult.finalUrl);
-        let extractedContent: string | null = null;
-        let extractMethod = "ad_redirect";
-        
-        if (finalUrlType === "blog") {
-          extractedContent = await retryWithBackoff(
-            () => withTimeout(extractBlogContent(adResult.finalUrl), 40000, null),
-            2, 1000
-          );
-          extractMethod = "ad_to_blog";
-        } else if (finalUrlType === "view") {
-          extractedContent = await retryWithBackoff(
-            () => withTimeout(extractViewContent(adResult.finalUrl), 40000, null),
-            2, 1000
-          );
-          extractMethod = "ad_to_view";
-        } else if (finalUrlType === "cafe") {
-          extractedContent = await retryWithBackoff(
-            () => withTimeout(extractCafeContent(adResult.finalUrl), 60000, null),
-            2, 1500
-          );
-          extractMethod = "ad_to_cafe";
-        } else if (finalUrlType === "news") {
-          extractedContent = await withTimeout(extractNewsContent(adResult.finalUrl), 35000, null);
-          extractMethod = "ad_to_news";
-        } else {
-          extractedContent = await withTimeout(extractGenericContent(adResult.finalUrl), 20000, null);
-          if (!extractedContent) {
-            extractedContent = await withTimeout(extractWithPuppeteer(adResult.finalUrl), 35000, null);
-          }
-          extractMethod = "ad_to_generic";
-        }
-        
-        if (extractedContent && extractedContent.length > 100) {
-          let enhancedContent = extractedContent;
-          if (adResult.sponsorName) {
-            enhancedContent = `[광고주: ${adResult.sponsorName}] ${enhancedContent}`;
-          }
+        const strategy = EXTRACTION_STRATEGIES[finalUrlType] || EXTRACTION_STRATEGIES.other;
+        const skipFallback = finalUrlType !== "other";
+        const { content } = await runExtraction(adResult.finalUrl, strategy, { skipFallback });
+        const extractMethod = `ad_to_${finalUrlType === "other" ? "generic" : finalUrlType}`;
+
+        if (content && content.length > 100) {
+          const enhancedContent = adResult.sponsorName
+            ? `[광고주: ${adResult.sponsorName}] ${content}`
+            : content;
           updateStats("ad", true);
           console.log(`[Extractor] Success - Type: ad, Method: ${extractMethod}, Final: ${adResult.finalUrl}, Chars: ${enhancedContent.length}`);
           return { content: enhancedContent, status: "success", urlType: "ad", method: extractMethod };
         }
       }
-      
+
       if (apiDescription && apiDescription.length > 50) {
         updateStats("ad", true);
         console.log(`[Extractor] Ad using API description fallback: ${apiDescription.length} chars`);
         return { content: apiDescription, status: "success_api", urlType: "ad", method: "api_fallback" };
       }
-      
+
       updateStats("ad", false);
       console.log(`[Extractor] Failed - Type: ad, URL: ${url}`);
       return { content: null, status: "failed", urlType: "ad" };
     }
-    
-    if (urlType === "blog") {
-      textContent = await retryWithBackoff(
-        () => withTimeout(extractBlogContent(url), 40000, null),
-        2, 1000
-      );
-      method = "blog_puppeteer";
-    } else if (urlType === "view") {
-      textContent = await retryWithBackoff(
-        () => withTimeout(extractViewContent(url), 40000, null),
-        2, 1000
-      );
-      method = "view_puppeteer";
-    } else if (urlType === "cafe") {
-      textContent = await retryWithBackoff(
-        () => withTimeout(extractCafeContent(url), 60000, null),
-        2, 1500
-      );
-      method = "cafe_puppeteer";
-    } else if (urlType === "news") {
-      textContent = await withTimeout(extractNewsContent(url), 35000, null);
-      if (!textContent) {
-        textContent = await withTimeout(extractGenericContent(url), 20000, null);
-        method = "news_http";
-      } else {
-        method = "news_puppeteer";
-      }
-    } else {
-      textContent = await withTimeout(extractGenericContent(url), 20000, null);
-      if (!textContent) {
-        textContent = await withTimeout(extractWithPuppeteer(url), 35000, null);
-        method = "generic_puppeteer";
-      } else {
-        method = "generic_http";
-      }
-    }
-    
+
+    const strategy = EXTRACTION_STRATEGIES[urlType] || EXTRACTION_STRATEGIES.other;
+    const { content: textContent, method } = await runExtraction(url, strategy);
+
     if (textContent && textContent.length > 100) {
       updateStats(urlType, true);
       console.log(`[Extractor] Success - Type: ${urlType}, Method: ${method}, Chars: ${textContent.length}`);
       return { content: textContent, status: "success", urlType, method };
     }
-    
+
     if (apiDescription && apiDescription.length > 50) {
       updateStats(urlType, true);
       console.log(`[Extractor] Using API description fallback: ${apiDescription.length} chars`);
       return { content: apiDescription, status: "success_api", urlType, method: "api_fallback" };
     }
-    
+
     updateStats(urlType, false);
     console.log(`[Extractor] Failed - Type: ${urlType}, URL: ${url}`);
     return { content: null, status: "failed", urlType };
-    
   } catch (error) {
     console.error("[Extractor] Extraction error:", error);
-    
+
     if (apiDescription && apiDescription.length > 50) {
       updateStats(urlType, true);
       return { content: apiDescription, status: "success_api", urlType, method: "api_fallback" };
     }
-    
+
     updateStats(urlType, false);
     return { content: null, status: "failed", urlType };
   }

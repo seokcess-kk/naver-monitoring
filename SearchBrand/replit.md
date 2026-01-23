@@ -7,6 +7,12 @@
 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록(플레이스, 뉴스 등) 노출 현황을 실시간으로 확인할 수 있습니다. SOV(Share of Voice) 분석으로 브랜드 점유율을 측정하세요.
 
 ## Recent Changes
+- 2026-01-23: extractContent 전략 테이블 기반 리팩토링
+  - `ExtractionStrategy` 인터페이스 및 `EXTRACTION_STRATEGIES` 테이블 추가
+  - 타입별 전략 정의: handler, timeout, retries, retryDelay, method, fallback
+  - `runExtraction` 헬퍼로 retry/timeout/fallback 로직 통합
+  - 신규 URL 타입 추가 시 테이블에 항목만 추가하면 됨
+
 - 2026-01-23: Puppeteer 초기화 로직 리팩토링
   - `withBrowserPage` 헬퍼 함수 추가 (공통 브라우저/페이지 초기화 캡슐화)
   - 지원 옵션: URL, UA(mobile/desktop), viewport, extra headers, timeout, delay
