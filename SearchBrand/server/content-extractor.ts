@@ -292,6 +292,62 @@ async function launchBrowser(): Promise<Browser> {
   });
 }
 
+interface BrowserPageOptions {
+  url: string;
+  userAgent?: "mobile" | "desktop";
+  viewport?: { width: number; height: number } | null;
+  extraHeaders?: Record<string, string>;
+  timeout?: number;
+  delayMs?: number;
+  waitUntil?: "load" | "domcontentloaded" | "networkidle0" | "networkidle2";
+  logPrefix?: string;
+}
+
+async function withBrowserPage<T>(
+  options: BrowserPageOptions,
+  callback: (page: Page) => Promise<T>
+): Promise<T | null> {
+  const {
+    url,
+    userAgent = "desktop",
+    viewport = null,
+    extraHeaders,
+    timeout = 25000,
+    delayMs = 1500,
+    waitUntil = "networkidle2",
+    logPrefix = "Extractor",
+  } = options;
+
+  return browserLimit(async () => {
+    let browser: Browser | null = null;
+    try {
+      browser = await launchBrowser();
+      const page = await browser.newPage();
+
+      const ua = userAgent === "mobile" ? MOBILE_USER_AGENT : DESKTOP_USER_AGENT;
+      await page.setUserAgent(ua);
+
+      if (viewport) {
+        await page.setViewport(viewport);
+      }
+
+      if (extraHeaders) {
+        await page.setExtraHTTPHeaders(extraHeaders);
+      }
+
+      await page.goto(url, { waitUntil, timeout });
+      await delay(delayMs);
+
+      return await callback(page);
+    } catch (error) {
+      console.error(`[${logPrefix}] Extraction failed for ${url}:`, error);
+      return null;
+    } finally {
+      if (browser) await browser.close();
+    }
+  });
+}
+
 interface AdRedirectResult {
   finalUrl: string;
   content: string | null;
@@ -428,20 +484,17 @@ async function extractAllComments(page: Page, selectors: string[]): Promise<stri
 }
 
 async function extractBlogContent(url: string): Promise<string | null> {
-  return browserLimit(async () => {
-    let browser: Browser | null = null;
-    try {
-      const mobileUrl = convertBlogUrlToMobile(url);
-      console.log(`[Extractor] Blog extraction: ${mobileUrl}`);
+  const mobileUrl = convertBlogUrlToMobile(url);
+  console.log(`[Extractor] Blog extraction: ${mobileUrl}`);
 
-      browser = await launchBrowser();
-      const page = await browser.newPage();
-      await page.setUserAgent(MOBILE_USER_AGENT);
-      await page.setViewport({ width: 390, height: 844 });
-      
-      await page.goto(mobileUrl, { waitUntil: "networkidle2", timeout: 25000 });
-      await delay(1500);
-      
+  return withBrowserPage(
+    {
+      url: mobileUrl,
+      userAgent: "mobile",
+      viewport: { width: 390, height: 844 },
+      logPrefix: "Blog",
+    },
+    async (page) => {
       await page.waitForSelector(BLOG_SELECTORS.slice(0, 5).join(", "), { timeout: 8000 }).catch(() => {});
 
       const textContent = await extractWithSelectors(page, BLOG_SELECTORS);
@@ -450,40 +503,32 @@ async function extractBlogContent(url: string): Promise<string | null> {
         console.log(`[Extractor] Blog success: ${cleaned.length} chars`);
         return cleaned.slice(0, 6000);
       }
-      
       return null;
-    } catch (error) {
-      console.error("[Extractor] Blog extraction failed:", error);
-      return null;
-    } finally {
-      if (browser) await browser.close();
     }
-  });
+  );
 }
 
 async function extractCafeContentMobile(url: string): Promise<string | null> {
-  return browserLimit(async () => {
-    let browser: Browser | null = null;
-    try {
-      const mobileUrl = convertCafeUrlToMobile(url);
-      console.log(`[Extractor] Cafe mobile extraction: ${mobileUrl}`);
-      
-      browser = await launchBrowser();
-      const page = await browser.newPage();
-      await page.setUserAgent(MOBILE_USER_AGENT);
-      await page.setViewport({ width: 390, height: 844 });
-      
-      await page.setExtraHTTPHeaders({
+  const mobileUrl = convertCafeUrlToMobile(url);
+  console.log(`[Extractor] Cafe mobile extraction: ${mobileUrl}`);
+
+  return withBrowserPage(
+    {
+      url: mobileUrl,
+      userAgent: "mobile",
+      viewport: { width: 390, height: 844 },
+      extraHeaders: {
         "Referer": "https://m.search.naver.com/search.naver?where=m_cafe",
         "Accept-Language": "ko-KR,ko;q=0.9",
-      });
-      
-      await page.goto(mobileUrl, { waitUntil: "networkidle2", timeout: 30000 });
-      await delay(2500);
-      
+      },
+      timeout: 30000,
+      delayMs: 2500,
+      logPrefix: "CafeMobile",
+    },
+    async (page) => {
       const articleContent = await extractWithSelectors(page, CAFE_SELECTORS, 20);
       const commentContent = await extractAllComments(page, CAFE_COMMENT_SELECTORS);
-      
+
       let combinedContent = "";
       if (articleContent && articleContent.length > 20) {
         combinedContent += articleContent;
@@ -492,60 +537,52 @@ async function extractCafeContentMobile(url: string): Promise<string | null> {
         combinedContent += " [댓글] " + commentContent;
         console.log(`[Extractor] Cafe comments found: ${commentContent.length} chars`);
       }
-      
+
       if (combinedContent.length > 20) {
         const cleaned = combinedContent.replace(/\s+/g, " ").trim();
         console.log(`[Extractor] Cafe mobile success: ${cleaned.length} chars (with comments)`);
         return cleaned.slice(0, 10000);
       }
-      
       return null;
-    } catch (error) {
-      console.error("[Extractor] Cafe mobile extraction failed:", error);
-      return null;
-    } finally {
-      if (browser) await browser.close();
     }
-  });
+  );
 }
 
 async function extractCafeContentPC(url: string): Promise<string | null> {
-  return browserLimit(async () => {
-    let browser: Browser | null = null;
-    try {
-      console.log(`[Extractor] Cafe PC extraction: ${url}`);
-      
-      browser = await launchBrowser();
-      const page = await browser.newPage();
-      await page.setUserAgent(DESKTOP_USER_AGENT);
-      
-      await page.setExtraHTTPHeaders({
+  console.log(`[Extractor] Cafe PC extraction: ${url}`);
+
+  return withBrowserPage(
+    {
+      url,
+      userAgent: "desktop",
+      extraHeaders: {
         "Referer": "https://search.naver.com/search.naver?where=article",
-      });
-      
-      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 25000 });
-      await delay(2000);
-      
+      },
+      waitUntil: "domcontentloaded",
+      delayMs: 2000,
+      logPrefix: "CafePC",
+    },
+    async (page) => {
       const iframeSrc = await page.evaluate(() => {
         const iframe = document.querySelector('iframe#cafe_main') as HTMLIFrameElement;
         return iframe?.getAttribute('src') || '';
       });
-      
+
       if (iframeSrc) {
-        const fullIframeSrc = iframeSrc.startsWith('//') 
-          ? `https:${iframeSrc}` 
-          : iframeSrc.startsWith('http') 
-            ? iframeSrc 
+        const fullIframeSrc = iframeSrc.startsWith('//')
+          ? `https:${iframeSrc}`
+          : iframeSrc.startsWith('http')
+            ? iframeSrc
             : `https://cafe.naver.com${iframeSrc}`;
-        
+
         console.log(`[Extractor] Navigating to cafe iframe: ${fullIframeSrc}`);
         await page.goto(fullIframeSrc, { waitUntil: "networkidle2", timeout: 25000 });
         await delay(2000);
       }
-      
+
       const articleContent = await extractWithSelectors(page, CAFE_SELECTORS, 20);
       const commentContent = await extractAllComments(page, CAFE_COMMENT_SELECTORS);
-      
+
       let combinedContent = "";
       if (articleContent && articleContent.length > 20) {
         combinedContent += articleContent;
@@ -554,21 +591,15 @@ async function extractCafeContentPC(url: string): Promise<string | null> {
         combinedContent += " [댓글] " + commentContent;
         console.log(`[Extractor] Cafe PC comments found: ${commentContent.length} chars`);
       }
-      
+
       if (combinedContent.length > 20) {
         const cleaned = combinedContent.replace(/\s+/g, " ").trim();
         console.log(`[Extractor] Cafe PC success: ${cleaned.length} chars (with comments)`);
         return cleaned.slice(0, 10000);
       }
-      
       return null;
-    } catch (error) {
-      console.error("[Extractor] Cafe PC extraction failed:", error);
-      return null;
-    } finally {
-      if (browser) await browser.close();
     }
-  });
+  );
 }
 
 async function extractCafeContent(url: string): Promise<string | null> {
@@ -581,65 +612,50 @@ async function extractCafeContent(url: string): Promise<string | null> {
 }
 
 async function extractNewsContent(url: string): Promise<string | null> {
-  return browserLimit(async () => {
-    let browser: Browser | null = null;
-    try {
-      const mobileUrl = convertNewsUrlToMobile(url) || url;
-      console.log(`[Extractor] News extraction: ${mobileUrl}`);
+  const mobileUrl = convertNewsUrlToMobile(url) || url;
+  const isMobile = mobileUrl.includes("m.");
+  console.log(`[Extractor] News extraction: ${mobileUrl}`);
 
-      browser = await launchBrowser();
-      const page = await browser.newPage();
-      await page.setUserAgent(mobileUrl.includes("m.") ? MOBILE_USER_AGENT : DESKTOP_USER_AGENT);
-      
-      await page.goto(mobileUrl, { waitUntil: "networkidle2", timeout: 25000 });
-      await delay(1000);
-
+  return withBrowserPage(
+    {
+      url: mobileUrl,
+      userAgent: isMobile ? "mobile" : "desktop",
+      delayMs: 1000,
+      logPrefix: "News",
+    },
+    async (page) => {
       const textContent = await extractWithSelectors(page, NEWS_SELECTORS);
       if (textContent && textContent.length > 100) {
         const cleaned = textContent.replace(/\s+/g, " ").trim();
         console.log(`[Extractor] News success: ${cleaned.length} chars`);
         return cleaned.slice(0, 6000);
       }
-      
       return null;
-    } catch (error) {
-      console.error("[Extractor] News extraction failed:", error);
-      return null;
-    } finally {
-      if (browser) await browser.close();
     }
-  });
+  );
 }
 
 async function extractViewContent(url: string): Promise<string | null> {
-  return browserLimit(async () => {
-    let browser: Browser | null = null;
-    try {
-      console.log(`[Extractor] VIEW extraction: ${url}`);
+  console.log(`[Extractor] VIEW extraction: ${url}`);
 
-      browser = await launchBrowser();
-      const page = await browser.newPage();
-      await page.setUserAgent(MOBILE_USER_AGENT);
-      await page.setViewport({ width: 390, height: 844 });
-      
-      await page.goto(url, { waitUntil: "networkidle2", timeout: 25000 });
-      await delay(2000);
-
+  return withBrowserPage(
+    {
+      url,
+      userAgent: "mobile",
+      viewport: { width: 390, height: 844 },
+      delayMs: 2000,
+      logPrefix: "View",
+    },
+    async (page) => {
       const textContent = await extractWithSelectors(page, VIEW_SELECTORS);
       if (textContent && textContent.length > 100) {
         const cleaned = textContent.replace(/\s+/g, " ").trim();
         console.log(`[Extractor] VIEW success: ${cleaned.length} chars`);
         return cleaned.slice(0, 6000);
       }
-      
       return null;
-    } catch (error) {
-      console.error("[Extractor] VIEW extraction failed:", error);
-      return null;
-    } finally {
-      if (browser) await browser.close();
     }
-  });
+  );
 }
 
 async function extractGenericContent(url: string): Promise<string | null> {
@@ -676,17 +692,15 @@ async function extractGenericContent(url: string): Promise<string | null> {
 }
 
 async function extractWithPuppeteer(url: string): Promise<string | null> {
-  return browserLimit(async () => {
-    let browser: Browser | null = null;
-    try {
-      console.log(`[Extractor] Puppeteer fallback: ${url}`);
-      
-      browser = await launchBrowser();
-      const page = await browser.newPage();
-      await page.setUserAgent(DESKTOP_USER_AGENT);
-      await page.goto(url, { waitUntil: "networkidle2", timeout: 25000 });
-      await delay(1500);
+  console.log(`[Extractor] Puppeteer fallback: ${url}`);
 
+  return withBrowserPage(
+    {
+      url,
+      userAgent: "desktop",
+      logPrefix: "PuppeteerFallback",
+    },
+    async (page) => {
       const textContent = await page.evaluate(() => {
         const removeElements = document.querySelectorAll("script, style, noscript, header, nav, footer");
         removeElements.forEach((el) => el.remove());
@@ -698,15 +712,9 @@ async function extractWithPuppeteer(url: string): Promise<string | null> {
         console.log(`[Extractor] Puppeteer fallback success: ${cleaned.length} chars`);
         return cleaned.slice(0, 6000);
       }
-      
       return null;
-    } catch (error) {
-      console.error("[Extractor] Puppeteer fallback failed:", error);
-      return null;
-    } finally {
-      if (browser) await browser.close();
     }
-  });
+  );
 }
 
 export async function extractContent(
