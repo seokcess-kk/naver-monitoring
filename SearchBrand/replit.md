@@ -7,6 +7,34 @@
 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록(플레이스, 뉴스 등) 노출 현황을 실시간으로 확인할 수 있습니다. SOV(Share of Voice) 분석으로 브랜드 점유율을 측정하세요.
 
 ## Recent Changes
+- 2026-01-23: Puppeteer 초기화 로직 리팩토링
+  - `withBrowserPage` 헬퍼 함수 추가 (공통 브라우저/페이지 초기화 캡슐화)
+  - 지원 옵션: URL, UA(mobile/desktop), viewport, extra headers, timeout, delay
+  - 6개 추출 함수 리팩토링: extractBlogContent, extractCafeContentMobile/PC, extractNewsContent, extractViewContent, extractWithPuppeteer
+  - 코드 중복 약 150줄 감소, 일관된 오류 로그 포맷
+
+- 2026-01-23: 감사 로그 탭 필터링 및 관리자 정보 추가
+  - 작업 유형/대상 유형/기간/관리자 이메일 필터 UI 추가
+  - 관리자 이메일 컬럼 추가 (작업 수행자 표시)
+  - 적용된 필터 요약 Badge 표시
+  - 서버: adminEmail 필터 파라미터 지원 (부분 일치 검색)
+
+- 2026-01-23: SOV 분석 탭 에러 메시지 확장 표시
+  - 실패 건 에러 메시지 펼쳐보기/접기 기능 추가
+  - 에러 원인 분석을 위한 상세 정보 제공
+
+- 2026-01-23: 데이터 품질 탭 추가 (superadmin 전용)
+  - 플레이스명 누락 작업 관리 기능
+  - 개별 플레이스명 편집 (superadmin 전용)
+  - 일괄 동기화 기능 (동일 placeId의 기존 데이터에서 복사)
+  - 감사 로그 기록
+
+- 2026-01-23: 어드민 필터링 UX 개선 (Draft/Applied 패턴)
+  - SearchLogs, SovRuns, AuditLogs 탭에 Draft/Applied 필터 패턴 적용
+  - 입력 변경 시 즉시 쿼리 방지, "적용" 버튼 클릭 시에만 쿼리 실행
+  - 적용된 필터 요약 Badge 표시
+  - 불필요한 API 호출 감소 및 UX 명확화
+
 - 2026-01-23: 어드민 API 사용량 모니터링 시스템 구현
   - 외부 API 호출 로깅 (Naver 검색/광고, OpenAI, Browserless)
   - apiUsageLogs 테이블 추가 (userId, apiType, endpoint, success, tokens, responseTime, metadata)
