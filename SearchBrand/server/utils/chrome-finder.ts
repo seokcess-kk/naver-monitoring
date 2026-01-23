@@ -21,6 +21,26 @@ export function findChromePath(logPrefix: string = '[Chrome]'): string | undefin
   } catch {
   }
 
+  // Nix store에서 chromium 검색 (프로덕션 환경용)
+  try {
+    const nixChromium = execSync('find /nix/store -maxdepth 2 -name chromium -type f 2>/dev/null | head -1', { encoding: 'utf8', timeout: 5000 }).trim();
+    if (nixChromium && existsSync(nixChromium)) {
+      console.log(`${logPrefix} Using Nix store Chromium:`, nixChromium);
+      return nixChromium;
+    }
+  } catch {
+  }
+  
+  // Nix store chromium 패키지 bin 경로 검색
+  try {
+    const nixBinPath = execSync('find /nix/store -path "*/chromium-*/bin/chromium" 2>/dev/null | head -1', { encoding: 'utf8', timeout: 10000 }).trim();
+    if (nixBinPath && existsSync(nixBinPath)) {
+      console.log(`${logPrefix} Using Nix store Chromium bin:`, nixBinPath);
+      return nixBinPath;
+    }
+  } catch {
+  }
+
   try {
     const systemChrome = execSync('which google-chrome', { encoding: 'utf8' }).trim();
     if (systemChrome && existsSync(systemChrome)) {
