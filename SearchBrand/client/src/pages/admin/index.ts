@@ -13,3 +13,4 @@ export { DataQualityTab } from "./DataQualityTab";
 export { SystemStatusTab } from "./SystemStatusTab";
 export { UserDetailModal } from "./UserDetailModal";
 export { AdminSidebar } from "./AdminSidebar";
+export { TabPageLayout, FilterRow, FilterField } from "./TabPageLayout";

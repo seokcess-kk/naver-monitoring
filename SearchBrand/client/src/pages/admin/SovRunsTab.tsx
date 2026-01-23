@@ -3,10 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { TabPageLayout, FilterRow, FilterField } from "./TabPageLayout";
 import type { SovRunAdmin } from "./types";
 
 export function SovRunsTab() {
@@ -78,77 +81,87 @@ export function SovRunsTab() {
     return labels[status] || status;
   };
 
+  const getAppliedFilterBadges = () => {
+    const badges = [];
+    if (appliedFilters.status) {
+      badges.push({ label: "상태", value: getStatusLabel(appliedFilters.status) });
+    }
+    if (appliedFilters.startDate) badges.push({ label: "시작일", value: appliedFilters.startDate });
+    if (appliedFilters.endDate) badges.push({ label: "종료일", value: appliedFilters.endDate });
+    if (appliedFilters.keyword) badges.push({ label: "키워드", value: appliedFilters.keyword });
+    return badges;
+  };
+
+  const handleExport = () => {
+    const params = new URLSearchParams();
+    if (appliedFilters.status) params.append("status", appliedFilters.status);
+    if (appliedFilters.startDate) params.append("startDate", appliedFilters.startDate);
+    if (appliedFilters.endDate) params.append("endDate", appliedFilters.endDate);
+    window.open(`/api/admin/export/sov-runs?${params}`, "_blank");
+  };
+
+  const completedCount = data?.runs.filter(r => r.status === "completed").length || 0;
+  const failedCount = data?.runs.filter(r => r.status === "failed").length || 0;
+
   return (
-    <div className="space-y-4">
-      <Card className="p-4">
-        <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">상태</label>
-            <select 
-              className="border rounded px-2 py-1 text-sm"
-              value={draftStatus}
-              onChange={(e) => setDraftStatus(e.target.value)}
-            >
-              <option value="">전체</option>
-              <option value="pending">대기</option>
-              <option value="processing">처리중</option>
-              <option value="completed">완료</option>
-              <option value="failed">실패</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">시작일</label>
-            <input 
+    <TabPageLayout
+      summary={data ? [
+        { label: "전체", value: data.total },
+        { label: "완료", value: completedCount, variant: "success" },
+        { label: "실패", value: failedCount, variant: failedCount > 0 ? "destructive" : "default" },
+      ] : undefined}
+      actions={
+        <Button variant="outline" size="sm" onClick={handleExport}>
+          <Download className="w-4 h-4 mr-1" />
+          CSV 내보내기
+        </Button>
+      }
+      filterContent={
+        <FilterRow onApply={handleApplyFilters} onReset={handleResetFilters}>
+          <FilterField label="상태">
+            <Select value={draftStatus} onValueChange={setDraftStatus}>
+              <SelectTrigger className="w-28">
+                <SelectValue placeholder="전체" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">전체</SelectItem>
+                <SelectItem value="pending">대기</SelectItem>
+                <SelectItem value="processing">처리중</SelectItem>
+                <SelectItem value="completed">완료</SelectItem>
+                <SelectItem value="failed">실패</SelectItem>
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label="시작일">
+            <Input 
               type="date" 
-              className="border rounded px-2 py-1 text-sm"
+              className="w-36"
               value={draftStartDate}
               onChange={(e) => setDraftStartDate(e.target.value)}
             />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">종료일</label>
-            <input 
+          </FilterField>
+          <FilterField label="종료일">
+            <Input 
               type="date" 
-              className="border rounded px-2 py-1 text-sm"
+              className="w-36"
               value={draftEndDate}
               onChange={(e) => setDraftEndDate(e.target.value)}
             />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">키워드 검색</label>
-            <input 
-              type="text" 
-              className="border rounded px-2 py-1 text-sm w-32"
-              placeholder="마켓키워드..."
+          </FilterField>
+          <FilterField label="마켓 키워드">
+            <Input 
+              placeholder="키워드..."
+              className="w-32"
               value={draftKeyword}
               onChange={(e) => setDraftKeyword(e.target.value)}
             />
-          </div>
-          <Button variant="outline" size="sm" onClick={handleApplyFilters}>
-            적용
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleResetFilters}>
-            초기화
-          </Button>
-          <div className="ml-auto">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => {
-                const params = new URLSearchParams();
-                if (appliedFilters.status) params.append("status", appliedFilters.status);
-                if (appliedFilters.startDate) params.append("startDate", appliedFilters.startDate);
-                if (appliedFilters.endDate) params.append("endDate", appliedFilters.endDate);
-                window.open(`/api/admin/export/sov-runs?${params}`, "_blank");
-              }}
-            >
-              <Download className="w-4 h-4 mr-1" />
-              CSV 내보내기
-            </Button>
-          </div>
-        </div>
-      </Card>
-
+          </FilterField>
+        </FilterRow>
+      }
+      appliedFilters={getAppliedFilterBadges()}
+      onClearFilters={handleResetFilters}
+      isLoading={isLoading}
+    >
       <Card>
         <Table>
           <TableHeader>
@@ -225,6 +238,6 @@ export function SovRunsTab() {
           </Button>
         </div>
       )}
-    </div>
+    </TabPageLayout>
   );
 }

@@ -3,10 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { TabPageLayout, FilterRow, FilterField } from "./TabPageLayout";
 import type { AuditLogAdmin } from "./types";
 
 const actionOptions = [
@@ -98,8 +101,6 @@ export function AuditLogsTab() {
     setPage(0);
   };
 
-  const hasActiveFilters = Object.values(appliedFilters).some(v => v !== "");
-
   const getActionLabel = (action: string) => {
     const found = actionOptions.find(o => o.value === action);
     return found ? found.label : action;
@@ -108,6 +109,20 @@ export function AuditLogsTab() {
   const getTargetTypeLabel = (targetType: string) => {
     const found = targetTypeOptions.find(o => o.value === targetType);
     return found ? found.label : targetType;
+  };
+
+  const getAppliedFilterBadges = () => {
+    const badges = [];
+    if (appliedFilters.action) {
+      badges.push({ label: "작업", value: getActionLabel(appliedFilters.action) });
+    }
+    if (appliedFilters.targetType) {
+      badges.push({ label: "대상", value: getTargetTypeLabel(appliedFilters.targetType) });
+    }
+    if (appliedFilters.startDate) badges.push({ label: "시작일", value: appliedFilters.startDate });
+    if (appliedFilters.endDate) badges.push({ label: "종료일", value: appliedFilters.endDate });
+    if (appliedFilters.adminEmail) badges.push({ label: "관리자", value: appliedFilters.adminEmail });
+    return badges;
   };
 
   const formatDetails = (details: string | null): string => {
@@ -150,92 +165,68 @@ export function AuditLogsTab() {
   };
 
   return (
-    <div className="space-y-4">
-      <Card className="p-4">
-        <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">작업 유형</label>
-            <select 
-              className="border rounded px-2 py-1 text-sm"
-              value={draftAction}
-              onChange={(e) => setDraftAction(e.target.value)}
-            >
-              <option value="">전체</option>
-              {actionOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">대상 유형</label>
-            <select 
-              className="border rounded px-2 py-1 text-sm"
-              value={draftTargetType}
-              onChange={(e) => setDraftTargetType(e.target.value)}
-            >
-              <option value="">전체</option>
-              {targetTypeOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">시작일</label>
-            <input 
+    <TabPageLayout
+      summary={data ? [
+        { label: "전체", value: data.total },
+      ] : undefined}
+      filterContent={
+        <FilterRow onApply={handleApplyFilters} onReset={handleResetFilters}>
+          <FilterField label="작업 유형">
+            <Select value={draftAction} onValueChange={setDraftAction}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="전체" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">전체</SelectItem>
+                {actionOptions.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label="대상 유형">
+            <Select value={draftTargetType} onValueChange={setDraftTargetType}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="전체" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">전체</SelectItem>
+                {targetTypeOptions.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label="시작일">
+            <Input 
               type="date" 
-              className="border rounded px-2 py-1 text-sm"
+              className="w-36"
               value={draftStartDate}
               onChange={(e) => setDraftStartDate(e.target.value)}
             />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">종료일</label>
-            <input 
+          </FilterField>
+          <FilterField label="종료일">
+            <Input 
               type="date" 
-              className="border rounded px-2 py-1 text-sm"
+              className="w-36"
               value={draftEndDate}
               onChange={(e) => setDraftEndDate(e.target.value)}
             />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">관리자 이메일</label>
-            <input 
-              type="text" 
-              className="border rounded px-2 py-1 text-sm w-40"
+          </FilterField>
+          <FilterField label="관리자 이메일">
+            <Input 
               placeholder="이메일..."
+              className="w-36"
               value={draftAdminEmail}
               onChange={(e) => setDraftAdminEmail(e.target.value)}
             />
-          </div>
-          <Button variant="outline" size="sm" onClick={handleApplyFilters}>
-            적용
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleResetFilters}>
-            초기화
-          </Button>
-        </div>
-        {hasActiveFilters && (
-          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-            <span>적용된 필터:</span>
-            {appliedFilters.action && (
-              <Badge variant="secondary" className="text-xs">{getActionLabel(appliedFilters.action)}</Badge>
-            )}
-            {appliedFilters.targetType && (
-              <Badge variant="secondary" className="text-xs">{getTargetTypeLabel(appliedFilters.targetType)}</Badge>
-            )}
-            {appliedFilters.startDate && (
-              <Badge variant="secondary" className="text-xs">시작: {appliedFilters.startDate}</Badge>
-            )}
-            {appliedFilters.endDate && (
-              <Badge variant="secondary" className="text-xs">종료: {appliedFilters.endDate}</Badge>
-            )}
-            {appliedFilters.adminEmail && (
-              <Badge variant="secondary" className="text-xs">관리자: {appliedFilters.adminEmail}</Badge>
-            )}
-          </div>
-        )}
-      </Card>
-
+          </FilterField>
+        </FilterRow>
+      }
+      appliedFilters={getAppliedFilterBadges()}
+      onClearFilters={handleResetFilters}
+      isLoading={isLoading}
+    >
       <Card>
         <Table>
           <TableHeader>
@@ -292,6 +283,6 @@ export function AuditLogsTab() {
           </Button>
         </div>
       )}
-    </div>
+    </TabPageLayout>
   );
 }
