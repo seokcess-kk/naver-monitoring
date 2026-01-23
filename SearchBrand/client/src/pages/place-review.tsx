@@ -18,6 +18,10 @@ import {
   RefreshCw, Search, Filter, Download, RotateCcw, AlertTriangle, Lightbulb, ChevronLeft, ChevronRight,
   Calendar, ArrowUpDown
 } from "lucide-react";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  Treemap
+} from "recharts";
 
 interface PlaceReviewJob {
   id: string;
@@ -275,7 +279,9 @@ function SentimentTrendChart({ reviews }: { reviews: ReviewWithAnalysis[] }) {
       .slice(-14)
       .map(([date, counts]) => ({
         date: new Date(date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
-        ...counts,
+        긍정: counts.positive,
+        중립: counts.neutral,
+        부정: counts.negative,
         total: counts.positive + counts.negative + counts.neutral
       }));
   }, [reviews]);
@@ -290,8 +296,6 @@ function SentimentTrendChart({ reviews }: { reviews: ReviewWithAnalysis[] }) {
     );
   }
 
-  const maxTotal = Math.max(...trendData.map(d => d.total));
-
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -301,36 +305,169 @@ function SentimentTrendChart({ reviews }: { reviews: ReviewWithAnalysis[] }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-end gap-1 h-32">
-          {trendData.map((day, idx) => (
-            <div key={idx} className="flex-1 flex flex-col items-center gap-1">
-              <div 
-                className="w-full flex flex-col-reverse rounded-t overflow-hidden"
-                style={{ height: `${(day.total / maxTotal) * 100}%`, minHeight: '4px' }}
-              >
-                {day.positive > 0 && (
-                  <div 
-                    className="bg-green-500 w-full" 
-                    style={{ height: `${(day.positive / day.total) * 100}%` }}
-                  />
-                )}
-                {day.neutral > 0 && (
-                  <div 
-                    className="bg-gray-400 w-full" 
-                    style={{ height: `${(day.neutral / day.total) * 100}%` }}
-                  />
-                )}
-                {day.negative > 0 && (
-                  <div 
-                    className="bg-red-500 w-full" 
-                    style={{ height: `${(day.negative / day.total) * 100}%` }}
-                  />
-                )}
-              </div>
-              <span className="text-[9px] text-muted-foreground truncate w-full text-center">{day.date}</span>
-            </div>
-          ))}
-        </div>
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis 
+              dataKey="date" 
+              tick={{ fontSize: 11 }} 
+              tickLine={false}
+              axisLine={{ stroke: '#e5e7eb' }}
+            />
+            <YAxis 
+              tick={{ fontSize: 11 }} 
+              tickLine={false}
+              axisLine={{ stroke: '#e5e7eb' }}
+              allowDecimals={false}
+            />
+            <Tooltip 
+              contentStyle={{ 
+                fontSize: 12, 
+                borderRadius: 8,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                border: '1px solid #e5e7eb'
+              }}
+            />
+            <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+            <Area 
+              type="monotone" 
+              dataKey="긍정" 
+              stackId="1"
+              stroke="#22c55e" 
+              fill="#22c55e" 
+              fillOpacity={0.6}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="중립" 
+              stackId="1"
+              stroke="#9ca3af" 
+              fill="#9ca3af" 
+              fillOpacity={0.6}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="부정" 
+              stackId="1"
+              stroke="#ef4444" 
+              fill="#ef4444" 
+              fillOpacity={0.6}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface TreemapContentProps {
+  root?: any;
+  depth?: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  index?: number;
+  name?: string;
+  value?: number;
+  colors?: string[];
+}
+
+function CustomTreemapContent(props: TreemapContentProps) {
+  const { x = 0, y = 0, width = 0, height = 0, name, value, index = 0, depth = 0 } = props;
+  
+  if (depth !== 1 || width < 30 || height < 20) return null;
+  
+  const colors = [
+    '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899',
+    '#f43f5e', '#ef4444', '#f97316', '#f59e0b', '#eab308',
+    '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4'
+  ];
+  
+  const bgColor = colors[index % colors.length];
+  const showText = width > 40 && height > 25;
+  const showValue = width > 50 && height > 35;
+  
+  return (
+    <g>
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        rx={4}
+        fill={bgColor}
+        stroke="#fff"
+        strokeWidth={2}
+        style={{ cursor: 'pointer' }}
+      />
+      {showText && (
+        <text
+          x={x + width / 2}
+          y={y + height / 2 - (showValue ? 6 : 0)}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#fff"
+          fontSize={Math.min(12, width / 6)}
+          fontWeight={500}
+        >
+          {name && name.length > 8 ? name.slice(0, 7) + '…' : name}
+        </text>
+      )}
+      {showValue && (
+        <text
+          x={x + width / 2}
+          y={y + height / 2 + 10}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="rgba(255,255,255,0.8)"
+          fontSize={10}
+        >
+          {value}회
+        </text>
+      )}
+    </g>
+  );
+}
+
+function KeywordTreemap({ keywords }: { keywords: Array<{ keyword: string; count: number }> }) {
+  const treemapData = useMemo(() => {
+    if (!keywords || keywords.length === 0) return [];
+    return keywords.slice(0, 20).map(kw => ({
+      name: kw.keyword,
+      value: kw.count
+    }));
+  }, [keywords]);
+
+  if (treemapData.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">키워드 빈도</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center text-muted-foreground py-4">키워드 데이터가 없습니다</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">키워드 빈도</CardTitle>
+        <CardDescription>상위 {treemapData.length}개 키워드 (면적 = 빈도)</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={280}>
+          <Treemap
+            data={treemapData}
+            dataKey="value"
+            aspectRatio={4/3}
+            stroke="#fff"
+            content={<CustomTreemapContent />}
+          />
+        </ResponsiveContainer>
       </CardContent>
     </Card>
   );
@@ -983,26 +1120,7 @@ function JobResults({ jobId }: { jobId: string }) {
 
         <TabsContent value="trends" className="mt-0 space-y-4">
           <SentimentTrendChart reviews={allReviews} />
-          
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">키워드 빈도</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {stats?.topKeywords.length === 0 ? (
-                <p className="text-center text-muted-foreground py-4">키워드 데이터가 없습니다</p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {stats?.topKeywords.map((kw) => (
-                    <Badge key={kw.keyword} variant="outline" className="px-3 py-1">
-                      {kw.keyword}
-                      <span className="ml-2 text-muted-foreground">{kw.count}</span>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <KeywordTreemap keywords={stats?.topKeywords || []} />
         </TabsContent>
       </Tabs>
     </div>
