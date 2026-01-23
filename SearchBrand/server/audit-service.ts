@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { auditLogs, type InsertAuditLog } from "@shared/schema";
-import { desc, eq, and, gte, lte, sql } from "drizzle-orm";
+import { auditLogs, users, type InsertAuditLog } from "@shared/schema";
+import { desc, eq, and, gte, lte, sql, ilike } from "drizzle-orm";
 
 export type AuditAction = 
   | "user_status_change"
@@ -56,6 +56,7 @@ export async function logAudit(params: LogAuditParams): Promise<void> {
 
 interface GetAuditLogsParams {
   adminId?: string;
+  adminEmail?: string;
   action?: string;
   targetType?: string;
   startDate?: Date;
@@ -69,12 +70,15 @@ export async function getAuditLogs(params: GetAuditLogsParams = {}) {
   const rawOffset = params.offset ?? 0;
   const limit = Math.min(Math.max(1, rawLimit), 100);
   const offset = Math.max(0, rawOffset);
-  const { adminId, action, targetType, startDate, endDate } = params;
+  const { adminId, adminEmail, action, targetType, startDate, endDate } = params;
   
   const conditions = [];
   
   if (adminId) {
     conditions.push(eq(auditLogs.adminId, adminId));
+  }
+  if (adminEmail) {
+    conditions.push(ilike(users.email, `%${adminEmail}%`));
   }
   if (action) {
     conditions.push(eq(auditLogs.action, action));
@@ -93,8 +97,18 @@ export async function getAuditLogs(params: GetAuditLogsParams = {}) {
   
   const [logs, countResult] = await Promise.all([
     db
-      .select()
+      .select({
+        id: auditLogs.id,
+        adminId: auditLogs.adminId,
+        action: auditLogs.action,
+        targetType: auditLogs.targetType,
+        targetId: auditLogs.targetId,
+        details: auditLogs.details,
+        createdAt: auditLogs.createdAt,
+        adminEmail: users.email,
+      })
       .from(auditLogs)
+      .leftJoin(users, eq(auditLogs.adminId, users.id))
       .where(whereClause)
       .orderBy(desc(auditLogs.createdAt))
       .limit(limit)

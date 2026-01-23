@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect } from "wouter";
@@ -96,7 +96,7 @@ interface AuditLogAdmin {
   targetType: string;
   targetId: string | null;
   details: string | null;
-  ipAddress: string | null;
+  adminEmail: string | null;
   createdAt: string;
 }
 
@@ -1100,13 +1100,34 @@ function AuditLogsTab() {
   const [page, setPage] = useState(0);
   const limit = 30;
 
+  // 입력 중 필터 상태 (draft)
+  const [draftAction, setDraftAction] = useState<string>("");
+  const [draftTargetType, setDraftTargetType] = useState<string>("");
+  const [draftStartDate, setDraftStartDate] = useState<string>("");
+  const [draftEndDate, setDraftEndDate] = useState<string>("");
+  const [draftAdminEmail, setDraftAdminEmail] = useState<string>("");
+
+  // 적용된 필터 상태 (쿼리에 사용)
+  const [appliedFilters, setAppliedFilters] = useState({
+    action: "",
+    targetType: "",
+    startDate: "",
+    endDate: "",
+    adminEmail: "",
+  });
+
   const { data, isLoading } = useQuery({
-    queryKey: ["/api/admin/audit-logs", page],
+    queryKey: ["/api/admin/audit-logs", page, appliedFilters],
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: limit.toString(),
         offset: (page * limit).toString(),
       });
+      if (appliedFilters.action) params.append("action", appliedFilters.action);
+      if (appliedFilters.targetType) params.append("targetType", appliedFilters.targetType);
+      if (appliedFilters.startDate) params.append("startDate", appliedFilters.startDate);
+      if (appliedFilters.endDate) params.append("endDate", appliedFilters.endDate);
+      if (appliedFilters.adminEmail) params.append("adminEmail", appliedFilters.adminEmail);
       const res = await apiRequest("GET", `/api/admin/audit-logs?${params}`);
       return res.json() as Promise<{ logs: AuditLogAdmin[]; total: number }>;
     },
@@ -1114,20 +1135,68 @@ function AuditLogsTab() {
 
   const totalPages = data ? Math.ceil(data.total / limit) : 0;
 
+  const handleApplyFilters = () => {
+    setAppliedFilters({
+      action: draftAction,
+      targetType: draftTargetType,
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+      adminEmail: draftAdminEmail,
+    });
+    setPage(0);
+  };
+
+  const handleResetFilters = () => {
+    setDraftAction("");
+    setDraftTargetType("");
+    setDraftStartDate("");
+    setDraftEndDate("");
+    setDraftAdminEmail("");
+    setAppliedFilters({
+      action: "",
+      targetType: "",
+      startDate: "",
+      endDate: "",
+      adminEmail: "",
+    });
+    setPage(0);
+  };
+
+  const hasActiveFilters = Object.values(appliedFilters).some(v => v !== "");
+
+  const actionOptions = [
+    { value: "user_status_change", label: "사용자 상태 변경" },
+    { value: "user_role_change", label: "사용자 역할 변경" },
+    { value: "api_key_reset", label: "API 키 초기화" },
+    { value: "api_key_delete", label: "API 키 삭제" },
+    { value: "solution_create", label: "솔루션 생성" },
+    { value: "solution_update", label: "솔루션 수정" },
+    { value: "solution_delete", label: "솔루션 삭제" },
+    { value: "user_solution_assign", label: "솔루션 할당" },
+    { value: "user_solution_update", label: "솔루션 설정 변경" },
+    { value: "user_solution_revoke", label: "솔루션 해제" },
+    { value: "update_place_name", label: "플레이스명 수정" },
+    { value: "sync_place_names", label: "플레이스명 동기화" },
+  ];
+
+  const targetTypeOptions = [
+    { value: "user", label: "사용자" },
+    { value: "api_key", label: "API 키" },
+    { value: "solution", label: "솔루션" },
+    { value: "user_solution", label: "사용자 솔루션" },
+    { value: "sov_run", label: "SOV 실행" },
+    { value: "search_log", label: "검색 로그" },
+    { value: "place_review_job", label: "플레이스 리뷰" },
+  ];
+
   const getActionLabel = (action: string) => {
-    const labels: Record<string, string> = {
-      user_status_change: "사용자 상태 변경",
-      user_role_change: "사용자 역할 변경",
-      api_key_reset: "API 키 초기화",
-      api_key_delete: "API 키 삭제",
-      solution_create: "솔루션 생성",
-      solution_update: "솔루션 수정",
-      solution_delete: "솔루션 삭제",
-      user_solution_assign: "솔루션 할당",
-      user_solution_update: "솔루션 설정 변경",
-      user_solution_revoke: "솔루션 해제",
-    };
-    return labels[action] || action;
+    const found = actionOptions.find(o => o.value === action);
+    return found ? found.label : action;
+  };
+
+  const getTargetTypeLabel = (targetType: string) => {
+    const found = targetTypeOptions.find(o => o.value === targetType);
+    return found ? found.label : targetType;
   };
 
   const formatDetails = (details: string | null): string => {
@@ -1171,10 +1240,96 @@ function AuditLogsTab() {
 
   return (
     <div className="space-y-4">
+      <Card className="p-4">
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">작업 유형</label>
+            <select 
+              className="border rounded px-2 py-1 text-sm"
+              value={draftAction}
+              onChange={(e) => setDraftAction(e.target.value)}
+            >
+              <option value="">전체</option>
+              {actionOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">대상 유형</label>
+            <select 
+              className="border rounded px-2 py-1 text-sm"
+              value={draftTargetType}
+              onChange={(e) => setDraftTargetType(e.target.value)}
+            >
+              <option value="">전체</option>
+              {targetTypeOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">시작일</label>
+            <input 
+              type="date" 
+              className="border rounded px-2 py-1 text-sm"
+              value={draftStartDate}
+              onChange={(e) => setDraftStartDate(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">종료일</label>
+            <input 
+              type="date" 
+              className="border rounded px-2 py-1 text-sm"
+              value={draftEndDate}
+              onChange={(e) => setDraftEndDate(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">관리자 이메일</label>
+            <input 
+              type="text" 
+              className="border rounded px-2 py-1 text-sm w-40"
+              placeholder="이메일..."
+              value={draftAdminEmail}
+              onChange={(e) => setDraftAdminEmail(e.target.value)}
+            />
+          </div>
+          <Button variant="outline" size="sm" onClick={handleApplyFilters}>
+            적용
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleResetFilters}>
+            초기화
+          </Button>
+        </div>
+        {hasActiveFilters && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+            <span>적용된 필터:</span>
+            {appliedFilters.action && (
+              <Badge variant="secondary" className="text-xs">{getActionLabel(appliedFilters.action)}</Badge>
+            )}
+            {appliedFilters.targetType && (
+              <Badge variant="secondary" className="text-xs">{getTargetTypeLabel(appliedFilters.targetType)}</Badge>
+            )}
+            {appliedFilters.startDate && (
+              <Badge variant="secondary" className="text-xs">시작: {appliedFilters.startDate}</Badge>
+            )}
+            {appliedFilters.endDate && (
+              <Badge variant="secondary" className="text-xs">종료: {appliedFilters.endDate}</Badge>
+            )}
+            {appliedFilters.adminEmail && (
+              <Badge variant="secondary" className="text-xs">관리자: {appliedFilters.adminEmail}</Badge>
+            )}
+          </div>
+        )}
+      </Card>
+
       <Card>
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>관리자</TableHead>
               <TableHead>작업</TableHead>
               <TableHead>대상</TableHead>
               <TableHead>상세</TableHead>
@@ -1185,6 +1340,7 @@ function AuditLogsTab() {
             {isLoading ? (
               [...Array(5)].map((_, i) => (
                 <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-40" /></TableCell>
@@ -1193,10 +1349,15 @@ function AuditLogsTab() {
               ))
             ) : data?.logs.map((log) => (
               <TableRow key={log.id}>
+                <TableCell className="text-sm">
+                  {log.adminEmail || <span className="text-muted-foreground italic">알 수 없음</span>}
+                </TableCell>
                 <TableCell>
                   <Badge variant="outline">{getActionLabel(log.action)}</Badge>
                 </TableCell>
-                <TableCell className="text-muted-foreground text-sm">{log.targetType}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {getTargetTypeLabel(log.targetType)}
+                </TableCell>
                 <TableCell className="text-sm text-muted-foreground max-w-sm">
                   {formatDetails(log.details)}
                 </TableCell>

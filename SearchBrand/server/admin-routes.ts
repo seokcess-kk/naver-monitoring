@@ -417,11 +417,12 @@ router.delete("/api-keys/:keyId", requireAdmin, async (req: AdminRequest, res: R
 
 router.get("/audit-logs", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
-    const { adminId, action, targetType, startDate, endDate } = req.query;
+    const { adminId, adminEmail, action, targetType, startDate, endDate } = req.query;
     const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
     
     const result = await getAuditLogs({
       adminId: adminId as string,
+      adminEmail: adminEmail as string,
       action: action as string,
       targetType: targetType as string,
       startDate: startDate ? new Date(startDate as string) : undefined,
