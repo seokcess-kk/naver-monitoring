@@ -251,6 +251,7 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
                 type="button"
                 onClick={() => toggleGroup(group.id)}
                 className="flex items-center justify-between w-full px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+                title={group.description}
               >
                 <span>{group.label}</span>
                 {expandedGroups.has(group.id) ? (
@@ -259,6 +260,9 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
                   <ChevronRight className="w-3.5 h-3.5" />
                 )}
               </button>
+              {group.description && expandedGroups.has(group.id) && !searchQuery && (
+                <p className="px-2 text-[10px] text-muted-foreground/70 mb-1">{group.description}</p>
+              )}
               {(expandedGroups.has(group.id) || searchQuery) && (
                 <TabsList className="flex flex-col h-auto bg-transparent mt-1 space-y-0.5 p-0">
                   {group.tabs.map((tab) => renderTabItem(tab))}

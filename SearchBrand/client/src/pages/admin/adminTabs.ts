@@ -9,7 +9,7 @@ import {
   Server, 
   Zap, 
   Database,
-  MoreHorizontal,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 
@@ -24,6 +24,7 @@ export interface TabConfig {
 export interface TabGroup {
   id: string;
   label: string;
+  description?: string;
   priority: number;
   collapsed?: boolean;
   tabs: TabConfig[];
@@ -33,6 +34,7 @@ export const TAB_GROUPS: TabGroup[] = [
   {
     id: "management",
     label: "운영/관리",
+    description: "사용자 및 권한 관리",
     priority: 1,
     tabs: [
       { id: "users", label: "사용자", icon: Users, priority: 1, isDefault: true },
@@ -43,6 +45,7 @@ export const TAB_GROUPS: TabGroup[] = [
   {
     id: "analytics",
     label: "분석",
+    description: "검색 및 사용 현황 분석",
     priority: 2,
     tabs: [
       { id: "sov", label: "SOV 분석", icon: Activity, priority: 1 },
@@ -52,21 +55,14 @@ export const TAB_GROUPS: TabGroup[] = [
     ],
   },
   {
-    id: "system",
-    label: "시스템",
+    id: "security-ops",
+    label: "보안/운영 감사",
+    description: "시스템 상태 및 감사 로그",
     priority: 3,
     tabs: [
       { id: "system", label: "시스템 상태", icon: Server, priority: 1 },
-    ],
-  },
-  {
-    id: "other",
-    label: "더보기",
-    priority: 4,
-    collapsed: true,
-    tabs: [
-      { id: "data-quality", label: "데이터 품질", icon: Database, priority: 1 },
-      { id: "audit", label: "감사 로그", icon: FileText, priority: 2 },
+      { id: "data-quality", label: "데이터 품질", icon: Database, priority: 2 },
+      { id: "audit", label: "감사 로그", icon: FileText, priority: 3 },
     ],
   },
 ].map(group => ({
