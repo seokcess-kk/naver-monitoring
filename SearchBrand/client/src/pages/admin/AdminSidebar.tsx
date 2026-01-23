@@ -20,7 +20,7 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
-    new Set(TAB_GROUPS.map((g) => g.id))
+    new Set(TAB_GROUPS.filter((g) => !g.collapsed).map((g) => g.id))
   );
 
   const toggleGroup = (groupId: string) => {
