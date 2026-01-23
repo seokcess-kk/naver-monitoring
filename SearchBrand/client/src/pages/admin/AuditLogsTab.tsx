@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { TabPageLayout, FilterRow, FilterField, ExportButton } from "./TabPageLayout";
+import { TableLoading, EmptyState } from "./components/StateComponents";
 import type { AuditLogAdmin } from "./types";
 
 const actionOptions = [
@@ -248,29 +248,27 @@ export function AuditLogsTab() {
       onClearFilters={handleResetFilters}
       isLoading={isLoading}
     >
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>관리자</TableHead>
-              <TableHead>작업</TableHead>
-              <TableHead>대상</TableHead>
-              <TableHead>상세</TableHead>
-              <TableHead>시간</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              [...Array(5)].map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                </TableRow>
-              ))
-            ) : data?.logs.map((log) => (
+      {!isLoading && (!data?.logs.length) ? (
+        <EmptyState 
+          type={getAppliedFilterBadges().length > 0 ? "no-filter-results" : "no-data"}
+          action={getAppliedFilterBadges().length > 0 ? { label: "필터 초기화", onClick: handleResetFilters } : undefined}
+        />
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>관리자</TableHead>
+                <TableHead>작업</TableHead>
+                <TableHead>대상</TableHead>
+                <TableHead>상세</TableHead>
+                <TableHead>시간</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableLoading rows={5} columnWidths={["w-28", "w-32", "w-20", "w-40", "w-32"]} />
+              ) : data?.logs.map((log) => (
               <TableRow key={log.id}>
                 <TableCell className="text-sm">
                   {log.adminEmail || <span className="text-muted-foreground italic">알 수 없음</span>}
@@ -289,9 +287,10 @@ export function AuditLogsTab() {
                 </TableCell>
               </TableRow>
             ))}
-          </TableBody>
-        </Table>
-      </Card>
+            </TableBody>
+          </Table>
+        </Card>
+      )}
 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">

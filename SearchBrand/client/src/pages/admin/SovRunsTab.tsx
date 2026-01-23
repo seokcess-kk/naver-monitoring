@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { TabPageLayout, FilterRow, FilterField, ExportButton } from "./TabPageLayout";
+import { TableLoading, EmptyState } from "./components/StateComponents";
 import type { SovRunAdmin } from "./types";
 
 export function SovRunsTab() {
@@ -157,31 +157,28 @@ export function SovRunsTab() {
       onClearFilters={handleResetFilters}
       isLoading={isLoading}
     >
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-8"></TableHead>
-              <TableHead>키워드</TableHead>
-              <TableHead>브랜드</TableHead>
-              <TableHead>상태</TableHead>
-              <TableHead>노출 수</TableHead>
-              <TableHead>생성일</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              [...Array(5)].map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-4" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-12" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                </TableRow>
-              ))
-            ) : data?.runs.map((run) => (
+      {!isLoading && (!data?.runs.length) ? (
+        <EmptyState 
+          type={getAppliedFilterBadges().length > 0 ? "no-filter-results" : "no-data"}
+          action={getAppliedFilterBadges().length > 0 ? { label: "필터 초기화", onClick: handleResetFilters } : undefined}
+        />
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-8"></TableHead>
+                <TableHead>키워드</TableHead>
+                <TableHead>브랜드</TableHead>
+                <TableHead>상태</TableHead>
+                <TableHead>노출 수</TableHead>
+                <TableHead>생성일</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableLoading rows={5} columnWidths={["w-4", "w-32", "w-40", "w-16", "w-12", "w-24"]} />
+              ) : data?.runs.map((run) => (
               <React.Fragment key={run.id}>
                 <TableRow 
                   className={run.status === "failed" ? "cursor-pointer hover:bg-muted/50" : ""}
@@ -219,8 +216,9 @@ export function SovRunsTab() {
               </React.Fragment>
             ))}
           </TableBody>
-        </Table>
-      </Card>
+          </Table>
+        </Card>
+      )}
 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">

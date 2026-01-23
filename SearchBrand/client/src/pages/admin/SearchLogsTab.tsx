@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { TabPageLayout, FilterRow, FilterField, ExportButton } from "./TabPageLayout";
+import { TableLoading, EmptyState } from "./components/StateComponents";
 import type { SearchLogAdmin } from "./types";
 
 export function SearchLogsTab() {
@@ -164,43 +164,43 @@ export function SearchLogsTab() {
       onClearFilters={handleResetFilters}
       isLoading={isLoading}
     >
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>키워드</TableHead>
-              <TableHead>타입</TableHead>
-              <TableHead>사용자 ID</TableHead>
-              <TableHead>시간</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              [...Array(5)].map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                </TableRow>
-              ))
-            ) : data?.logs.map((log) => (
-              <TableRow key={log.id}>
-                <TableCell className="font-medium">{log.keyword}</TableCell>
-                <TableCell>
-                  <Badge variant={log.searchType === "sov" ? "default" : "secondary"}>
-                    {log.searchType === "unified" ? "통합검색" : log.searchType}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-xs font-mono">{log.userId.slice(0, 8)}...</TableCell>
-                <TableCell className="text-muted-foreground text-sm">
-                  {new Date(log.createdAt).toLocaleString("ko-KR")}
-                </TableCell>
+      {!isLoading && (!data?.logs.length) ? (
+        <EmptyState 
+          type={getAppliedFilterBadges().length > 0 ? "no-filter-results" : "no-data"}
+          action={getAppliedFilterBadges().length > 0 ? { label: "필터 초기화", onClick: handleResetFilters } : undefined}
+        />
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>키워드</TableHead>
+                <TableHead>타입</TableHead>
+                <TableHead>사용자 ID</TableHead>
+                <TableHead>시간</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableLoading rows={5} columnWidths={["w-32", "w-16", "w-24", "w-32"]} />
+              ) : data?.logs.map((log) => (
+                <TableRow key={log.id}>
+                  <TableCell className="font-medium">{log.keyword}</TableCell>
+                  <TableCell>
+                    <Badge variant={log.searchType === "sov" ? "default" : "secondary"}>
+                      {log.searchType === "unified" ? "통합검색" : log.searchType}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs font-mono">{log.userId.slice(0, 8)}...</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {new Date(log.createdAt).toLocaleString("ko-KR")}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
