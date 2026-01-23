@@ -409,7 +409,7 @@ function CustomTreemapContent(props: TreemapContentProps) {
           dominantBaseline="middle"
           fill="#fff"
           fontSize={Math.min(11, width / 7)}
-          fontWeight={400}
+          fontWeight={300}
         >
           {name && name.length > 8 ? name.slice(0, 7) + '…' : name}
         </text>
@@ -422,7 +422,7 @@ function CustomTreemapContent(props: TreemapContentProps) {
           dominantBaseline="middle"
           fill="rgba(255,255,255,0.85)"
           fontSize={9}
-          fontWeight={300}
+          fontWeight={200}
         >
           {value}회
         </text>
