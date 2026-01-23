@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,13 +81,6 @@ interface ApiResultsSectionProps {
   isLoading: boolean;
   highlightTerm?: string;
   onExportCSV?: () => void;
-}
-
-function highlightText(html: string, term: string): string {
-  if (!term || term.trim().length < 2) return html;
-  const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${escapedTerm})`, 'gi');
-  return html.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-800 px-0.5 rounded">$1</mark>');
 }
 
 interface ChannelConfig {
@@ -173,19 +166,14 @@ function formatDate(dateStr?: string): string | null {
   return null;
 }
 
-function isUrlMatch(url1: string, url2: string): boolean {
-  return normalizeUrl(url1) === normalizeUrl(url2);
-}
-
-function checkIfMatched(itemUrl: string, smartBlockResults: SmartBlockResult[]): boolean {
+function createSmartBlockUrlSet(smartBlockResults: SmartBlockResult[]): Set<string> {
+  const urlSet = new Set<string>();
   for (const section of smartBlockResults) {
     for (const post of section.posts) {
-      if (isUrlMatch(itemUrl, post.url)) {
-        return true;
-      }
+      urlSet.add(normalizeUrl(post.url));
     }
   }
-  return false;
+  return urlSet;
 }
 
 function ChannelCard({
@@ -194,19 +182,26 @@ function ChannelCard({
   currentPage,
   maxPage,
   isChannelLoading,
-  smartBlockResults,
+  smartBlockUrlSet,
   onPageChange,
   highlightTerm,
+  highlightRegex,
 }: {
   channel: ChannelConfig;
   channelData: ApiResult;
   currentPage: number;
   maxPage: number;
   isChannelLoading: boolean;
-  smartBlockResults: SmartBlockResult[];
+  smartBlockUrlSet: Set<string>;
   onPageChange: (page: number) => void;
   highlightTerm?: string;
+  highlightRegex: RegExp | null;
 }) {
+  const applyHighlight = (html: string): string => {
+    if (!highlightRegex) return html;
+    return html.replace(highlightRegex, '<mark class="bg-yellow-200 dark:bg-yellow-800 px-0.5 rounded">$1</mark>');
+  };
+
   return (
     <Card className="flex flex-col overflow-hidden border-border/50 shadow-sm hover-lift">
       <CardHeader className={`pb-3 ${channel.headerClass} border-b border-border/30`}>
@@ -266,7 +261,7 @@ function ChannelCard({
         <ScrollArea className="h-[320px] md:h-[420px]">
           <div className="p-3 space-y-2">
             {channelData?.items?.map((item, idx) => {
-              const isMatched = checkIfMatched(item.link, smartBlockResults);
+              const isMatched = smartBlockUrlSet.has(normalizeUrl(item.link));
               const displayRank = (currentPage - 1) * 10 + idx + 1;
 
               return (
@@ -302,7 +297,7 @@ function ChannelCard({
                       <div className="flex items-center gap-2">
                         <h4
                           className="text-xs md:text-sm font-medium leading-snug line-clamp-2 group-hover:text-primary transition-colors"
-                          dangerouslySetInnerHTML={{ __html: highlightTerm ? highlightText(item.title, highlightTerm) : item.title }}
+                          dangerouslySetInnerHTML={{ __html: highlightTerm ? applyHighlight(item.title) : item.title }}
                         />
                         <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                       </div>
@@ -356,6 +351,17 @@ export function ApiResultsSection({
   onExportCSV,
 }: ApiResultsSectionProps) {
   const [activeTab, setActiveTab] = useState<ChannelKey>("blog");
+
+  const smartBlockUrlSet = useMemo(
+    () => createSmartBlockUrlSet(smartBlockResults),
+    [smartBlockResults]
+  );
+
+  const highlightRegex = useMemo(() => {
+    if (!highlightTerm || highlightTerm.trim().length < 2) return null;
+    const escapedTerm = highlightTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(${escapedTerm})`, 'gi');
+  }, [highlightTerm]);
 
   if (isLoading) {
     return (
@@ -433,9 +439,10 @@ export function ApiResultsSection({
                   currentPage={currentPage}
                   maxPage={maxPage}
                   isChannelLoading={isChannelLoading}
-                  smartBlockResults={smartBlockResults}
+                  smartBlockUrlSet={smartBlockUrlSet}
                   onPageChange={(page) => onChannelPageChange(channel.key, page)}
                   highlightTerm={highlightTerm}
+                  highlightRegex={highlightRegex}
                 />
               </TabsContent>
             );
@@ -458,9 +465,10 @@ export function ApiResultsSection({
               currentPage={currentPage}
               maxPage={maxPage}
               isChannelLoading={isChannelLoading}
-              smartBlockResults={smartBlockResults}
+              smartBlockUrlSet={smartBlockUrlSet}
               onPageChange={(page) => onChannelPageChange(channel.key, page)}
               highlightTerm={highlightTerm}
+              highlightRegex={highlightRegex}
             />
           );
         })}
