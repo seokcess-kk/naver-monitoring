@@ -223,6 +223,142 @@ async function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * 페이지 하단까지 자동 스크롤 (동적 콘텐츠 로딩 트리거)
+ */
+async function autoScrollToBottom(page: Page, maxScrolls: number = 5): Promise<void> {
+  try {
+    await page.evaluate(async (maxScrolls) => {
+      const scrollDelay = 300;
+      let scrollCount = 0;
+      let lastHeight = document.body.scrollHeight;
+      
+      while (scrollCount < maxScrolls) {
+        window.scrollTo(0, document.body.scrollHeight);
+        await new Promise(r => setTimeout(r, scrollDelay));
+        
+        const newHeight = document.body.scrollHeight;
+        if (newHeight === lastHeight) break;
+        lastHeight = newHeight;
+        scrollCount++;
+      }
+      
+      window.scrollTo(0, 0);
+    }, maxScrolls);
+  } catch {
+    // 스크롤 실패는 무시
+  }
+}
+
+/**
+ * "더보기/펼치기/전체보기" 버튼 클릭 (접힌 콘텐츠 펼치기)
+ */
+async function clickExpandButtons(page: Page): Promise<number> {
+  try {
+    const clickedCount = await page.evaluate(() => {
+      const expandTexts = ["더보기", "펼치기", "전체보기", "계속 읽기", "본문 전체보기", "more", "展开"];
+      const ariaLabels = ["더보기", "펼치기", "전체보기", "expand", "show more"];
+      let clicked = 0;
+      
+      // 텍스트 기반 버튼 찾기
+      const allElements = document.querySelectorAll("button, a, span, div");
+      allElements.forEach((el) => {
+        const text = el.textContent?.trim().toLowerCase() || "";
+        const isExpandText = expandTexts.some(t => text.includes(t.toLowerCase()));
+        
+        if (isExpandText && el instanceof HTMLElement) {
+          const style = window.getComputedStyle(el);
+          if (style.display !== "none" && style.visibility !== "hidden") {
+            el.click();
+            clicked++;
+          }
+        }
+      });
+      
+      // aria-label 기반 버튼 찾기
+      ariaLabels.forEach((label) => {
+        const selector = `[aria-label*="${label}"], [title*="${label}"]`;
+        const buttons = document.querySelectorAll(selector);
+        buttons.forEach((btn) => {
+          if (btn instanceof HTMLElement) {
+            const style = window.getComputedStyle(btn);
+            if (style.display !== "none" && style.visibility !== "hidden") {
+              btn.click();
+              clicked++;
+            }
+          }
+        });
+      });
+      
+      // 네이버 블로그 전용 셀렉터
+      const naverExpandSelectors = [
+        ".se-oglink-summary-container-toggle",
+        ".se-module-text-expand",
+        ".btn_more",
+        ".u_btn_more",
+        ".more_btn",
+        "[class*='_expand']",
+        "[class*='_more']",
+      ];
+      
+      naverExpandSelectors.forEach((sel) => {
+        try {
+          const elements = document.querySelectorAll(sel);
+          elements.forEach((el) => {
+            if (el instanceof HTMLElement) {
+              el.click();
+              clicked++;
+            }
+          });
+        } catch {}
+      });
+      
+      return clicked;
+    });
+    
+    if (clickedCount > 0) {
+      console.log(`[Extractor] Clicked ${clickedCount} expand buttons`);
+      await delay(500);
+    }
+    
+    return clickedCount;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * 스크롤 + 더보기 클릭 후 콘텐츠 재추출
+ */
+async function expandAndExtract(
+  page: Page,
+  selectors: string[],
+  initialContent: string | null,
+  minLength: number = 100
+): Promise<string | null> {
+  const initialLen = initialContent?.length || 0;
+  
+  // 1. 자동 스크롤
+  await autoScrollToBottom(page, 5);
+  
+  // 2. 더보기 버튼 클릭
+  await clickExpandButtons(page);
+  
+  // 3. 추가 대기 (동적 콘텐츠 로딩)
+  await delay(800);
+  
+  // 4. 콘텐츠 재추출
+  const newContent = await extractWithSelectors(page, selectors, minLength);
+  const newLen = newContent?.length || 0;
+  
+  if (newLen > initialLen) {
+    console.log(`[Extractor] Content expanded: ${initialLen} → ${newLen} chars (+${newLen - initialLen})`);
+    return newContent;
+  }
+  
+  return initialContent;
+}
+
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
@@ -547,9 +683,14 @@ async function extractBlogContent(url: string): Promise<string | null> {
     async (page) => {
       await page.waitForSelector(BLOG_SELECTORS.slice(0, 5).join(", "), { timeout: 8000 }).catch(() => {});
 
-      const textContent = await extractWithSelectors(page, BLOG_SELECTORS);
-      if (textContent && textContent.length > 100) {
-        const cleaned = textContent.replace(/\s+/g, " ").trim();
+      // 초기 콘텐츠 추출
+      const initialContent = await extractWithSelectors(page, BLOG_SELECTORS);
+      
+      // 스크롤 + 더보기 클릭 후 재추출
+      const expandedContent = await expandAndExtract(page, BLOG_SELECTORS, initialContent);
+      
+      if (expandedContent && expandedContent.length > 100) {
+        const cleaned = expandedContent.replace(/\s+/g, " ").trim();
         console.log(`[Extractor] Blog success: ${cleaned.length} chars`);
         return cleaned.slice(0, 6000);
       }
@@ -576,7 +717,13 @@ async function extractCafeContentMobile(url: string): Promise<string | null> {
       logPrefix: "CafeMobile",
     },
     async (page) => {
-      const articleContent = await extractWithSelectors(page, CAFE_SELECTORS, 20);
+      // 초기 콘텐츠 추출
+      const initialContent = await extractWithSelectors(page, CAFE_SELECTORS, 20);
+      
+      // 스크롤 + 더보기 클릭 후 재추출
+      const expandedContent = await expandAndExtract(page, CAFE_SELECTORS, initialContent, 20);
+      
+      const articleContent = expandedContent || initialContent;
       const commentContent = await extractAllComments(page, CAFE_COMMENT_SELECTORS);
 
       let combinedContent = "";
@@ -674,9 +821,14 @@ async function extractNewsContent(url: string): Promise<string | null> {
       logPrefix: "News",
     },
     async (page) => {
-      const textContent = await extractWithSelectors(page, NEWS_SELECTORS);
-      if (textContent && textContent.length > 100) {
-        const cleaned = textContent.replace(/\s+/g, " ").trim();
+      // 초기 콘텐츠 추출
+      const initialContent = await extractWithSelectors(page, NEWS_SELECTORS);
+      
+      // 스크롤 + 더보기 클릭 후 재추출
+      const expandedContent = await expandAndExtract(page, NEWS_SELECTORS, initialContent);
+      
+      if (expandedContent && expandedContent.length > 100) {
+        const cleaned = expandedContent.replace(/\s+/g, " ").trim();
         console.log(`[Extractor] News success: ${cleaned.length} chars`);
         return cleaned.slice(0, 6000);
       }
@@ -697,9 +849,14 @@ async function extractViewContent(url: string): Promise<string | null> {
       logPrefix: "View",
     },
     async (page) => {
-      const textContent = await extractWithSelectors(page, VIEW_SELECTORS);
-      if (textContent && textContent.length > 100) {
-        const cleaned = textContent.replace(/\s+/g, " ").trim();
+      // 초기 콘텐츠 추출
+      const initialContent = await extractWithSelectors(page, VIEW_SELECTORS);
+      
+      // 스크롤 + 더보기 클릭 후 재추출
+      const expandedContent = await expandAndExtract(page, VIEW_SELECTORS, initialContent);
+      
+      if (expandedContent && expandedContent.length > 100) {
+        const cleaned = expandedContent.replace(/\s+/g, " ").trim();
         console.log(`[Extractor] VIEW success: ${cleaned.length} chars`);
         return cleaned.slice(0, 6000);
       }

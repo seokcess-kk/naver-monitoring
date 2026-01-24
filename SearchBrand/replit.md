@@ -8,6 +8,13 @@
 
 ## Recent Changes
 
+### 2026-01-24 콘텐츠 추출 강화
+- **자동 스크롤**: 페이지 하단까지 스크롤하여 동적 콘텐츠 로딩 트리거
+- **더보기 버튼 클릭**: 텍스트 기반(더보기/펼치기/전체보기) + aria-label 기반 버튼 자동 클릭
+- **네이버 전용 셀렉터**: .se-oglink-summary-container-toggle 등 플랫폼별 확장 버튼 처리
+- **적용 범위**: extractBlogContent, extractCafeContentMobile, extractViewContent, extractNewsContent
+- **콘텐츠 증가 로깅**: 스크롤/클릭 후 본문 길이 변화 추적
+
 ### 2026-01-23 보안 및 성능 개선
 - **XSS 방지**: DOMPurify로 외부 HTML sanitization (허용: b, strong, em, i, mark, br)
 - **레이스 컨디션 방지**: AbortController로 빠른 연속 검색 시 이전 요청 취소
