@@ -82,6 +82,7 @@ export const sovScores = pgTable("sov_scores", {
   semanticScore: varchar("semantic_score").notNull(),
   combinedScore: varchar("combined_score").notNull(),
   isRelevant: varchar("is_relevant", { length: 5 }).notNull(),
+  needsReview: varchar("needs_review", { length: 5 }).default("false"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_sov_scores_exposure_id").on(table.exposureId),

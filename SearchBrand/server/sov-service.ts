@@ -633,7 +633,9 @@ export async function executeSovRun(runId: string): Promise<void> {
                 metadata.description || "",
               ].filter(Boolean).join(" ");
               
-              if (metadataText.length > 10) {
+              const MIN_METADATA_LENGTH = 20;
+              
+              if (metadataText.length >= MIN_METADATA_LENGTH) {
                 let hasMatchingBrand = false;
                 for (const brand of run.brands) {
                   if (checkBrandMatch(metadataText, brand)) {
@@ -647,7 +649,18 @@ export async function executeSovRun(runId: string): Promise<void> {
                   finalStatus = "success_metadata";
                   console.log(`[SOV] Metadata fallback success: ${metadataText.length} chars with brand match`);
                 } else {
-                  console.log(`[SOV] Metadata extracted but no brand match found`);
+                  // 브랜드 매칭 없어도 시장 키워드 매칭 시 low_confidence로 저장
+                  const marketKeywordLower = run.marketKeyword.toLowerCase();
+                  const metadataLower = metadataText.toLowerCase();
+                  const hasMarketKeyword = metadataLower.includes(marketKeywordLower);
+                  
+                  if (hasMarketKeyword) {
+                    finalContent = metadataText;
+                    finalStatus = "success_metadata_low";
+                    console.log(`[SOV] Metadata fallback low confidence: market keyword "${run.marketKeyword}" found, no brand match`);
+                  } else {
+                    console.log(`[SOV] Metadata extracted but no brand/market keyword match found`);
+                  }
                 }
               }
             }
@@ -674,6 +687,9 @@ export async function executeSovRun(runId: string): Promise<void> {
           .where(eq(sovExposures.id, exposure.id));
 
         // 2. 임베딩 단계 (별도 타임아웃, 콘텐츠가 있을 때만)
+        // low_confidence 상태는 SOV 계산에서 제외하되 점수는 기록
+        const isLowConfidence = finalStatus === "success_metadata_low";
+        
         if (finalContent) {
           try {
             const contentEmbedding = await executeWithTimeout(
@@ -692,6 +708,9 @@ export async function executeSovRun(runId: string): Promise<void> {
               const combinedScore = calculateCombinedScore(ruleScore, semanticScore);
               const isRelevant = brandFound || ruleScore >= 0.8 || combinedScore >= RELEVANCE_THRESHOLD;
 
+              // low_confidence인 경우 needsReview 플래그 추가
+              const needsReview = isLowConfidence ? "true" : "false";
+
               await db.insert(sovScores).values({
                 exposureId: exposure.id,
                 brand,
@@ -699,9 +718,11 @@ export async function executeSovRun(runId: string): Promise<void> {
                 semanticScore: semanticScore.toFixed(4),
                 combinedScore: combinedScore.toFixed(4),
                 isRelevant: isRelevant ? "true" : "false",
+                needsReview,
               });
 
-              if (isRelevant) {
+              // low_confidence는 SOV 계산에서 제외
+              if (isRelevant && !isLowConfidence) {
                 brandExposureCounts.set(
                   brand,
                   (brandExposureCounts.get(brand) || 0) + 1
