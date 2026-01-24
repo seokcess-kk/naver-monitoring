@@ -429,7 +429,25 @@ export async function getSovResultsByTypeForRun(runId: string): Promise<SovResul
 }
 
 const SOV_RUN_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes max for entire run
-const PER_EXPOSURE_TIMEOUT_MS = 30 * 1000; // 30 seconds per exposure
+const EXTRACTION_TIMEOUT_MS = 45 * 1000; // 45 seconds for content extraction (includes OCR)
+const EMBEDDING_TIMEOUT_MS = 15 * 1000; // 15 seconds for embedding generation
+
+interface FailureStats {
+  extractionTimeout: number;
+  extractionFailed: number;
+  embeddingTimeout: number;
+  embeddingFailed: number;
+  total: number;
+}
+
+function formatFailureStats(stats: FailureStats): string {
+  const parts: string[] = [];
+  if (stats.extractionTimeout > 0) parts.push(`추출 타임아웃 ${stats.extractionTimeout}건`);
+  if (stats.extractionFailed > 0) parts.push(`추출 실패 ${stats.extractionFailed}건`);
+  if (stats.embeddingTimeout > 0) parts.push(`임베딩 타임아웃 ${stats.embeddingTimeout}건`);
+  if (stats.embeddingFailed > 0) parts.push(`임베딩 실패 ${stats.embeddingFailed}건`);
+  return parts.length > 0 ? ` (${parts.join(", ")})` : "";
+}
 
 async function updateRunStatus(
   runId: string,
@@ -578,17 +596,35 @@ export async function executeSovRun(runId: string): Promise<void> {
       );
     }
 
+    const failureStats: FailureStats = {
+      extractionTimeout: 0,
+      extractionFailed: 0,
+      embeddingTimeout: 0,
+      embeddingFailed: 0,
+      total: 0,
+    };
+
     const extractionTasks = exposures.map((exposure) =>
       contentExtractionLimit(async () => {
-        const processExposure = async (): Promise<void> => {
-          const { content, status } = await extractContent(exposure.url, exposure.description || undefined, statsCollector);
+        let finalContent: string | null = null;
+        let finalStatus = "failed";
+        let embeddingSuccess = false;
 
-          let finalContent = content;
-          let finalStatus = status;
+        // 1. 콘텐츠 추출 단계 (별도 타임아웃)
+        try {
+          const extractionResult = await executeWithTimeout(
+            extractContent(exposure.url, exposure.description || undefined, statsCollector),
+            EXTRACTION_TIMEOUT_MS,
+            `추출 타임아웃: ${exposure.url.slice(0, 40)}...`
+          );
+          
+          finalContent = extractionResult.content;
+          finalStatus = extractionResult.status;
 
-          if (!content) {
+          // 추출 실패 시 메타데이터 fallback
+          if (!finalContent) {
             console.log(`[SOV] Content extraction failed for ${exposure.url}, trying metadata fallback...`);
-            const metadata = await extractMetadata(exposure.url);
+            const metadata = await withTimeout(extractMetadata(exposure.url), 10000, { title: null, description: null, success: false });
             
             if (metadata.success) {
               const metadataText = [
@@ -616,20 +652,34 @@ export async function executeSovRun(runId: string): Promise<void> {
               }
             }
           }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          if (errorMsg.includes("타임아웃")) {
+            failureStats.extractionTimeout++;
+            console.error(`[SOV] Extraction timeout for ${exposure.id}: ${errorMsg}`);
+          } else {
+            failureStats.extractionFailed++;
+            console.error(`[SOV] Extraction failed for ${exposure.id}: ${errorMsg}`);
+          }
+          failureStats.total++;
+        }
 
-          await db
-            .update(sovExposures)
-            .set({
-              extractedContent: finalContent,
-              extractionStatus: finalStatus,
-            })
-            .where(eq(sovExposures.id, exposure.id));
+        // DB에 추출 결과 저장 (성공/실패 모두)
+        await db
+          .update(sovExposures)
+          .set({
+            extractedContent: finalContent,
+            extractionStatus: finalStatus,
+          })
+          .where(eq(sovExposures.id, exposure.id));
 
-          if (finalContent) {
+        // 2. 임베딩 단계 (별도 타임아웃, 콘텐츠가 있을 때만)
+        if (finalContent) {
+          try {
             const contentEmbedding = await executeWithTimeout(
               getEmbedding(finalContent),
-              20000,
-              "콘텐츠 임베딩 타임아웃"
+              EMBEDDING_TIMEOUT_MS,
+              "임베딩 타임아웃"
             );
 
             for (const brand of run.brands) {
@@ -663,30 +713,32 @@ export async function executeSovRun(runId: string): Promise<void> {
                 );
               }
             }
+            embeddingSuccess = true;
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            if (errorMsg.includes("타임아웃")) {
+              failureStats.embeddingTimeout++;
+              console.error(`[SOV] Embedding timeout for ${exposure.id}: ${errorMsg}`);
+            } else {
+              failureStats.embeddingFailed++;
+              console.error(`[SOV] Embedding failed for ${exposure.id}: ${errorMsg}`);
+            }
+            failureStats.total++;
           }
-        };
-
-        try {
-          await executeWithTimeout(
-            processExposure(),
-            PER_EXPOSURE_TIMEOUT_MS,
-            `URL 처리 타임아웃: ${exposure.url.slice(0, 50)}...`
-          );
-          
-          processedCount++;
-          const elapsedSec = Math.round((Date.now() - startTime) / 1000);
-          const remainingItems = flatItems.length - processedCount;
-          const avgSecPerItem = processedCount > 0 ? elapsedSec / processedCount : 3;
-          const estimatedRemainingSec = Math.round(remainingItems * avgSecPerItem);
-          
-          const statusMsg = `${processedCount}/${flatItems.length} 분석 완료 (예상 ${estimatedRemainingSec}초 남음)`;
-          await updateRunStatus(runId, "analyzing", flatItems.length, processedCount, undefined, statusMsg);
-        } catch (error) {
-          console.error(`[SOV] Error processing exposure ${exposure.id}:`, error);
-          processedCount++;
-          await updateRunStatus(runId, "analyzing", flatItems.length, processedCount, undefined, 
-            `${processedCount}/${flatItems.length} 처리 중 (일부 오류 발생)`);
         }
+
+        // 진행 상태 업데이트
+        processedCount++;
+        const elapsedSec = Math.round((Date.now() - startTime) / 1000);
+        const remainingItems = flatItems.length - processedCount;
+        const avgSecPerItem = processedCount > 0 ? elapsedSec / processedCount : 3;
+        const estimatedRemainingSec = Math.round(remainingItems * avgSecPerItem);
+        
+        let statusMsg = `${processedCount}/${flatItems.length} 분석 완료 (예상 ${estimatedRemainingSec}초 남음)`;
+        if (failureStats.total > 0) {
+          statusMsg += formatFailureStats(failureStats);
+        }
+        await updateRunStatus(runId, "analyzing", flatItems.length, processedCount, undefined, statusMsg);
       })
     );
 
