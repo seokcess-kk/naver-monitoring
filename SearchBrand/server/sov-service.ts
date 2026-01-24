@@ -219,7 +219,25 @@ async function extractTextFromImages(imageUrls: string[]): Promise<string | null
   }
 }
 
-const OCR_ELIGIBLE_TYPES = ["blog", "cafe", "post"];
+const OCR_ELIGIBLE_TYPES = ["blog", "cafe", "post", "news", "view"];
+const OCR_MIN_CONTENT_LENGTH = 200;
+
+async function tryOcrExtraction(
+  url: string,
+  urlType: string
+): Promise<string | null> {
+  console.log(`[SOV] Trying image OCR for: ${url}`);
+  const imageUrls = await withTimeout(extractImagesFromPage(url), 15000, []);
+  if (imageUrls.length > 0) {
+    const imageText = await withTimeout(extractTextFromImages(imageUrls), 20000, null);
+    if (imageText) {
+      console.log(`[SOV] OCR success: ${imageText.length} chars from ${imageUrls.length} images`);
+      return imageText;
+    }
+  }
+  console.log(`[SOV] OCR failed: no text extracted from images`);
+  return null;
+}
 
 async function extractContent(
   url: string, 
@@ -228,32 +246,40 @@ async function extractContent(
 ): Promise<{ content: string | null; status: string; urlType: string }> {
   const result = await extractContentNew(url, apiDescription, { statsCollector });
   
+  const isOcrEligible = OCR_ELIGIBLE_TYPES.some(type => 
+    result.urlType.toLowerCase().includes(type) || url.toLowerCase().includes(type)
+  );
+  
+  // 콘텐츠가 너무 짧은 경우 OCR 시도 (이미지 중심 콘텐츠 대응)
+  if (result.content && result.content.length < OCR_MIN_CONTENT_LENGTH && isOcrEligible) {
+    console.log(`[SOV] Content too short (${result.content.length} chars), trying OCR supplement`);
+    const ocrText = await tryOcrExtraction(url, result.urlType);
+    if (ocrText && ocrText.length > result.content.length) {
+      // OCR 결과가 더 길면 기존 콘텐츠와 합침
+      const combined = `${result.content} ${ocrText}`;
+      console.log(`[SOV] OCR supplemented: ${result.content.length} → ${combined.length} chars`);
+      return { content: combined.slice(0, 8000), status: "success_ocr", urlType: result.urlType };
+    }
+  }
+  
   if (result.content) {
     return { content: result.content, status: result.status, urlType: result.urlType };
   }
   
-  if (result.status === "failed") {
-    const isOcrEligible = OCR_ELIGIBLE_TYPES.some(type => 
-      result.urlType.toLowerCase().includes(type) || url.includes(type)
-    );
-    
-    if (isOcrEligible && (!apiDescription || apiDescription.length < 50)) {
-      console.log(`[SOV] Text extraction failed, trying image OCR for: ${url}`);
-      const imageUrls = await withTimeout(extractImagesFromPage(url), 15000, []);
-      if (imageUrls.length > 0) {
-        const imageText = await withTimeout(extractTextFromImages(imageUrls), 20000, null);
-        if (imageText) {
-          return { content: imageText, status: "success_ocr", urlType: result.urlType };
-        }
-      }
-    } else {
-      console.log(`[SOV] Skipping OCR for ${result.urlType} (not eligible or has description)`);
+  // 추출 실패 시 OCR 시도
+  if (result.status === "failed" && isOcrEligible) {
+    const ocrText = await tryOcrExtraction(url, result.urlType);
+    if (ocrText) {
+      return { content: ocrText, status: "success_ocr", urlType: result.urlType };
     }
-    
-    if (apiDescription && apiDescription.length > 30) {
-      console.log(`[SOV] Using API description fallback: ${apiDescription.length} chars`);
-      return { content: apiDescription, status: "success_api", urlType: result.urlType };
-    }
+  } else if (result.status === "failed" && !isOcrEligible) {
+    console.log(`[SOV] Skipping OCR for ${result.urlType} (not eligible)`);
+  }
+  
+  // API description fallback
+  if (apiDescription && apiDescription.length > 30) {
+    console.log(`[SOV] Using API description fallback: ${apiDescription.length} chars`);
+    return { content: apiDescription, status: "success_api", urlType: result.urlType };
   }
   
   return { content: result.content, status: result.status, urlType: result.urlType };

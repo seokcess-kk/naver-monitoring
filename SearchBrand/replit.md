@@ -9,6 +9,10 @@
 ## Recent Changes
 
 ### 2026-01-24 콘텐츠 추출 강화
+- **OCR 적용 범위 확장**: blog, cafe, post → + news, view 추가
+  - 추출 실패 시 OCR 시도
+  - 콘텐츠가 200자 미만이면 OCR 보충 시도 (이미지 중심 콘텐츠 대응)
+  - OCR 성공 시 기존 텍스트와 합쳐서 반환, status: "success_ocr"
 - **블로그 PC fallback**: 모바일 추출 실패 시 데스크톱 버전으로 재시도
   - `extractBlogContentMobile` → `extractBlogContentPC` 순차 시도
   - PC 버전은 `iframe#mainFrame` 내부 콘텐츠 자동 탐색
