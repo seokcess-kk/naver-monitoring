@@ -669,16 +669,16 @@ async function extractAllComments(page: Page, selectors: string[]): Promise<stri
   }, selectors);
 }
 
-async function extractBlogContent(url: string): Promise<string | null> {
+async function extractBlogContentMobile(url: string): Promise<string | null> {
   const mobileUrl = convertBlogUrlToMobile(url);
-  console.log(`[Extractor] Blog extraction: ${mobileUrl}`);
+  console.log(`[Extractor] Blog mobile extraction: ${mobileUrl}`);
 
   return withBrowserPage(
     {
       url: mobileUrl,
       userAgent: "mobile",
       viewport: { width: 390, height: 844 },
-      logPrefix: "Blog",
+      logPrefix: "BlogMobile",
     },
     async (page) => {
       await page.waitForSelector(BLOG_SELECTORS.slice(0, 5).join(", "), { timeout: 8000 }).catch(() => {});
@@ -691,12 +691,73 @@ async function extractBlogContent(url: string): Promise<string | null> {
       
       if (expandedContent && expandedContent.length > 100) {
         const cleaned = expandedContent.replace(/\s+/g, " ").trim();
-        console.log(`[Extractor] Blog success: ${cleaned.length} chars`);
+        console.log(`[Extractor] Blog mobile success: ${cleaned.length} chars`);
         return cleaned.slice(0, 6000);
       }
       return null;
     }
   );
+}
+
+async function extractBlogContentPC(url: string): Promise<string | null> {
+  // PC URL은 원본 URL 유지 (blog.naver.com)
+  const pcUrl = url.replace("m.blog.naver.com", "blog.naver.com");
+  console.log(`[Extractor] Blog PC extraction: ${pcUrl}`);
+
+  return withBrowserPage(
+    {
+      url: pcUrl,
+      userAgent: "desktop",
+      waitUntil: "networkidle2",
+      delayMs: 2000,
+      logPrefix: "BlogPC",
+    },
+    async (page) => {
+      // PC 블로그는 iframe 내부에 콘텐츠가 있을 수 있음
+      const iframeSrc = await page.evaluate(() => {
+        const iframe = document.querySelector('iframe#mainFrame') as HTMLIFrameElement;
+        return iframe?.getAttribute('src') || '';
+      });
+
+      if (iframeSrc) {
+        const fullIframeSrc = iframeSrc.startsWith('//')
+          ? `https:${iframeSrc}`
+          : iframeSrc.startsWith('http')
+            ? iframeSrc
+            : `https://blog.naver.com${iframeSrc}`;
+        
+        console.log(`[Extractor] Blog PC navigating to iframe: ${fullIframeSrc}`);
+        await page.goto(fullIframeSrc, { waitUntil: "domcontentloaded", timeout: 20000 });
+        await delay(1500);
+      }
+
+      await page.waitForSelector(BLOG_SELECTORS.slice(0, 5).join(", "), { timeout: 8000 }).catch(() => {});
+
+      // 초기 콘텐츠 추출
+      const initialContent = await extractWithSelectors(page, BLOG_SELECTORS);
+      
+      // 스크롤 + 더보기 클릭 후 재추출
+      const expandedContent = await expandAndExtract(page, BLOG_SELECTORS, initialContent);
+      
+      if (expandedContent && expandedContent.length > 100) {
+        const cleaned = expandedContent.replace(/\s+/g, " ").trim();
+        console.log(`[Extractor] Blog PC success: ${cleaned.length} chars`);
+        return cleaned.slice(0, 6000);
+      }
+      return null;
+    }
+  );
+}
+
+async function extractBlogContent(url: string): Promise<string | null> {
+  // 1. 모바일 추출 시도
+  let content = await extractBlogContentMobile(url);
+  if (content) return content;
+  
+  // 2. 모바일 실패 시 PC fallback
+  console.log(`[Extractor] Blog mobile failed, trying PC...`);
+  content = await extractBlogContentPC(url);
+  return content;
 }
 
 async function extractCafeContentMobile(url: string): Promise<string | null> {

@@ -9,6 +9,9 @@
 ## Recent Changes
 
 ### 2026-01-24 콘텐츠 추출 강화
+- **블로그 PC fallback**: 모바일 추출 실패 시 데스크톱 버전으로 재시도
+  - `extractBlogContentMobile` → `extractBlogContentPC` 순차 시도
+  - PC 버전은 `iframe#mainFrame` 내부 콘텐츠 자동 탐색
 - **자동 스크롤**: 페이지 하단까지 스크롤하여 동적 콘텐츠 로딩 트리거
 - **더보기 버튼 클릭**: 텍스트 기반(더보기/펼치기/전체보기) + aria-label 기반 버튼 자동 클릭
 - **네이버 전용 셀렉터**: .se-oglink-summary-container-toggle 등 플랫폼별 확장 버튼 처리
