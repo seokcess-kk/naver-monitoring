@@ -167,14 +167,68 @@ function formatDate(dateStr?: string): string | null {
   return null;
 }
 
-function createSmartBlockUrlSet(smartBlockResults: SmartBlockResult[]): Set<string> {
-  const urlSet = new Set<string>();
+function getSectionChannel(sectionTitle: string, postUrl: string): ChannelKey | null {
+  const title = sectionTitle.toLowerCase();
+  const url = postUrl.toLowerCase();
+  
+  if (title.includes("뉴스") || title.includes("news")) {
+    return "news";
+  }
+  
+  if (title.includes("지식") || title.includes("kin")) {
+    return "kin";
+  }
+  
+  if (title.includes("카페") || title.includes("cafe")) {
+    return "cafe";
+  }
+  
+  if (
+    title.includes("인플루언서") ||
+    title.includes("브랜드") ||
+    title.includes("블로그") ||
+    title.includes("influencer") ||
+    title.includes("ugc")
+  ) {
+    return "blog";
+  }
+  
+  if (url.includes("blog.naver.com") || url.includes("m.blog.naver.com")) {
+    return "blog";
+  }
+  if (url.includes("cafe.naver.com") || url.includes("m.cafe.naver.com")) {
+    return "cafe";
+  }
+  if (url.includes("kin.naver.com") || url.includes("m.kin.naver.com")) {
+    return "kin";
+  }
+  if (url.includes("news.naver.com") || url.includes("n.news.naver.com")) {
+    return "news";
+  }
+  
+  return null;
+}
+
+type ChannelUrlSets = Record<ChannelKey, Set<string>>;
+
+function createChannelSmartBlockUrlSets(smartBlockResults: SmartBlockResult[]): ChannelUrlSets {
+  const urlSets: ChannelUrlSets = {
+    blog: new Set<string>(),
+    cafe: new Set<string>(),
+    kin: new Set<string>(),
+    news: new Set<string>(),
+  };
+  
   for (const section of smartBlockResults) {
     for (const post of section.posts) {
-      urlSet.add(normalizeUrl(post.url));
+      const channel = getSectionChannel(section.sectionTitle, post.url);
+      if (channel) {
+        urlSets[channel].add(normalizeUrl(post.url));
+      }
     }
   }
-  return urlSet;
+  
+  return urlSets;
 }
 
 function ChannelCard({
@@ -353,8 +407,8 @@ export function ApiResultsSection({
 }: ApiResultsSectionProps) {
   const [activeTab, setActiveTab] = useState<ChannelKey>("blog");
 
-  const smartBlockUrlSet = useMemo(
-    () => createSmartBlockUrlSet(smartBlockResults),
+  const channelUrlSets = useMemo(
+    () => createChannelSmartBlockUrlSets(smartBlockResults),
     [smartBlockResults]
   );
 
@@ -446,7 +500,7 @@ export function ApiResultsSection({
                   currentPage={currentPage}
                   maxPage={maxPage}
                   isChannelLoading={isChannelLoading}
-                  smartBlockUrlSet={smartBlockUrlSet}
+                  smartBlockUrlSet={channelUrlSets[channel.key]}
                   onPageChange={(page) => onChannelPageChange(channel.key, page)}
                   highlightTerm={highlightTerm}
                   highlightRegex={highlightRegex}
@@ -472,7 +526,7 @@ export function ApiResultsSection({
               currentPage={currentPage}
               maxPage={maxPage}
               isChannelLoading={isChannelLoading}
-              smartBlockUrlSet={smartBlockUrlSet}
+              smartBlockUrlSet={channelUrlSets[channel.key]}
               onPageChange={(page) => onChannelPageChange(channel.key, page)}
               highlightTerm={highlightTerm}
               highlightRegex={highlightRegex}
