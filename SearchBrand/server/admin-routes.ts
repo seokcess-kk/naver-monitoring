@@ -253,7 +253,9 @@ router.get("/sov-runs", requireAdmin, async (req: AdminRequest, res: Response) =
       conditions.push(gte(sovRuns.createdAt, new Date(startDate)));
     }
     if (endDate && typeof endDate === "string") {
-      conditions.push(lte(sovRuns.createdAt, new Date(endDate)));
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(lte(sovRuns.createdAt, endOfDay));
     }
     if (keyword && typeof keyword === "string") {
       conditions.push(ilike(sovRuns.marketKeyword, `%${keyword}%`));
@@ -315,7 +317,9 @@ router.get("/search-logs", requireAdmin, async (req: AdminRequest, res: Response
       conditions.push(gte(searchLogs.createdAt, new Date(startDate)));
     }
     if (endDate && typeof endDate === "string") {
-      conditions.push(lte(searchLogs.createdAt, new Date(endDate)));
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(lte(searchLogs.createdAt, endOfDay));
     }
     if (keyword && typeof keyword === "string") {
       conditions.push(ilike(searchLogs.keyword, `%${keyword}%`));
@@ -1142,7 +1146,9 @@ router.get("/export/search-logs", requireAdmin, async (req: AdminRequest, res: R
       conditions.push(gte(searchLogs.createdAt, new Date(startDate)));
     }
     if (endDate && typeof endDate === "string") {
-      conditions.push(lte(searchLogs.createdAt, new Date(endDate)));
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(lte(searchLogs.createdAt, endOfDay));
     }
     if (keyword && typeof keyword === "string") {
       conditions.push(ilike(searchLogs.keyword, `%${keyword}%`));
@@ -1187,7 +1193,9 @@ router.get("/export/sov-runs", requireAdmin, async (req: AdminRequest, res: Resp
       conditions.push(gte(sovRuns.createdAt, new Date(startDate)));
     }
     if (endDate && typeof endDate === "string") {
-      conditions.push(lte(sovRuns.createdAt, new Date(endDate)));
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(lte(sovRuns.createdAt, endOfDay));
     }
     
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -1226,7 +1234,9 @@ router.get("/export/place-review-jobs", requireAdmin, async (req: AdminRequest, 
       conditions.push(gte(placeReviewJobs.createdAt, new Date(startDate)));
     }
     if (endDate && typeof endDate === "string") {
-      conditions.push(lte(placeReviewJobs.createdAt, new Date(endDate)));
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(lte(placeReviewJobs.createdAt, endOfDay));
     }
     
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -1373,7 +1383,9 @@ router.get("/api-usage/stats", requireAdmin, async (req: AdminRequest, res: Resp
       conditions.push(gte(apiUsageLogs.createdAt, new Date(startDate)));
     }
     if (endDate && typeof endDate === "string") {
-      conditions.push(lte(apiUsageLogs.createdAt, new Date(endDate)));
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(lte(apiUsageLogs.createdAt, endOfDay));
     }
     if (apiType && typeof apiType === "string") {
       conditions.push(eq(apiUsageLogs.apiType, apiType));
@@ -1576,7 +1588,9 @@ router.get("/api-usage/logs", requireAdmin, async (req: AdminRequest, res: Respo
       conditions.push(gte(apiUsageLogs.createdAt, new Date(startDate)));
     }
     if (endDate && typeof endDate === "string") {
-      conditions.push(lte(apiUsageLogs.createdAt, new Date(endDate)));
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(lte(apiUsageLogs.createdAt, endOfDay));
     }
     
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -1635,7 +1649,9 @@ router.get("/users/:userId/usage", requireAdmin, async (req: AdminRequest, res: 
       conditions.push(gte(apiUsageLogs.createdAt, new Date(startDate)));
     }
     if (endDate && typeof endDate === "string") {
-      conditions.push(lte(apiUsageLogs.createdAt, new Date(endDate)));
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(lte(apiUsageLogs.createdAt, endOfDay));
     }
     
     const whereClause = and(...conditions);

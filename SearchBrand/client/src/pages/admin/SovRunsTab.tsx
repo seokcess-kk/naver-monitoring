@@ -17,13 +17,13 @@ export function SovRunsTab() {
   const limit = 20;
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
-  const [draftStatus, setDraftStatus] = useState<string>("");
+  const [draftStatus, setDraftStatus] = useState<string>("all");
   const [draftStartDate, setDraftStartDate] = useState<string>("");
   const [draftEndDate, setDraftEndDate] = useState<string>("");
   const [draftKeyword, setDraftKeyword] = useState<string>("");
 
   const [appliedFilters, setAppliedFilters] = useState({
-    status: "",
+    status: "all",
     startDate: "",
     endDate: "",
     keyword: "",
@@ -36,7 +36,7 @@ export function SovRunsTab() {
         limit: limit.toString(),
         offset: (page * limit).toString(),
       });
-      if (appliedFilters.status) params.append("status", appliedFilters.status);
+      if (appliedFilters.status && appliedFilters.status !== "all") params.append("status", appliedFilters.status);
       if (appliedFilters.startDate) params.append("startDate", appliedFilters.startDate);
       if (appliedFilters.endDate) params.append("endDate", appliedFilters.endDate);
       if (appliedFilters.keyword) params.append("keyword", appliedFilters.keyword);
@@ -58,12 +58,12 @@ export function SovRunsTab() {
   };
 
   const handleResetFilters = () => {
-    setDraftStatus("");
+    setDraftStatus("all");
     setDraftStartDate("");
     setDraftEndDate("");
     setDraftKeyword("");
     setAppliedFilters({
-      status: "",
+      status: "all",
       startDate: "",
       endDate: "",
       keyword: "",
@@ -83,7 +83,7 @@ export function SovRunsTab() {
 
   const getAppliedFilterBadges = () => {
     const badges = [];
-    if (appliedFilters.status) {
+    if (appliedFilters.status && appliedFilters.status !== "all") {
       badges.push({ label: "상태", value: getStatusLabel(appliedFilters.status) });
     }
     if (appliedFilters.startDate) badges.push({ label: "시작일", value: appliedFilters.startDate });
@@ -94,7 +94,7 @@ export function SovRunsTab() {
 
   const handleExport = () => {
     const params = new URLSearchParams();
-    if (appliedFilters.status) params.append("status", appliedFilters.status);
+    if (appliedFilters.status && appliedFilters.status !== "all") params.append("status", appliedFilters.status);
     if (appliedFilters.startDate) params.append("startDate", appliedFilters.startDate);
     if (appliedFilters.endDate) params.append("endDate", appliedFilters.endDate);
     window.open(`/api/admin/export/sov-runs?${params}`, "_blank");
@@ -119,7 +119,7 @@ export function SovRunsTab() {
                 <SelectValue placeholder="전체" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">전체</SelectItem>
+                <SelectItem value="all">전체</SelectItem>
                 <SelectItem value="pending">대기</SelectItem>
                 <SelectItem value="processing">처리중</SelectItem>
                 <SelectItem value="completed">완료</SelectItem>

@@ -90,7 +90,9 @@ export async function getAuditLogs(params: GetAuditLogsParams = {}) {
     conditions.push(gte(auditLogs.createdAt, startDate));
   }
   if (endDate) {
-    conditions.push(lte(auditLogs.createdAt, endDate));
+    const endOfDay = new Date(endDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    conditions.push(lte(auditLogs.createdAt, endOfDay));
   }
   
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -116,6 +118,7 @@ export async function getAuditLogs(params: GetAuditLogsParams = {}) {
     db
       .select({ count: sql<number>`count(*)` })
       .from(auditLogs)
+      .leftJoin(users, eq(auditLogs.adminId, users.id))
       .where(whereClause),
   ]);
   

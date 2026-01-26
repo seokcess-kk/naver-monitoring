@@ -16,14 +16,14 @@ export function SearchLogsTab() {
   const [page, setPage] = useState(0);
   const limit = 30;
 
-  const [draftSearchType, setDraftSearchType] = useState<string>("");
+  const [draftSearchType, setDraftSearchType] = useState<string>("all");
   const [draftStartDate, setDraftStartDate] = useState<string>("");
   const [draftEndDate, setDraftEndDate] = useState<string>("");
   const [draftKeywordFilter, setDraftKeywordFilter] = useState<string>("");
   const [draftUserIdFilter, setDraftUserIdFilter] = useState<string>("");
 
   const [appliedFilters, setAppliedFilters] = useState({
-    searchType: "",
+    searchType: "all",
     startDate: "",
     endDate: "",
     keyword: "",
@@ -37,7 +37,7 @@ export function SearchLogsTab() {
         limit: limit.toString(),
         offset: (page * limit).toString(),
       });
-      if (appliedFilters.searchType) params.append("searchType", appliedFilters.searchType);
+      if (appliedFilters.searchType && appliedFilters.searchType !== "all") params.append("searchType", appliedFilters.searchType);
       if (appliedFilters.startDate) params.append("startDate", appliedFilters.startDate);
       if (appliedFilters.endDate) params.append("endDate", appliedFilters.endDate);
       if (appliedFilters.keyword) params.append("keyword", appliedFilters.keyword);
@@ -61,13 +61,13 @@ export function SearchLogsTab() {
   };
 
   const handleResetFilters = () => {
-    setDraftSearchType("");
+    setDraftSearchType("all");
     setDraftStartDate("");
     setDraftEndDate("");
     setDraftKeywordFilter("");
     setDraftUserIdFilter("");
     setAppliedFilters({
-      searchType: "",
+      searchType: "all",
       startDate: "",
       endDate: "",
       keyword: "",
@@ -78,7 +78,7 @@ export function SearchLogsTab() {
 
   const getAppliedFilterBadges = () => {
     const badges = [];
-    if (appliedFilters.searchType) {
+    if (appliedFilters.searchType && appliedFilters.searchType !== "all") {
       const labels: Record<string, string> = {
         unified: "통합검색", blog: "블로그", cafe: "카페", 
         kin: "지식iN", news: "뉴스", sov: "SOV"
@@ -94,7 +94,7 @@ export function SearchLogsTab() {
 
   const handleExport = () => {
     const params = new URLSearchParams();
-    if (appliedFilters.searchType) params.append("searchType", appliedFilters.searchType);
+    if (appliedFilters.searchType && appliedFilters.searchType !== "all") params.append("searchType", appliedFilters.searchType);
     if (appliedFilters.startDate) params.append("startDate", appliedFilters.startDate);
     if (appliedFilters.endDate) params.append("endDate", appliedFilters.endDate);
     if (appliedFilters.keyword) params.append("keyword", appliedFilters.keyword);
@@ -116,7 +116,7 @@ export function SearchLogsTab() {
                 <SelectValue placeholder="전체" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">전체</SelectItem>
+                <SelectItem value="all">전체</SelectItem>
                 <SelectItem value="unified">통합검색</SelectItem>
                 <SelectItem value="blog">블로그</SelectItem>
                 <SelectItem value="cafe">카페</SelectItem>

@@ -41,15 +41,15 @@ export function AuditLogsTab() {
   const [page, setPage] = useState(0);
   const limit = 30;
 
-  const [draftAction, setDraftAction] = useState<string>("");
-  const [draftTargetType, setDraftTargetType] = useState<string>("");
+  const [draftAction, setDraftAction] = useState<string>("all");
+  const [draftTargetType, setDraftTargetType] = useState<string>("all");
   const [draftStartDate, setDraftStartDate] = useState<string>("");
   const [draftEndDate, setDraftEndDate] = useState<string>("");
   const [draftAdminEmail, setDraftAdminEmail] = useState<string>("");
 
   const [appliedFilters, setAppliedFilters] = useState({
-    action: "",
-    targetType: "",
+    action: "all",
+    targetType: "all",
     startDate: "",
     endDate: "",
     adminEmail: "",
@@ -62,8 +62,8 @@ export function AuditLogsTab() {
         limit: limit.toString(),
         offset: (page * limit).toString(),
       });
-      if (appliedFilters.action) params.append("action", appliedFilters.action);
-      if (appliedFilters.targetType) params.append("targetType", appliedFilters.targetType);
+      if (appliedFilters.action && appliedFilters.action !== "all") params.append("action", appliedFilters.action);
+      if (appliedFilters.targetType && appliedFilters.targetType !== "all") params.append("targetType", appliedFilters.targetType);
       if (appliedFilters.startDate) params.append("startDate", appliedFilters.startDate);
       if (appliedFilters.endDate) params.append("endDate", appliedFilters.endDate);
       if (appliedFilters.adminEmail) params.append("adminEmail", appliedFilters.adminEmail);
@@ -86,14 +86,14 @@ export function AuditLogsTab() {
   };
 
   const handleResetFilters = () => {
-    setDraftAction("");
-    setDraftTargetType("");
+    setDraftAction("all");
+    setDraftTargetType("all");
     setDraftStartDate("");
     setDraftEndDate("");
     setDraftAdminEmail("");
     setAppliedFilters({
-      action: "",
-      targetType: "",
+      action: "all",
+      targetType: "all",
       startDate: "",
       endDate: "",
       adminEmail: "",
@@ -113,10 +113,10 @@ export function AuditLogsTab() {
 
   const getAppliedFilterBadges = () => {
     const badges = [];
-    if (appliedFilters.action) {
+    if (appliedFilters.action && appliedFilters.action !== "all") {
       badges.push({ label: "작업", value: getActionLabel(appliedFilters.action) });
     }
-    if (appliedFilters.targetType) {
+    if (appliedFilters.targetType && appliedFilters.targetType !== "all") {
       badges.push({ label: "대상", value: getTargetTypeLabel(appliedFilters.targetType) });
     }
     if (appliedFilters.startDate) badges.push({ label: "시작일", value: appliedFilters.startDate });
@@ -198,7 +198,7 @@ export function AuditLogsTab() {
                 <SelectValue placeholder="전체" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">전체</SelectItem>
+                <SelectItem value="all">전체</SelectItem>
                 {actionOptions.map(opt => (
                   <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
@@ -211,7 +211,7 @@ export function AuditLogsTab() {
                 <SelectValue placeholder="전체" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">전체</SelectItem>
+                <SelectItem value="all">전체</SelectItem>
                 {targetTypeOptions.map(opt => (
                   <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
