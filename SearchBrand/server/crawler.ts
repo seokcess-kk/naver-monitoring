@@ -279,7 +279,7 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
 
         // 1. 기존 방식: 템플릿 기반 아이템 추출 시도
         let items = box.querySelectorAll(
-          'div[data-template-id="ugcItem"], div[data-template-id="ugcItemDesk"], div[data-template-id="webItem"], li.bx'
+          'div[data-template-id="ugcItem"], div[data-template-id="ugcItemDesk"], div[data-template-id="ugcItemMo"], div[data-template-id="webItem"], li.bx'
         );
         
         // 2. 대안 방식: 반복 아이템 컨테이너 탐색 (인플루언서 블록 등)
@@ -295,26 +295,40 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
         items.forEach((item) => {
           try {
             // 제목 요소 탐색 (확장된 셀렉터)
-            const titleEl =
+            // 인플루언서 블록: profile-group 외부의 .fds-comps-text.ellipsis2 (콘텐츠 제목)
+            let titleEl =
               item.querySelector(".sds-comps-text-type-headline1") ||
-              item.querySelector(".fds-comps-text.ellipsis2") ||
               item.querySelector(".news_tit") ||
               item.querySelector(".api_txt_lines.tit") ||
-              item.querySelector(".total_tit") ||
-              item.querySelector('[class*="title"]') ||
-              item.querySelector('h3');
+              item.querySelector(".total_tit");
+            
+            // 인플루언서 블록 제목: profile-group 외부의 ellipsis2
+            if (!titleEl) {
+              const ellipsis2Els = Array.from(item.querySelectorAll(".fds-comps-text.ellipsis2"));
+              for (const el of ellipsis2Els) {
+                if (!el.closest(".profile-group") && !el.closest(".sds-comps-profile")) {
+                  titleEl = el;
+                  break;
+                }
+              }
+            }
+            
+            // 기타 fallback
+            if (!titleEl) {
+              titleEl = item.querySelector('[class*="title"]') || item.querySelector('h3');
+            }
 
-            // 설명 요소 탐색 (인플루언서 블록: .fds-comps-text 중 ellipsis2 아닌 것)
+            // 설명 요소 탐색 (인플루언서 블록: .fds-comps-text 중 ellipsis2 아닌 것, profile 외부)
             let summaryEl =
               item.querySelector(".sds-comps-text-type-body1") ||
               item.querySelector(".dsc_txt") ||
               item.querySelector('[class*="desc"]');
             
-            // 인플루언서 블록 설명: ellipsis2 없는 .fds-comps-text
+            // 인플루언서 블록 설명: ellipsis2 없는 .fds-comps-text (profile 외부)
             if (!summaryEl) {
               const fdsTexts = Array.from(item.querySelectorAll(".fds-comps-text"));
               for (const el of fdsTexts) {
-                if (!el.classList.contains("ellipsis2")) {
+                if (!el.classList.contains("ellipsis2") && !el.closest(".profile-group") && !el.closest(".sds-comps-profile")) {
                   summaryEl = el;
                   break;
                 }
