@@ -33,7 +33,7 @@ export default function LandingPage() {
     {
       question: "어떤 채널을 분석하나요?",
       answer:
-        "네이버 블로그, 카페, 지식iN, 뉴스 4개 채널의 API 검색 결과와 스마트블록(플레이스, VIEW, 뉴스블록) 크롤링 결과를 통합 분석합니다.",
+        "네이버 블로그, 카페, 지식iN, 뉴스 4개 채널의 API 검색 결과와 스마트블록(플레이스, VIEW, 뉴스) 크롤링 결과를 통합 분석합니다.",
     },
     {
       question: "SOV 분석은 어떻게 작동하나요?",
