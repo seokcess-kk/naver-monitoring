@@ -55,15 +55,18 @@ export async function getKeywordVolume(keyword: string, userId?: string | null):
     return null;
   }
   
+  // 키워드에서 공백 제거 (네이버 광고 API는 공백이 포함된 키워드에서 400 에러 발생할 수 있음)
+  const normalizedKeyword = keyword.replace(/\s+/g, "");
+  
   const path = "/keywordstool";
   const method = "GET";
   const headers = getHeaders(method, path);
   
   const url = new URL(NAVER_AD_API_BASE_URL + path);
-  url.searchParams.set("hintKeywords", keyword);
+  url.searchParams.set("hintKeywords", normalizedKeyword);
   url.searchParams.set("showDetail", "1");
   
-  console.log(`[NaverAdAPI] Fetching keyword volume for: ${keyword}`);
+  console.log(`[NaverAdAPI] Fetching keyword volume for: ${keyword} (normalized: ${normalizedKeyword})`);
   
   const startTime = Date.now();
   try {
