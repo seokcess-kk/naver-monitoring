@@ -263,50 +263,83 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
           return;
 
         // 헤더 추출 (헤더 컨테이너 내에서만)
+        // 인플루언서 블록: sdsFeedSearchHeader 내 span.sds-comps-text-type-headline1
         const headerEl =
           box.querySelector('[data-template-id*="Header"] h2') ||
+          box.querySelector('[data-template-id*="Header"] span.sds-comps-text-type-headline1') ||
           box.querySelector('[data-template-id*="Header"] .sds-comps-text-type-headline1') ||
           box.querySelector('div[data-template-id="header"] h2') ||
           box.querySelector(".api_title_area h2") ||
           box.querySelector(".tit_chunk") ||
           box.querySelector(".sds-comps-header h2") ||
-          box.querySelector(".sds-comps-header .sds-comps-text-type-headline1");
+          box.querySelector(".sds-comps-header .sds-comps-text-type-headline1") ||
+          box.querySelector(".fds-ugc-influencer .sds-comps-text-type-headline1");
 
         if (!headerEl) return;
         
         const sectionTitle = (headerEl as HTMLElement).innerText.trim();
         if (sectionTitle.includes("뉴스")) return;
 
-        // 1. 기존 방식: 템플릿 기반 아이템 추출 시도
-        let items = box.querySelectorAll(
-          'div[data-template-id="ugcItem"], div[data-template-id="ugcItemDesk"], div[data-template-id="ugcItemMo"], div[data-template-id="webItem"], li.bx'
-        );
+        // fds-ugc-item-list 컨테이너 존재 여부 확인 (인플루언서/UGC 블록)
+        const hasUgcItemList = box.querySelector(".fds-ugc-item-list") !== null;
         
-        // 2. 대안 방식: 반복 아이템 컨테이너 탐색 (인플루언서 블록 등)
+        // 1. UGC 아이템 리스트 우선 탐색 (인플루언서 블록 등)
+        let items: NodeListOf<Element>;
+        if (hasUgcItemList) {
+          items = box.querySelectorAll('.fds-ugc-item-list > [data-template-id]');
+        } else {
+          // 2. 기존 방식: 템플릿 기반 아이템 추출
+          items = box.querySelectorAll(
+            'div[data-template-id="ugcItem"], div[data-template-id="ugcItemDesk"], div[data-template-id="ugcItemMo"], div[data-template-id="webItem"], li.bx'
+          );
+        }
+        
+        // 3. 대안 방식: 반복 아이템 컨테이너 탐색
         if (items.length === 0) {
           items = box.querySelectorAll(
-            '.fds-ugc-item-list > [data-template-id], [data-template-id*="Item"], .sds-comps-vertical-layout > [data-template-id]'
+            '[data-template-id*="Item"]:not([data-template-id="sdsVerticalLayout"]):not([data-template-id*="Layout"])'
           );
+        }
+        
+        // 디버깅: 인플루언서/UGC 블록 감지 로그
+        if (hasUgcItemList) {
+          console.log(`[SmartBlock] UGC item-list detected: "${sectionTitle}", items found: ${items.length}`);
+          if (items.length === 0) {
+            console.log(`[SmartBlock] WARNING: UGC block "${sectionTitle}" has no items. DOM structure may differ.`);
+          }
         }
         
         const posts: SmartBlockPost[] = [];
         const seenUrls = new Set<string>();
+        let debugItemCount = 0;
 
         items.forEach((item) => {
+          debugItemCount++;
           try {
             // 제목 요소 탐색 (확장된 셀렉터)
             let titleEl: Element | null = null;
+            let titleSource = "";
             
-            // 1. 인플루언서 블록 우선: profile 외부의 .fds-comps-text.ellipsis2
-            const ellipsis2Els = Array.from(item.querySelectorAll(".fds-comps-text.ellipsis2"));
-            for (const el of ellipsis2Els) {
-              if (!el.closest(".profile-group") && !el.closest(".sds-comps-profile")) {
-                titleEl = el;
-                break;
+            // 1. 인플루언서/UGC 블록: data-heatmap-target=".link" 내부 텍스트 (가장 신뢰성 높음)
+            const heatmapLink = item.querySelector('a[data-heatmap-target=".link"]');
+            if (heatmapLink) {
+              titleEl = heatmapLink.querySelector(".fds-comps-text, .ellipsis2, span") || heatmapLink;
+              if (titleEl) titleSource = "heatmap-link";
+            }
+            
+            // 2. profile 외부의 ellipsis2 클래스 요소
+            if (!titleEl) {
+              const ellipsis2Els = Array.from(item.querySelectorAll(".ellipsis2, .fds-comps-text.ellipsis2"));
+              for (const el of ellipsis2Els) {
+                if (!el.closest(".profile-group") && !el.closest(".sds-comps-profile")) {
+                  titleEl = el;
+                  if (!titleSource) titleSource = "ellipsis2";
+                  break;
+                }
               }
             }
             
-            // 2. 일반 스마트블록 셀렉터
+            // 3. 일반 스마트블록 셀렉터
             if (!titleEl) {
               titleEl =
                 item.querySelector(".sds-comps-text-type-headline1") ||
@@ -314,26 +347,33 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
                 item.querySelector(".api_txt_lines.tit") ||
                 item.querySelector(".total_tit") ||
                 item.querySelector('h3');
+              if (titleEl && !titleSource) titleSource = "general";
             }
             
-            // 3. 기타 fallback: [class*="title"] 중 profile 영역 제외
+            // 4. 기타 fallback: [class*="title"] 중 profile 영역 제외
             if (!titleEl) {
               const titleCandidates = Array.from(item.querySelectorAll('[class*="title"]'));
               for (const el of titleCandidates) {
                 if (!el.closest(".profile-group") && !el.closest(".sds-comps-profile") && !el.classList.contains("sds-comps-profile-info-title-text")) {
                   titleEl = el;
+                  if (!titleSource) titleSource = "fallback";
                   break;
                 }
               }
             }
+            
+            // UGC 블록 디버깅: 제목 추출 실패 로그
+            if (hasUgcItemList && !titleEl) {
+              console.log(`[SmartBlock] UGC item #${debugItemCount}: No title found`);
+            }
 
-            // 설명 요소 탐색 (인플루언서 블록: .fds-comps-text 중 ellipsis2 아닌 것, profile 외부)
+            // 설명 요소 탐색
             let summaryEl =
               item.querySelector(".sds-comps-text-type-body1") ||
               item.querySelector(".dsc_txt") ||
               item.querySelector('[class*="desc"]');
             
-            // 인플루언서 블록 설명: ellipsis2 없는 .fds-comps-text (profile 외부)
+            // UGC/인플루언서 블록 설명: ellipsis2 없는 .fds-comps-text (profile 외부)
             if (!summaryEl) {
               const fdsTexts = Array.from(item.querySelectorAll(".fds-comps-text"));
               for (const el of fdsTexts) {
@@ -344,10 +384,25 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
               }
             }
 
-            // 대표 링크 탐색: 제목 링크 우선, 없으면 첫 번째 콘텐츠 링크
+            // 대표 링크 탐색: 제목에서 추출 우선, heatmap 링크, 첫 번째 콘텐츠 링크
             let anchorEl = titleEl ? titleEl.closest("a") : null;
+            if (!anchorEl && heatmapLink) {
+              anchorEl = heatmapLink;
+            }
             if (!anchorEl) {
-              anchorEl = item.querySelector('a[href^="http"]');
+              // profile 영역 외부의 첫 번째 유효 링크
+              const allAnchors = Array.from(item.querySelectorAll('a[href^="http"]'));
+              for (const a of allAnchors) {
+                if (!a.closest(".profile-group") && !a.closest(".sds-comps-profile")) {
+                  anchorEl = a;
+                  break;
+                }
+              }
+            }
+            
+            // UGC 블록 디버깅: 앵커 추출 실패 로그
+            if (hasUgcItemList && !anchorEl) {
+              console.log(`[SmartBlock] UGC item #${debugItemCount}: No anchor found (titleEl: ${!!titleEl})`);
             }
 
             if (anchorEl && (anchorEl as HTMLAnchorElement).href) {
@@ -374,6 +429,13 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
                   summary: summaryEl ? (summaryEl as HTMLElement).innerText.trim() : "",
                   isPlace: false,
                 });
+                
+                // UGC 블록 디버깅: 성공 로그 (첫 번째 아이템만)
+                if (hasUgcItemList && posts.length === 1) {
+                  console.log(`[SmartBlock] UGC post extracted: "${title.substring(0, 30)}..." (source: ${titleSource})`);
+                }
+              } else if (hasUgcItemList) {
+                console.log(`[SmartBlock] UGC item #${debugItemCount}: Title too short: "${title}"`);
               }
             }
           } catch (e) {}
