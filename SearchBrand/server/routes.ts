@@ -97,7 +97,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/services/quick-status", requireAdmin, (_req, res) => {
+  app.get("/api/services/quick-status", isAuthenticated, (_req, res) => {
     res.json({
       redis: getQuickRedisStatus(),
       openai: getQuickOpenAIStatus(),
