@@ -8,6 +8,24 @@
 
 ## Recent Changes
 
+### 2026-01-26 API 안정성 강화
+- **Quota 관리**: 네이버 검색 API 일일 한도(25,000건/Client ID) 추적
+  - `quota-service.ts`: 실시간 사용량 집계 및 한도 체크
+  - 상태 레벨: ok(정상) / warning(80%+) / critical(90%+) / exceeded(100%)
+  - 검색 응답에 quota 정보 포함, 초과 시 429 에러 반환
+- **Rate Limiting**: bottleneck 라이브러리 기반 요청 제어
+  - 네이버 광고 API: 20 req/sec
+  - OpenAI API: 60 req/min, 동시 3개
+  - Browserless: 동시 2개 연결
+- **Exponential Backoff 재시도**: 일시적 오류 자동 복구
+  - Browserless: 3회 재시도 (1s, 2s, 4s 대기)
+  - OpenAI: 3회 재시도 (429, 500, 503 에러만)
+  - 타임아웃 포함 안전한 실패 처리
+- **프론트엔드 표시**: 
+  - 대시보드: 검색 결과 옆에 quota 사용률 배지
+  - 관리자 콘솔: Client ID별 실시간 한도 현황 테이블
+- **DB 스키마**: `apiUsageLogs.clientId` 컬럼 추가
+
 ### 2026-01-26 스마트블록 크롤링 로직 개선
 - **헤더 셀렉터 일반화**: 다양한 템플릿 구조 대응
   - `[data-template-id*="Header"] h2` 및 `.sds-comps-text-type-headline1` (span) 추가
