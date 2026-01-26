@@ -5,12 +5,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Zap, Search, BarChart3, MessageSquare } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Zap, Search, BarChart3, MessageSquare, AlertTriangle, ShieldCheck, ShieldAlert, ShieldX } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import { apiRequest } from "@/lib/queryClient";
 import { API_TYPE_LABELS, API_TYPE_COLORS, type ApiUsageStats } from "./types";
+
+interface QuotaItem {
+  clientId: string;
+  email: string;
+  used: number;
+  limit: number;
+  remaining: number;
+  percentageUsed: number;
+  status: "ok" | "warning" | "critical" | "exceeded";
+}
+
+interface QuotaResponse {
+  quotas: QuotaItem[];
+  summary: {
+    totalClientIds: number;
+    warningCount: number;
+    criticalCount: number;
+    exceededCount: number;
+  };
+}
 
 type FeatureRankings = {
   search?: Array<{ userId: string; email: string; count: number }>;
@@ -64,6 +86,15 @@ export function ApiUsageTab() {
       const res = await apiRequest("GET", `/api/admin/api-usage/feature-rankings?${params}`);
       return res.json();
     },
+  });
+  
+  const { data: quotaData } = useQuery<QuotaResponse>({
+    queryKey: ["admin-quota-status"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/admin/api-usage/quota");
+      return res.json();
+    },
+    refetchInterval: 60000,
   });
   
   const chartData = useMemo(() => {
@@ -136,6 +167,94 @@ export function ApiUsageTab() {
           </Card>
         ))}
       </div>
+      
+      {quotaData && quotaData.quotas.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                네이버 검색 API 일일 한도 (25,000건/일)
+              </span>
+              <div className="flex items-center gap-2 text-sm font-normal">
+                {quotaData.summary.exceededCount > 0 && (
+                  <Badge variant="destructive" className="flex items-center gap-1">
+                    <ShieldX className="w-3 h-3" />
+                    초과 {quotaData.summary.exceededCount}
+                  </Badge>
+                )}
+                {quotaData.summary.criticalCount > 0 && (
+                  <Badge variant="destructive" className="flex items-center gap-1">
+                    <ShieldAlert className="w-3 h-3" />
+                    위험 {quotaData.summary.criticalCount}
+                  </Badge>
+                )}
+                {quotaData.summary.warningCount > 0 && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    경고 {quotaData.summary.warningCount}
+                  </Badge>
+                )}
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" />
+                  총 {quotaData.summary.totalClientIds}개
+                </Badge>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Client ID</TableHead>
+                  <TableHead>사용자</TableHead>
+                  <TableHead className="text-right">사용량</TableHead>
+                  <TableHead className="w-40">진행률</TableHead>
+                  <TableHead className="text-right">상태</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {quotaData.quotas.map((quota) => (
+                  <TableRow key={quota.clientId}>
+                    <TableCell className="font-mono text-xs">
+                      {quota.clientId.substring(0, 8)}...
+                    </TableCell>
+                    <TableCell>{quota.email}</TableCell>
+                    <TableCell className="text-right">
+                      {quota.used.toLocaleString()} / {quota.limit.toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <Progress 
+                        value={Math.min(quota.percentageUsed, 100)} 
+                        className={`h-2 ${
+                          quota.status === "exceeded" || quota.status === "critical" 
+                            ? "[&>div]:bg-destructive" 
+                            : quota.status === "warning" 
+                            ? "[&>div]:bg-yellow-500" 
+                            : ""
+                        }`}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge 
+                        variant={
+                          quota.status === "exceeded" || quota.status === "critical" 
+                            ? "destructive" 
+                            : quota.status === "warning" 
+                            ? "secondary" 
+                            : "outline"
+                        }
+                      >
+                        {quota.percentageUsed.toFixed(1)}%
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
       
       <Card>
         <CardHeader>

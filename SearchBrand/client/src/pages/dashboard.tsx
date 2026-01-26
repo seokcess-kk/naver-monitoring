@@ -29,9 +29,20 @@ interface KeywordVolumeData {
   error?: boolean;
 }
 
+interface QuotaStatus {
+  clientId: string;
+  used: number;
+  limit: number;
+  remaining: number;
+  percentageUsed: number;
+  status: "ok" | "warning" | "critical" | "exceeded";
+  resetAt: string;
+}
+
 interface SearchResult {
   smartBlock: SmartBlockResult[];
   apiResults: ApiChannelResults;
+  quota?: QuotaStatus;
 }
 
 interface SmartBlockResult {
@@ -508,7 +519,7 @@ export default function Dashboard() {
 
                 {searchResults ? (
                   <>
-                    <Card className="p-3 flex items-center gap-2">
+                    <Card className="p-3 flex items-center gap-2 flex-wrap">
                       <Highlighter className="w-4 h-4 text-muted-foreground shrink-0" />
                       <Input
                         placeholder="브랜드/URL 하이라이트 (2글자 이상)"
@@ -520,6 +531,26 @@ export default function Dashboard() {
                         <Button variant="ghost" size="sm" className="h-9 px-2" onClick={() => setHighlightTerm("")}>
                           <X className="w-4 h-4" />
                         </Button>
+                      )}
+                      {searchResults.quota && (
+                        <div className="ml-auto flex items-center gap-2">
+                          <Badge 
+                            variant={
+                              searchResults.quota.status === "exceeded" ? "destructive" :
+                              searchResults.quota.status === "critical" ? "destructive" :
+                              searchResults.quota.status === "warning" ? "secondary" : "outline"
+                            }
+                            className="text-xs"
+                          >
+                            API {searchResults.quota.percentageUsed.toFixed(0)}% 사용
+                            {searchResults.quota.status === "warning" && " (경고)"}
+                            {searchResults.quota.status === "critical" && " (위험)"}
+                            {searchResults.quota.status === "exceeded" && " (초과)"}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                            {searchResults.quota.used.toLocaleString()} / {searchResults.quota.limit.toLocaleString()}
+                          </span>
+                        </div>
                       )}
                     </Card>
                     <SmartBlockSection 

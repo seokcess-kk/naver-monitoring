@@ -23,14 +23,53 @@ import {
   type ExtractionStatsCollector 
 } from "./content-extractor";
 import { logApiUsage } from "./services/api-usage-logger";
+import { openaiRateLimiter, withRateLimit } from "./services/rate-limiter";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const RELEVANCE_THRESHOLD = 0.72;
 const RULE_WEIGHT = 0.4;
 const SEMANTIC_WEIGHT = 0.6;
+const OPENAI_MAX_RETRIES = 3;
+const OPENAI_INITIAL_DELAY_MS = 500;
 
 const contentExtractionLimit = pLimit(5);
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function withOpenAIRetry<T>(
+  fn: () => Promise<T>,
+  operation: string
+): Promise<T> {
+  let lastError: Error | undefined;
+  
+  for (let attempt = 0; attempt < OPENAI_MAX_RETRIES; attempt++) {
+    try {
+      return await withRateLimit(openaiRateLimiter, fn, 30000);
+    } catch (error: any) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      const isRetryable = 
+        error?.status === 429 ||
+        error?.status === 500 ||
+        error?.status === 503 ||
+        error?.code === 'ECONNRESET' ||
+        error?.code === 'ETIMEDOUT';
+      
+      if (isRetryable && attempt < OPENAI_MAX_RETRIES - 1) {
+        const delay = OPENAI_INITIAL_DELAY_MS * Math.pow(2, attempt);
+        console.log(`[SOV] OpenAI ${operation} retry ${attempt + 1}/${OPENAI_MAX_RETRIES} after ${delay}ms...`);
+        await sleep(delay);
+      } else {
+        throw error;
+      }
+    }
+  }
+  
+  throw lastError;
+}
 
 interface FlatSmartBlockItem {
   blockType: string;
@@ -288,39 +327,41 @@ async function extractContent(
 async function getEmbedding(text: string, userId?: string | null): Promise<number[]> {
   const truncatedText = text.slice(0, 8000);
   
-  const startTime = Date.now();
-  try {
-    const response = await openai.embeddings.create({
-      model: "text-embedding-3-small",
-      input: truncatedText,
-    });
+  return withOpenAIRetry(async () => {
+    const startTime = Date.now();
+    try {
+      const response = await openai.embeddings.create({
+        model: "text-embedding-3-small",
+        input: truncatedText,
+      });
 
-    const responseTimeMs = Date.now() - startTime;
-    const tokensUsed = response.usage?.total_tokens || 0;
-    
-    logApiUsage({
-      userId,
-      apiType: "openai",
-      endpoint: "embeddings",
-      success: true,
-      tokensUsed,
-      responseTimeMs,
-      metadata: { model: "text-embedding-3-small", inputLength: truncatedText.length },
-    });
+      const responseTimeMs = Date.now() - startTime;
+      const tokensUsed = response.usage?.total_tokens || 0;
+      
+      logApiUsage({
+        userId,
+        apiType: "openai",
+        endpoint: "embeddings",
+        success: true,
+        tokensUsed,
+        responseTimeMs,
+        metadata: { model: "text-embedding-3-small", inputLength: truncatedText.length },
+      });
 
-    return response.data[0].embedding;
-  } catch (error) {
-    const responseTimeMs = Date.now() - startTime;
-    logApiUsage({
-      userId,
-      apiType: "openai",
-      endpoint: "embeddings",
-      success: false,
-      errorMessage: error instanceof Error ? error.message : String(error),
-      responseTimeMs,
-    });
-    throw error;
-  }
+      return response.data[0].embedding;
+    } catch (error) {
+      const responseTimeMs = Date.now() - startTime;
+      logApiUsage({
+        userId,
+        apiType: "openai",
+        endpoint: "embeddings",
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        responseTimeMs,
+      });
+      throw error;
+    }
+  }, "embeddings");
 }
 
 function cosineSimilarity(a: number[], b: number[]): number {

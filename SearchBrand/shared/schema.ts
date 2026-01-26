@@ -357,6 +357,7 @@ export type PlaceReviewMode = "QTY" | "DATE" | "DATE_RANGE";
 export const apiUsageLogs = pgTable("api_usage_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  clientId: varchar("client_id", { length: 100 }), // 네이버 API Client ID (quota 추적용)
   apiType: varchar("api_type", { length: 30 }).notNull(), // 'naver_search' | 'naver_ad' | 'openai' | 'browserless'
   endpoint: text("endpoint"), // API 엔드포인트 또는 작업 설명
   success: varchar("success", { length: 5 }).notNull().default("true"), // 'true' | 'false'
@@ -367,6 +368,7 @@ export const apiUsageLogs = pgTable("api_usage_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_api_usage_logs_user_id").on(table.userId),
+  index("idx_api_usage_logs_client_id").on(table.clientId),
   index("idx_api_usage_logs_api_type").on(table.apiType),
   index("idx_api_usage_logs_created_at").on(table.createdAt),
   index("idx_api_usage_logs_success").on(table.success),

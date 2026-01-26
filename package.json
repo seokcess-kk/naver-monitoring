@@ -16,6 +16,7 @@
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@types/dompurify": "^3.0.5",
+    "bottleneck": "^2.19.5",
     "bullmq": "^5.66.5",
     "dompurify": "^3.3.1",
     "ioredis": "^5.9.2",

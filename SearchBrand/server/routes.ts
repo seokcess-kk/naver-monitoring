@@ -3,7 +3,7 @@ import { type Server } from "http";
 import { storage } from "./storage";
 import { registerAuthRoutes, isAuthenticated } from "./auth-routes";
 import { findUserById } from "./auth-service";
-import { searchAllChannels, searchSingleChannel } from "./naver-api";
+import { searchAllChannels, searchSingleChannel, QuotaExceededError } from "./naver-api";
 import { crawlNaverSearch } from "./crawler";
 import { insertApiKeySchema, updateApiKeySchema } from "@shared/schema";
 import { z } from "zod";
@@ -200,24 +200,30 @@ export async function registerRoutes(
         clientSecret: apiKey.clientSecret,
       };
 
-      const [smartBlock, apiResults] = await Promise.all([
+      const [smartBlock, searchResult] = await Promise.all([
         crawlNaverSearch(keyword).catch((err) => {
           console.error("Crawl error:", err);
           return [];
         }),
-        searchAllChannels(keyword, sort, page, credentials),
+        searchAllChannels(keyword, sort, page, credentials, userId),
       ]);
 
-      // 검색 로그 기록
       storage.createSearchLog({ userId, searchType: "unified", keyword }).catch((err) => {
         console.error("Search log error:", err);
       });
 
       res.json({
         smartBlock,
-        apiResults,
+        apiResults: searchResult.results,
+        quota: searchResult.quota,
       });
     } catch (error) {
+      if (error instanceof QuotaExceededError) {
+        return res.status(429).json({
+          message: error.message,
+          quota: error.quota,
+        });
+      }
       console.error("Search error:", error);
       res.status(500).json({ message: "Search failed" });
     }
@@ -244,10 +250,16 @@ export async function registerRoutes(
         clientSecret: apiKey.clientSecret,
       };
 
-      const result = await searchSingleChannel(channel, keyword, sort, page, credentials);
+      const result = await searchSingleChannel(channel, keyword, sort, page, credentials, userId);
 
-      res.json({ channel, result });
+      res.json({ channel, result: result.data, quota: result.quota });
     } catch (error) {
+      if (error instanceof QuotaExceededError) {
+        return res.status(429).json({
+          message: error.message,
+          quota: error.quota,
+        });
+      }
       console.error("Channel search error:", error);
       res.status(500).json({ message: "Channel search failed" });
     }

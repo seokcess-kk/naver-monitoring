@@ -808,7 +808,7 @@ router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, re
       ? sql`AND cu.user_id IN (SELECT id FROM users WHERE status = 'active')`
       : sql``;
 
-    const [periodActive] = await db.execute(sql`
+    const periodActiveResult = await db.execute(sql`
       SELECT COUNT(DISTINCT cu.user_id)::int as count FROM (
         SELECT user_id FROM search_logs 
         WHERE created_at >= ${filterStart} AND created_at < ${filterEnd} AND user_id IS NOT NULL
@@ -821,6 +821,7 @@ router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, re
       ) cu
       WHERE 1=1 ${statusFilter}
     `);
+    const periodActive = periodActiveResult.rows[0] as { count: number } | undefined;
 
     const [searchCount] = await db
       .select({ count: sql<number>`count(*)::int` })
@@ -1753,6 +1754,68 @@ router.get("/users/:userId/usage", requireAdmin, async (req: AdminRequest, res: 
   } catch (error) {
     console.error("[Admin] Failed to get user usage stats:", error);
     res.status(500).json({ error: "사용자 사용량 통계 조회 실패" });
+  }
+});
+
+router.get("/api-usage/quota", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const quotaByClientId = await db
+      .select({
+        clientId: apiUsageLogs.clientId,
+        email: users.email,
+        usedToday: sql<number>`count(*)`,
+      })
+      .from(apiUsageLogs)
+      .leftJoin(users, eq(apiUsageLogs.userId, users.id))
+      .where(
+        and(
+          gte(apiUsageLogs.createdAt, today),
+          eq(apiUsageLogs.apiType, "naver_search"),
+          not(isNull(apiUsageLogs.clientId))
+        )
+      )
+      .groupBy(apiUsageLogs.clientId, users.email);
+    
+    const DAILY_LIMIT = 25000;
+    
+    const quotaStatuses = quotaByClientId.map(row => {
+      const used = Number(row.usedToday);
+      const remaining = Math.max(0, DAILY_LIMIT - used);
+      const percentageUsed = (used / DAILY_LIMIT) * 100;
+      
+      let status: "ok" | "warning" | "critical" | "exceeded" = "ok";
+      if (percentageUsed >= 100) status = "exceeded";
+      else if (percentageUsed >= 90) status = "critical";
+      else if (percentageUsed >= 80) status = "warning";
+      
+      return {
+        clientId: row.clientId,
+        email: row.email || "알 수 없음",
+        used,
+        limit: DAILY_LIMIT,
+        remaining,
+        percentageUsed: Math.round(percentageUsed * 10) / 10,
+        status,
+      };
+    });
+    
+    quotaStatuses.sort((a, b) => b.percentageUsed - a.percentageUsed);
+    
+    res.json({
+      quotas: quotaStatuses,
+      summary: {
+        totalClientIds: quotaStatuses.length,
+        warningCount: quotaStatuses.filter(q => q.status === "warning").length,
+        criticalCount: quotaStatuses.filter(q => q.status === "critical").length,
+        exceededCount: quotaStatuses.filter(q => q.status === "exceeded").length,
+      },
+    });
+  } catch (error) {
+    console.error("[Admin] Failed to get quota status:", error);
+    res.status(500).json({ error: "Quota 상태 조회 실패" });
   }
 });
 

@@ -1,6 +1,9 @@
 import axios, { AxiosError } from "axios";
 import LRUCache from "lru-cache";
 import { logApiUsage } from "./services/api-usage-logger";
+import { checkDailyQuota, QuotaExceededError, type QuotaStatus } from "./services/quota-service";
+
+export { QuotaExceededError, type QuotaStatus } from "./services/quota-service";
 
 export type NaverChannel = "blog" | "cafe" | "kin" | "news";
 
@@ -55,19 +58,31 @@ function logApiError(channel: string, error: unknown, query: string): void {
   }
 }
 
+export interface CallNaverApiOptions {
+  skipQuotaCheck?: boolean;
+}
+
 export async function callNaverApi(
   endpoint: string,
   params: NaverApiParams,
   credentials: NaverApiCredentials,
-  userId?: string | null
-) {
+  userId?: string | null,
+  options: CallNaverApiOptions = {}
+): Promise<{ data: unknown; quota?: QuotaStatus }> {
   const { query, display = 10, start = 1, sort = "sim" } = params;
   const cacheKey = buildCacheKey(endpoint, { query, display, start, sort });
   
   const cached = apiCache.get(cacheKey);
   if (cached) {
     console.log(`[NaverAPI] Cache hit: ${query.substring(0, 20)}...`);
-    return cached;
+    return { data: cached };
+  }
+  
+  if (!options.skipQuotaCheck) {
+    const quota = await checkDailyQuota(credentials.clientId);
+    if (!quota.allowed) {
+      throw new QuotaExceededError(quota);
+    }
   }
   
   const startTime = Date.now();
@@ -84,6 +99,7 @@ export async function callNaverApi(
     const responseTimeMs = Date.now() - startTime;
     logApiUsage({
       userId,
+      clientId: credentials.clientId,
       apiType: "naver_search",
       endpoint,
       success: true,
@@ -92,11 +108,14 @@ export async function callNaverApi(
     });
     
     apiCache.set(cacheKey, response.data);
-    return response.data;
+    
+    const quota = await checkDailyQuota(credentials.clientId);
+    return { data: response.data, quota };
   } catch (error) {
     const responseTimeMs = Date.now() - startTime;
     logApiUsage({
       userId,
+      clientId: credentials.clientId,
       apiType: "naver_search",
       endpoint,
       success: false,
@@ -112,11 +131,12 @@ export async function searchChannel(
   channel: NaverChannel,
   params: NaverApiParams,
   credentials: NaverApiCredentials,
-  userId?: string | null
-) {
+  userId?: string | null,
+  options: CallNaverApiOptions = {}
+): Promise<{ data: unknown; quota?: QuotaStatus }> {
   const config = CHANNEL_CONFIG[channel];
   try {
-    return await callNaverApi(config.endpoint, params, credentials, userId);
+    return await callNaverApi(config.endpoint, params, credentials, userId, options);
   } catch (error) {
     logApiError(channel, error, params.query);
     throw error;
@@ -141,26 +161,46 @@ export async function searchNews(params: NaverApiParams, credentials: NaverApiCr
 
 const EMPTY_RESULT = { total: 0, items: [] };
 
+export interface SearchAllChannelsResult {
+  results: Record<NaverChannel, typeof EMPTY_RESULT>;
+  quota?: QuotaStatus;
+}
+
 export async function searchAllChannels(
   query: string,
   sort: "sim" | "date",
   page: number,
   credentials: NaverApiCredentials,
   userId?: string | null
-) {
+): Promise<SearchAllChannelsResult> {
   const display = 10;
   const start = (page - 1) * display + 1;
   const params = { query, display, start, sort };
 
-  const results = await Promise.all(
+  const quota = await checkDailyQuota(credentials.clientId);
+  if (!quota.allowed) {
+    throw new QuotaExceededError(quota);
+  }
+
+  const channelResults = await Promise.all(
     NAVER_CHANNELS.map((channel) =>
-      searchChannel(channel, params, credentials, userId).catch(() => EMPTY_RESULT)
+      searchChannel(channel, params, credentials, userId, { skipQuotaCheck: true })
+        .then((res) => res.data as typeof EMPTY_RESULT)
+        .catch(() => EMPTY_RESULT)
     )
   );
 
-  return Object.fromEntries(
-    NAVER_CHANNELS.map((channel, i) => [channel, results[i]])
+  const results = Object.fromEntries(
+    NAVER_CHANNELS.map((channel, i) => [channel, channelResults[i]])
   ) as Record<NaverChannel, typeof EMPTY_RESULT>;
+
+  const updatedQuota = await checkDailyQuota(credentials.clientId);
+  return { results, quota: updatedQuota };
+}
+
+export interface SearchSingleChannelResult {
+  data: typeof EMPTY_RESULT;
+  quota?: QuotaStatus;
 }
 
 export async function searchSingleChannel(
@@ -170,10 +210,18 @@ export async function searchSingleChannel(
   page: number,
   credentials: NaverApiCredentials,
   userId?: string | null
-) {
+): Promise<SearchSingleChannelResult> {
   const display = 10;
   const start = (page - 1) * display + 1;
   const params = { query, display, start, sort };
 
-  return searchChannel(channel, params, credentials, userId).catch(() => EMPTY_RESULT);
+  try {
+    const result = await searchChannel(channel, params, credentials, userId);
+    return { data: result.data as typeof EMPTY_RESULT, quota: result.quota };
+  } catch (error) {
+    if (error instanceof QuotaExceededError) {
+      throw error;
+    }
+    return { data: EMPTY_RESULT };
+  }
 }

@@ -3,6 +3,7 @@ import { apiUsageLogs, type ApiType, type InsertApiUsageLog } from "@shared/sche
 
 interface ApiUsageLogParams {
   userId?: string | null;
+  clientId?: string | null;
   apiType: ApiType;
   endpoint?: string;
   success?: boolean;
@@ -16,6 +17,7 @@ export async function logApiUsage(params: ApiUsageLogParams): Promise<void> {
   try {
     const logEntry: InsertApiUsageLog = {
       userId: params.userId || null,
+      clientId: params.clientId || null,
       apiType: params.apiType,
       endpoint: params.endpoint || null,
       success: params.success !== false ? "true" : "false",

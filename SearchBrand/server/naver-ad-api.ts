@@ -1,5 +1,8 @@
 import crypto from "crypto";
 import { logApiUsage } from "./services/api-usage-logger";
+import { naverAdRateLimiter, withRateLimit, RateLimitTimeoutError } from "./services/rate-limiter";
+
+export { RateLimitTimeoutError };
 
 const NAVER_AD_API_BASE_URL = "https://api.searchad.naver.com";
 
@@ -49,13 +52,7 @@ export function isConfigured(): boolean {
   );
 }
 
-export async function getKeywordVolume(keyword: string, userId?: string | null): Promise<KeywordVolumeResult | null> {
-  if (!isConfigured()) {
-    console.log("[NaverAdAPI] Credentials not configured, skipping keyword volume fetch");
-    return null;
-  }
-  
-  // 키워드에서 공백 제거 (네이버 광고 API는 공백이 포함된 키워드에서 400 에러 발생할 수 있음)
+async function fetchKeywordVolumeInternal(keyword: string, userId?: string | null): Promise<KeywordVolumeResult | null> {
   const normalizedKeyword = keyword.replace(/\s+/g, "");
   
   const path = "/keywordstool";
@@ -140,6 +137,27 @@ export async function getKeywordVolume(keyword: string, userId?: string | null):
         responseTimeMs,
         metadata: { keyword: keyword.substring(0, 50) },
       });
+    }
+    throw error;
+  }
+}
+
+export async function getKeywordVolume(keyword: string, userId?: string | null): Promise<KeywordVolumeResult | null> {
+  if (!isConfigured()) {
+    console.log("[NaverAdAPI] Credentials not configured, skipping keyword volume fetch");
+    return null;
+  }
+  
+  try {
+    return await withRateLimit(
+      naverAdRateLimiter,
+      () => fetchKeywordVolumeInternal(keyword, userId),
+      5000
+    );
+  } catch (error) {
+    if (error instanceof RateLimitTimeoutError) {
+      console.warn(`[NaverAdAPI] Rate limit timeout for keyword: ${keyword}`);
+      return null;
     }
     throw error;
   }

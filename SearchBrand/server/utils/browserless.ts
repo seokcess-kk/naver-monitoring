@@ -3,6 +3,36 @@ import { findChromePath } from "./chrome-finder";
 import { logApiUsage } from "../services/api-usage-logger";
 
 const BROWSERLESS_URL = "wss://production-sfo.browserless.io";
+const MAX_RETRIES = 3;
+const INITIAL_DELAY_MS = 1000;
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function withExponentialBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = MAX_RETRIES,
+  initialDelay: number = INITIAL_DELAY_MS
+): Promise<T> {
+  let lastError: Error | undefined;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      if (attempt < maxRetries - 1) {
+        const delay = initialDelay * Math.pow(2, attempt);
+        console.log(`[Browser] Retry ${attempt + 1}/${maxRetries} after ${delay}ms...`);
+        await sleep(delay);
+      }
+    }
+  }
+  
+  throw lastError;
+}
 
 export interface BrowserConnection {
   browser: Browser;
@@ -19,46 +49,53 @@ export async function connectBrowser(): Promise<BrowserConnection> {
   const isProduction = process.env.NODE_ENV === "production";
   
   if (isProduction) {
-    // 프로덕션: Browserless 우선
     if (browserlessApiKey) {
-      const startTime = Date.now();
       try {
-        console.log("[Browser] Production mode - connecting to Browserless cloud...");
-        const browser = await puppeteer.connect({
-          browserWSEndpoint: `${BROWSERLESS_URL}?token=${browserlessApiKey}`,
-        });
-        const responseTimeMs = Date.now() - startTime;
-        console.log("[Browser] Browserless connected successfully");
+        console.log("[Browser] Production mode - connecting to Browserless cloud with retry...");
         
-        logApiUsage({
-          userId: null,
-          apiType: "browserless",
-          endpoint: "connect",
-          success: true,
-          responseTimeMs,
-          metadata: { environment: "production" },
+        const result = await withExponentialBackoff(async () => {
+          const startTime = Date.now();
+          try {
+            const browser = await puppeteer.connect({
+              browserWSEndpoint: `${BROWSERLESS_URL}?token=${browserlessApiKey}`,
+            });
+            const responseTimeMs = Date.now() - startTime;
+            console.log("[Browser] Browserless connected successfully");
+            
+            logApiUsage({
+              userId: null,
+              apiType: "browserless",
+              endpoint: "connect",
+              success: true,
+              responseTimeMs,
+              metadata: { environment: "production" },
+            });
+            
+            return { browser, isBrowserless: true };
+          } catch (error: any) {
+            const responseTimeMs = Date.now() - startTime;
+            logApiUsage({
+              userId: null,
+              apiType: "browserless",
+              endpoint: "connect",
+              success: false,
+              errorMessage: error?.message || String(error),
+              responseTimeMs,
+              metadata: { environment: "production", retrying: true },
+            });
+            throw error;
+          }
         });
         
-        return { browser, isBrowserless: true };
+        return result;
       } catch (error: any) {
-        const responseTimeMs = Date.now() - startTime;
-        logApiUsage({
-          userId: null,
-          apiType: "browserless",
-          endpoint: "connect",
-          success: false,
-          errorMessage: error?.message || String(error),
-          responseTimeMs,
-          metadata: { environment: "production" },
-        });
-        console.warn("[Browser] Browserless connection failed:", error?.message || error);
+        console.warn("[Browser] Browserless connection failed after retries:", error?.message || error);
         console.log("[Browser] Falling back to local Chrome...");
       }
     } else {
       console.warn("[Browser] BROWSERLESS_API_KEY not set in production - trying local Chrome");
     }
     
-    // 프로덕션 fallback: 로컬 Chrome
     return launchLocalChrome();
   } else {
     // 개발환경: 로컬 Chrome 우선
