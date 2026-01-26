@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { db } from './db';
-import { users, verificationTokens, type User, type VerificationToken } from '@shared/schema';
+import { users, verificationTokens, withdrawnEmails, type User, type VerificationToken } from '@shared/schema';
 import { eq, and, gt, or, lt } from 'drizzle-orm';
 import { sendRegistrationEmail, sendPasswordResetEmail } from './email-service';
 
@@ -65,6 +65,14 @@ export async function startRegistration(email: string): Promise<void> {
   const existingUser = await findUserByEmail(normalizedEmail);
   if (existingUser) {
     throw new Error('이미 등록된 이메일입니다');
+  }
+
+  const blocked = await isEmailBlocked(normalizedEmail);
+  if (blocked.blocked) {
+    const remainingDays = blocked.canReregisterAt 
+      ? Math.ceil((blocked.canReregisterAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      : 30;
+    throw new Error(`탈퇴 후 ${remainingDays}일간 동일 이메일로 재가입이 제한됩니다`);
   }
 
   await createAndSendRegistrationToken(normalizedEmail);
@@ -142,7 +150,14 @@ export async function completeRegistration(
   return user;
 }
 
-export async function loginUser(email: string, password: string): Promise<User> {
+export interface LoginResult {
+  user: User;
+  needsRestore?: boolean;
+  deletedAt?: Date;
+  gracePeriodEnd?: Date;
+}
+
+export async function loginUser(email: string, password: string): Promise<LoginResult> {
   const user = await findUserByEmail(email);
   if (!user) {
     throw new Error('이메일 또는 비밀번호가 올바르지 않습니다');
@@ -157,7 +172,27 @@ export async function loginUser(email: string, password: string): Promise<User> 
     throw new Error('이메일 인증이 필요합니다. 이메일을 확인해주세요');
   }
 
-  return user;
+  if (user.status === 'withdrawn') {
+    if (!user.deletedAt) {
+      throw new Error('계정 상태를 확인할 수 없습니다. 고객센터에 문의해주세요');
+    }
+
+    const gracePeriodEnd = new Date(user.deletedAt);
+    gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 30);
+
+    if (new Date() > gracePeriodEnd) {
+      throw new Error('탈퇴 처리가 완료된 계정입니다. 새로 가입해주세요');
+    }
+
+    return {
+      user,
+      needsRestore: true,
+      deletedAt: user.deletedAt,
+      gracePeriodEnd,
+    };
+  }
+
+  return { user };
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {
@@ -228,4 +263,109 @@ export async function resendRegistrationEmail(email: string): Promise<void> {
   }
 
   await createAndSendRegistrationToken(normalizedEmail);
+}
+
+function hashEmail(email: string): string {
+  return crypto.createHash('sha256').update(email.toLowerCase()).digest('hex');
+}
+
+export async function withdrawUser(userId: string, password: string): Promise<void> {
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new Error('사용자를 찾을 수 없습니다');
+  }
+
+  const isValid = await verifyPassword(password, user.passwordHash);
+  if (!isValid) {
+    throw new Error('비밀번호가 일치하지 않습니다');
+  }
+
+  if (user.status === 'withdrawn') {
+    throw new Error('이미 탈퇴된 계정입니다');
+  }
+
+  const emailHash = hashEmail(user.email);
+  const canReregisterAt = new Date();
+  canReregisterAt.setDate(canReregisterAt.getDate() + 30);
+
+  await db.transaction(async (tx) => {
+    await tx.update(users).set({
+      status: 'withdrawn',
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(eq(users.id, userId));
+
+    await tx.insert(withdrawnEmails).values({
+      emailHash,
+      canReregisterAt,
+    }).onConflictDoUpdate({
+      target: withdrawnEmails.emailHash,
+      set: {
+        withdrawnAt: new Date(),
+        canReregisterAt,
+      },
+    });
+  });
+}
+
+export async function restoreUser(userId: string): Promise<User> {
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new Error('사용자를 찾을 수 없습니다');
+  }
+
+  if (user.status !== 'withdrawn') {
+    throw new Error('탈퇴 상태가 아닙니다');
+  }
+
+  const deletedAt = user.deletedAt;
+  if (!deletedAt) {
+    throw new Error('탈퇴 일시를 확인할 수 없습니다');
+  }
+
+  const gracePeriodEnd = new Date(deletedAt);
+  gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 30);
+
+  if (new Date() > gracePeriodEnd) {
+    throw new Error('복구 가능 기간(30일)이 지났습니다');
+  }
+
+  const emailHash = hashEmail(user.email);
+
+  await db.transaction(async (tx) => {
+    await tx.update(users).set({
+      status: 'active',
+      deletedAt: null,
+      updatedAt: new Date(),
+    }).where(eq(users.id, userId));
+
+    await tx.delete(withdrawnEmails).where(eq(withdrawnEmails.emailHash, emailHash));
+  });
+
+  const updatedUser = await findUserById(userId);
+  if (!updatedUser) {
+    throw new Error('사용자 복구 중 오류가 발생했습니다');
+  }
+
+  return updatedUser;
+}
+
+export async function isEmailBlocked(email: string): Promise<{ blocked: boolean; canReregisterAt?: Date }> {
+  const emailHash = hashEmail(email.toLowerCase());
+  
+  const [record] = await db.select()
+    .from(withdrawnEmails)
+    .where(eq(withdrawnEmails.emailHash, emailHash))
+    .limit(1);
+
+  if (!record) {
+    return { blocked: false };
+  }
+
+  if (record.canReregisterAt && new Date() >= record.canReregisterAt) {
+    await db.delete(withdrawnEmails).where(eq(withdrawnEmails.id, record.id));
+    return { blocked: false };
+  }
+
+  return { blocked: true, canReregisterAt: record.canReregisterAt ?? undefined };
 }

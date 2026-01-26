@@ -133,5 +133,8 @@ export async function initializeApp(app: Express, httpServer: Server) {
     await setupVite(httpServer, app);
   }
 
+  const { startCleanupScheduler } = await import("./services/account-cleanup");
+  startCleanupScheduler();
+
   log("Application fully initialized and ready to serve requests");
 }

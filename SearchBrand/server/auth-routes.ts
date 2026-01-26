@@ -9,8 +9,10 @@ import {
   resetPassword,
   resendRegistrationEmail,
   findUserById,
+  withdrawUser,
+  restoreUser,
 } from "./auth-service";
-import { startRegistrationSchema, completeRegistrationSchema, loginSchema } from "@shared/schema";
+import { startRegistrationSchema, completeRegistrationSchema, loginSchema, withdrawSchema } from "@shared/schema";
 import { getClientIp, validateRequest } from "./utils/request-helpers";
 
 declare module "express-session" {
@@ -156,18 +158,36 @@ export function registerAuthRoutes(app: Express) {
 
       const { email, password } = validation.data;
 
-      const user = await loginUser(email, password);
+      const result = await loginUser(email, password);
 
-      req.session.userId = user.id;
+      req.session.userId = result.user.id;
+
+      if (result.needsRestore) {
+        return res.json({
+          message: "탈퇴 처리 중인 계정입니다. 복구하시겠습니까?",
+          needsRestore: true,
+          deletedAt: result.deletedAt,
+          gracePeriodEnd: result.gracePeriodEnd,
+          user: {
+            id: result.user.id,
+            email: result.user.email,
+            firstName: result.user.firstName,
+            lastName: result.user.lastName,
+            emailVerified: result.user.emailVerified,
+            status: result.user.status,
+          },
+        });
+      }
 
       res.json({
         message: "로그인되었습니다",
         user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          emailVerified: user.emailVerified,
+          id: result.user.id,
+          email: result.user.email,
+          firstName: result.user.firstName,
+          lastName: result.user.lastName,
+          emailVerified: result.user.emailVerified,
+          status: result.user.status,
         },
       });
     } catch (error: any) {
@@ -176,7 +196,8 @@ export function registerAuthRoutes(app: Express) {
       if (
         errorMessage.includes("이메일") ||
         errorMessage.includes("비밀번호") ||
-        errorMessage.includes("인증")
+        errorMessage.includes("인증") ||
+        errorMessage.includes("탈퇴")
       ) {
         return res.status(401).json({ message: errorMessage });
       }
@@ -259,6 +280,73 @@ export function registerAuthRoutes(app: Express) {
         return res.status(400).json({ message: error.message });
       }
       res.status(500).json({ message: "비밀번호 재설정 중 오류가 발생했습니다" });
+    }
+  });
+
+  app.post("/api/auth/withdraw", async (req, res) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ message: "로그인이 필요합니다" });
+    }
+
+    try {
+      const result = withdrawSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: result.error.errors[0]?.message || "잘못된 요청입니다" });
+      }
+
+      const { password } = result.data;
+      const userId = req.session.userId;
+
+      await withdrawUser(userId, password);
+
+      req.session.destroy((err) => {
+        if (err) {
+          console.error("[Auth] Session destroy error after withdraw:", err);
+        }
+        res.clearCookie("connect.sid");
+        res.clearCookie("naver_monitor_sid");
+        res.json({ 
+          message: "탈퇴가 완료되었습니다. 30일 이내에 로그인하시면 계정을 복구할 수 있습니다.",
+          gracePeriodDays: 30
+        });
+      });
+    } catch (error: any) {
+      console.error("[Auth] Withdraw error:", error);
+      if (error.message.includes("비밀번호") || error.message.includes("일치")) {
+        return res.status(401).json({ message: error.message });
+      }
+      if (error.message.includes("이미 탈퇴")) {
+        return res.status(400).json({ message: error.message });
+      }
+      res.status(500).json({ message: "회원 탈퇴 중 오류가 발생했습니다" });
+    }
+  });
+
+  app.post("/api/auth/restore", async (req, res) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ message: "로그인이 필요합니다" });
+    }
+
+    try {
+      const userId = req.session.userId;
+      const user = await restoreUser(userId);
+
+      res.json({ 
+        message: "계정이 복구되었습니다.",
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          status: user.status,
+        }
+      });
+    } catch (error: any) {
+      console.error("[Auth] Restore error:", error);
+      if (error.message.includes("복구 가능 기간") || error.message.includes("탈퇴 상태")) {
+        return res.status(400).json({ message: error.message });
+      }
+      res.status(500).json({ message: "계정 복구 중 오류가 발생했습니다" });
     }
   });
 }
