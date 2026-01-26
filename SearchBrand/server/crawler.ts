@@ -247,7 +247,12 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
       }
 
       // 4. 일반 스마트블록 / 뷰 영역 추출
-      const boxes = document.querySelectorAll("div.api_subject_bx");
+      // classList의 마지막 항목이 api_subject_bx인 요소만 필터링
+      const boxes = Array.from(document.querySelectorAll("div.api_subject_bx"))
+        .filter((el) => {
+          const classList = Array.from(el.classList);
+          return classList[classList.length - 1] === "api_subject_bx";
+        });
 
       boxes.forEach((box) => {
         if (
