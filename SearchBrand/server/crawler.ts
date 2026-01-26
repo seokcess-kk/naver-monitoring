@@ -265,10 +265,12 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
         // 헤더 추출 (헤더 컨테이너 내에서만)
         const headerEl =
           box.querySelector('[data-template-id*="Header"] h2') ||
+          box.querySelector('[data-template-id*="Header"] .sds-comps-text-type-headline1') ||
           box.querySelector('div[data-template-id="header"] h2') ||
           box.querySelector(".api_title_area h2") ||
           box.querySelector(".tit_chunk") ||
-          box.querySelector(".sds-comps-header h2");
+          box.querySelector(".sds-comps-header h2") ||
+          box.querySelector(".sds-comps-header .sds-comps-text-type-headline1");
 
         if (!headerEl) return;
         
@@ -277,13 +279,13 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
 
         // 1. 기존 방식: 템플릿 기반 아이템 추출 시도
         let items = box.querySelectorAll(
-          'div[data-template-id="ugcItem"], div[data-template-id="webItem"], li.bx'
+          'div[data-template-id="ugcItem"], div[data-template-id="ugcItemDesk"], div[data-template-id="webItem"], li.bx'
         );
         
         // 2. 대안 방식: 반복 아이템 컨테이너 탐색 (인플루언서 블록 등)
         if (items.length === 0) {
           items = box.querySelectorAll(
-            '[data-template-id*="Item"], .sds-comps-vertical-layout > [data-template-id], .fds-ugc-influencer [data-template-id="sdsVerticalLayout"] > div[data-template-id]'
+            '.fds-ugc-item-list > [data-template-id], [data-template-id*="Item"], .sds-comps-vertical-layout > [data-template-id]'
           );
         }
         
