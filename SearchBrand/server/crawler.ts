@@ -295,27 +295,36 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
         items.forEach((item) => {
           try {
             // 제목 요소 탐색 (확장된 셀렉터)
-            // 인플루언서 블록: profile-group 외부의 .fds-comps-text.ellipsis2 (콘텐츠 제목)
-            let titleEl =
-              item.querySelector(".sds-comps-text-type-headline1") ||
-              item.querySelector(".news_tit") ||
-              item.querySelector(".api_txt_lines.tit") ||
-              item.querySelector(".total_tit");
+            let titleEl: Element | null = null;
             
-            // 인플루언서 블록 제목: profile-group 외부의 ellipsis2
+            // 1. 인플루언서 블록 우선: profile 외부의 .fds-comps-text.ellipsis2
+            const ellipsis2Els = Array.from(item.querySelectorAll(".fds-comps-text.ellipsis2"));
+            for (const el of ellipsis2Els) {
+              if (!el.closest(".profile-group") && !el.closest(".sds-comps-profile")) {
+                titleEl = el;
+                break;
+              }
+            }
+            
+            // 2. 일반 스마트블록 셀렉터
             if (!titleEl) {
-              const ellipsis2Els = Array.from(item.querySelectorAll(".fds-comps-text.ellipsis2"));
-              for (const el of ellipsis2Els) {
-                if (!el.closest(".profile-group") && !el.closest(".sds-comps-profile")) {
+              titleEl =
+                item.querySelector(".sds-comps-text-type-headline1") ||
+                item.querySelector(".news_tit") ||
+                item.querySelector(".api_txt_lines.tit") ||
+                item.querySelector(".total_tit") ||
+                item.querySelector('h3');
+            }
+            
+            // 3. 기타 fallback: [class*="title"] 중 profile 영역 제외
+            if (!titleEl) {
+              const titleCandidates = Array.from(item.querySelectorAll('[class*="title"]'));
+              for (const el of titleCandidates) {
+                if (!el.closest(".profile-group") && !el.closest(".sds-comps-profile") && !el.classList.contains("sds-comps-profile-info-title-text")) {
                   titleEl = el;
                   break;
                 }
               }
-            }
-            
-            // 기타 fallback
-            if (!titleEl) {
-              titleEl = item.querySelector('[class*="title"]') || item.querySelector('h3');
             }
 
             // 설명 요소 탐색 (인플루언서 블록: .fds-comps-text 중 ellipsis2 아닌 것, profile 외부)
