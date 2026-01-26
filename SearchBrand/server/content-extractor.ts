@@ -575,7 +575,7 @@ async function followAdRedirect(url: string): Promise<AdRedirectResult | null> {
       const page = await browser.newPage();
       await page.setUserAgent(DESKTOP_USER_AGENT);
       
-      await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+      await page.goto(url, { waitUntil: "networkidle2", timeout: 12000 });
       
       let previousUrl = page.url();
       for (let i = 0; i < 5; i++) {
@@ -727,7 +727,7 @@ async function extractBlogContentPC(url: string): Promise<string | null> {
             : `https://blog.naver.com${iframeSrc}`;
         
         console.log(`[Extractor] Blog PC navigating to iframe: ${fullIframeSrc}`);
-        await page.goto(fullIframeSrc, { waitUntil: "domcontentloaded", timeout: 20000 });
+        await page.goto(fullIframeSrc, { waitUntil: "domcontentloaded", timeout: 12000 });
         await delay(1500);
       }
 
@@ -834,7 +834,7 @@ async function extractCafeContentPC(url: string): Promise<string | null> {
             : `https://cafe.naver.com${iframeSrc}`;
 
         console.log(`[Extractor] Navigating to cafe iframe: ${fullIframeSrc}`);
-        await page.goto(fullIframeSrc, { waitUntil: "networkidle2", timeout: 25000 });
+        await page.goto(fullIframeSrc, { waitUntil: "networkidle2", timeout: 15000 });
         await delay(2000);
       }
 
@@ -1001,42 +1001,42 @@ interface ExtractionStrategy {
 const EXTRACTION_STRATEGIES: Record<string, ExtractionStrategy> = {
   blog: {
     handler: extractBlogContent,
-    timeout: 40000,
-    retries: 2,
-    retryDelay: 1000,
+    timeout: 15000,
+    retries: 1,
+    retryDelay: 500,
     method: "blog_puppeteer",
   },
   view: {
     handler: extractViewContent,
-    timeout: 40000,
-    retries: 2,
-    retryDelay: 1000,
+    timeout: 15000,
+    retries: 1,
+    retryDelay: 500,
     method: "view_puppeteer",
   },
   cafe: {
     handler: extractCafeContent,
-    timeout: 60000,
-    retries: 2,
-    retryDelay: 1500,
+    timeout: 20000,
+    retries: 1,
+    retryDelay: 500,
     method: "cafe_puppeteer",
   },
   news: {
     handler: extractNewsContent,
-    timeout: 35000,
+    timeout: 15000,
     method: "news_puppeteer",
     fallback: {
       handler: extractGenericContent,
-      timeout: 20000,
+      timeout: 10000,
       method: "news_http",
     },
   },
   other: {
     handler: extractGenericContent,
-    timeout: 20000,
+    timeout: 10000,
     method: "generic_http",
     fallback: {
       handler: extractWithPuppeteer,
-      timeout: 35000,
+      timeout: 15000,
       method: "generic_puppeteer",
     },
   },

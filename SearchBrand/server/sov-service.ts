@@ -33,7 +33,7 @@ const SEMANTIC_WEIGHT = 0.6;
 const OPENAI_MAX_RETRIES = 3;
 const OPENAI_INITIAL_DELAY_MS = 500;
 
-const contentExtractionLimit = pLimit(5);
+const contentExtractionLimit = pLimit(3);
 
 async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -479,6 +479,29 @@ interface FailureStats {
   embeddingTimeout: number;
   embeddingFailed: number;
   total: number;
+  byUrlType: Record<string, { timeout: number; failed: number; success: number }>;
+}
+
+function createEmptyFailureStats(): FailureStats {
+  return {
+    extractionTimeout: 0,
+    extractionFailed: 0,
+    embeddingTimeout: 0,
+    embeddingFailed: 0,
+    total: 0,
+    byUrlType: {},
+  };
+}
+
+function updateFailureStatsByType(
+  stats: FailureStats,
+  urlType: string,
+  outcome: "timeout" | "failed" | "success"
+): void {
+  if (!stats.byUrlType[urlType]) {
+    stats.byUrlType[urlType] = { timeout: 0, failed: 0, success: 0 };
+  }
+  stats.byUrlType[urlType][outcome]++;
 }
 
 function formatFailureStats(stats: FailureStats): string {
@@ -488,6 +511,33 @@ function formatFailureStats(stats: FailureStats): string {
   if (stats.embeddingTimeout > 0) parts.push(`임베딩 타임아웃 ${stats.embeddingTimeout}건`);
   if (stats.embeddingFailed > 0) parts.push(`임베딩 실패 ${stats.embeddingFailed}건`);
   return parts.length > 0 ? ` (${parts.join(", ")})` : "";
+}
+
+function logFailureStatsSummary(stats: FailureStats): void {
+  if (stats.total === 0 && Object.keys(stats.byUrlType).length === 0) return;
+  
+  console.log("\n[SOV] === Failure Stats Summary ===");
+  console.log(`[SOV] Total failures: ${stats.total} (timeout: ${stats.extractionTimeout}, failed: ${stats.extractionFailed})`);
+  console.log(`[SOV] Embedding failures: timeout ${stats.embeddingTimeout}, failed ${stats.embeddingFailed}`);
+  
+  if (Object.keys(stats.byUrlType).length > 0) {
+    console.log("[SOV] By URL type:");
+    for (const [type, data] of Object.entries(stats.byUrlType)) {
+      const total = data.timeout + data.failed + data.success;
+      const successRate = total > 0 ? ((data.success / total) * 100).toFixed(1) : "0";
+      console.log(`[SOV]   ${type}: ${data.success}/${total} (${successRate}%) - timeout: ${data.timeout}, failed: ${data.failed}`);
+    }
+  }
+  console.log("[SOV] ==============================\n");
+}
+
+function detectUrlType(url: string): string {
+  if (url.includes("blog.naver.com") || url.includes("m.blog.naver.com")) return "blog";
+  if (url.includes("cafe.naver.com") || url.includes("m.cafe.naver.com")) return "cafe";
+  if (url.includes("news.naver.com") || url.includes("n.news.naver.com")) return "news";
+  if (url.includes("search.naver.com") && url.includes("view")) return "view";
+  if (url.includes("ader.naver.com") || url.includes("ad.naver.com")) return "ad";
+  return "other";
 }
 
 async function updateRunStatus(
@@ -637,13 +687,7 @@ export async function executeSovRun(runId: string): Promise<void> {
       );
     }
 
-    const failureStats: FailureStats = {
-      extractionTimeout: 0,
-      extractionFailed: 0,
-      embeddingTimeout: 0,
-      embeddingFailed: 0,
-      total: 0,
-    };
+    const failureStats = createEmptyFailureStats();
 
     const extractionTasks = exposures.map((exposure) =>
       contentExtractionLimit(async () => {
@@ -708,14 +752,23 @@ export async function executeSovRun(runId: string): Promise<void> {
           }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
+          const urlType = detectUrlType(exposure.url);
           if (errorMsg.includes("타임아웃")) {
             failureStats.extractionTimeout++;
-            console.error(`[SOV] Extraction timeout for ${exposure.id}: ${errorMsg}`);
+            updateFailureStatsByType(failureStats, urlType, "timeout");
+            console.error(`[SOV] Extraction timeout for ${exposure.id} (${urlType}): ${errorMsg}`);
           } else {
             failureStats.extractionFailed++;
-            console.error(`[SOV] Extraction failed for ${exposure.id}: ${errorMsg}`);
+            updateFailureStatsByType(failureStats, urlType, "failed");
+            console.error(`[SOV] Extraction failed for ${exposure.id} (${urlType}): ${errorMsg}`);
           }
           failureStats.total++;
+        }
+
+        // URL 타입별 성공 통계 업데이트
+        if (finalContent) {
+          const urlType = detectUrlType(exposure.url);
+          updateFailureStatsByType(failureStats, urlType, "success");
         }
 
         // DB에 추출 결과 저장 (성공/실패 모두)
@@ -850,6 +903,7 @@ export async function executeSovRun(runId: string): Promise<void> {
 
     const totalElapsedSec = Math.round((Date.now() - startTime) / 1000);
     statsCollector.logSummary();
+    logFailureStatsSummary(failureStats);
     await closeSovBrowser();
     await updateRunStatus(runId, "completed", totalExposures, totalExposures, undefined, 
       `분석 완료 (${totalElapsedSec}초 소요)`);
