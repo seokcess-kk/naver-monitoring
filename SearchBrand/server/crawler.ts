@@ -262,58 +262,93 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
         )
           return;
 
+        // 헤더 추출 (헤더 컨테이너 내에서만)
         const headerEl =
+          box.querySelector('[data-template-id*="Header"] h2') ||
           box.querySelector('div[data-template-id="header"] h2') ||
           box.querySelector(".api_title_area h2") ||
-          box.querySelector(".tit_chunk");
+          box.querySelector(".tit_chunk") ||
+          box.querySelector(".sds-comps-header h2");
 
-        const items = box.querySelectorAll(
+        if (!headerEl) return;
+        
+        const sectionTitle = (headerEl as HTMLElement).innerText.trim();
+        if (sectionTitle.includes("뉴스")) return;
+
+        // 1. 기존 방식: 템플릿 기반 아이템 추출 시도
+        let items = box.querySelectorAll(
           'div[data-template-id="ugcItem"], div[data-template-id="webItem"], li.bx'
         );
+        
+        // 2. 대안 방식: 반복 아이템 컨테이너 탐색 (인플루언서 블록 등)
+        if (items.length === 0) {
+          items = box.querySelectorAll(
+            '[data-template-id*="Item"], .sds-comps-vertical-layout > [data-template-id], .fds-ugc-influencer [data-template-id="sdsVerticalLayout"] > div[data-template-id]'
+          );
+        }
+        
         const posts: SmartBlockPost[] = [];
+        const seenUrls = new Set<string>();
 
-        if (headerEl && items.length > 0) {
-          const sectionTitle = (headerEl as HTMLElement).innerText.trim();
-          if (sectionTitle.includes("뉴스")) return;
+        items.forEach((item) => {
+          try {
+            // 제목 요소 탐색 (확장된 셀렉터)
+            const titleEl =
+              item.querySelector(".sds-comps-text-type-headline1") ||
+              item.querySelector(".news_tit") ||
+              item.querySelector(".api_txt_lines.tit") ||
+              item.querySelector(".total_tit") ||
+              item.querySelector('[class*="title"]') ||
+              item.querySelector('h3');
 
-          items.forEach((item) => {
-            try {
-              const titleEl =
-                item.querySelector(".sds-comps-text-type-headline1") ||
-                item.querySelector(".news_tit") ||
-                item.querySelector(".api_txt_lines.tit") ||
-                item.querySelector(".total_tit");
+            const summaryEl =
+              item.querySelector(".sds-comps-text-type-body1") ||
+              item.querySelector(".dsc_txt") ||
+              item.querySelector('[class*="desc"]');
 
-              const summaryEl =
-                item.querySelector(".sds-comps-text-type-body1") ||
-                item.querySelector(".dsc_txt");
+            // 대표 링크 탐색: 제목 링크 우선, 없으면 첫 번째 콘텐츠 링크
+            let anchorEl = titleEl ? titleEl.closest("a") : null;
+            if (!anchorEl) {
+              anchorEl = item.querySelector('a[href^="http"]');
+            }
 
-              const anchorEl = titleEl ? titleEl.closest("a") : item.querySelector("a");
-
-              if (titleEl && anchorEl && (anchorEl as HTMLAnchorElement).href) {
-                const postUrl = (anchorEl as HTMLAnchorElement).href;
-                if (!posts.some((p) => p.url === postUrl)) {
-                  posts.push({
-                    rank: null,
-                    title: (titleEl as HTMLElement).innerText.trim(),
-                    url: postUrl,
-                    summary: summaryEl ? (summaryEl as HTMLElement).innerText.trim() : "",
-                    isPlace: false,
-                  });
-                }
+            if (anchorEl && (anchorEl as HTMLAnchorElement).href) {
+              const postUrl = (anchorEl as HTMLAnchorElement).href;
+              
+              // 중복 URL 제거
+              if (seenUrls.has(postUrl)) return;
+              seenUrls.add(postUrl);
+              
+              // 제목 추출
+              let title = titleEl ? (titleEl as HTMLElement).innerText.trim() : '';
+              if (!title || title.length < 3) {
+                title = (anchorEl as HTMLAnchorElement).textContent?.trim() || '';
               }
-            } catch (e) {}
-          });
+              if (!title || title.length < 3) {
+                title = (anchorEl as HTMLAnchorElement).getAttribute('title') || '';
+              }
+              
+              if (title && title.length >= 3) {
+                posts.push({
+                  rank: null,
+                  title: title,
+                  url: postUrl,
+                  summary: summaryEl ? (summaryEl as HTMLElement).innerText.trim() : "",
+                  isPlace: false,
+                });
+              }
+            }
+          } catch (e) {}
+        });
 
-          if (posts.length > 0) {
-            posts.forEach((post, idx) => {
-              post.rank = idx + 1;
-            });
-            results.push({
-              sectionTitle: sectionTitle,
-              posts: posts,
-            });
-          }
+        if (posts.length > 0) {
+          posts.forEach((post, idx) => {
+            post.rank = idx + 1;
+          });
+          results.push({
+            sectionTitle: sectionTitle,
+            posts: posts,
+          });
         }
       });
 
