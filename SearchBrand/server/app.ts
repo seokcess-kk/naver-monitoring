@@ -35,6 +35,11 @@ function log(message: string, source = "express") {
 export async function initializeApp(app: Express, httpServer: Server) {
   const PgSession = connectPgSimple(session);
 
+  // 프록시 환경(Replit, Cloudflare 등)에서 secure 쿠키가 올바르게 동작하도록 설정
+  if (isProduction) {
+    app.set("trust proxy", 1);
+  }
+
   app.use(requestIdMiddleware);
 
   app.use(
