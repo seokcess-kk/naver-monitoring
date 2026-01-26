@@ -23,11 +23,21 @@ export const users = pgTable("users", {
   emailVerified: boolean("email_verified").default(false).notNull(),
   role: varchar("role", { length: 20 }).default("user").notNull(),
   status: varchar("status", { length: 20 }).default("active").notNull(),
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("idx_users_role").on(table.role),
   index("idx_users_status").on(table.status),
+]);
+
+export const withdrawnEmails = pgTable("withdrawn_emails", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  emailHash: varchar("email_hash").notNull().unique(),
+  withdrawnAt: timestamp("withdrawn_at").defaultNow(),
+  canReregisterAt: timestamp("can_reregister_at"),
+}, (table) => [
+  index("idx_withdrawn_emails_hash").on(table.emailHash),
 ]);
 
 export const verificationTokens = pgTable("verification_tokens", {
@@ -74,7 +84,13 @@ export const loginSchema = z.object({
   password: z.string().min(1, "비밀번호를 입력해주세요"),
 });
 
+export const withdrawSchema = z.object({
+  password: z.string().min(1, "비밀번호를 입력해주세요"),
+  reason: z.string().optional(),
+});
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type VerificationToken = typeof verificationTokens.$inferSelect;
 export type InsertVerificationToken = typeof verificationTokens.$inferInsert;
+export type WithdrawnEmail = typeof withdrawnEmails.$inferSelect;
