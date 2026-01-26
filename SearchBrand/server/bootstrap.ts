@@ -1,7 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
-import { pool } from "./db";
-import { closeRedisConnection } from "./queue/redis";
+import { pool, db } from "./db";
+import { sql } from "drizzle-orm";
+import { closeRedisConnection, checkRedisConnection } from "./queue/redis";
 import { closePlaceReviewQueue } from "./queue/place-review-queue";
 
 const app = express();
@@ -97,9 +98,59 @@ export function markReady() {
   isReady = true;
 }
 
-// Health check endpoints - respond to all methods
+const DB_CHECK_TIMEOUT_MS = 3000;
+
+async function checkDbHealth(): Promise<{ ok: boolean; message: string }> {
+  try {
+    const result = await Promise.race([
+      db.execute(sql`SELECT 1 as health_check`),
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error("DB health check timeout")), DB_CHECK_TIMEOUT_MS)
+      )
+    ]);
+    return { ok: true, message: "connected" };
+  } catch (error: any) {
+    return { ok: false, message: error.message || "unknown error" };
+  }
+}
+
+async function checkRedisHealth(): Promise<{ ok: boolean; message: string }> {
+  try {
+    const available = await checkRedisConnection();
+    return { ok: available, message: available ? "connected" : "not available" };
+  } catch (error: any) {
+    return { ok: false, message: error.message || "unknown error" };
+  }
+}
+
+// Liveness probe - always returns 200 if process is running
 app.all("/health", (_req, res) => {
-  res.status(200).send("OK");
+  res.status(200).json({ status: "alive" });
+});
+
+// Readiness probe - checks app initialization + DB health, includes Redis status
+app.all("/ready", async (_req, res) => {
+  if (!isReady) {
+    return res.status(503).json({
+      status: "not_ready",
+      message: "Application is still initializing",
+      checks: { app: false, db: null, redis: null }
+    });
+  }
+
+  const dbHealth = await checkDbHealth();
+  const redisHealth = await checkRedisHealth();
+
+  const ready = dbHealth.ok;
+
+  res.status(ready ? 200 : 503).json({
+    status: ready ? "ready" : "not_ready",
+    checks: {
+      app: true,
+      db: { ok: dbHealth.ok, message: dbHealth.message },
+      redis: { ok: redisHealth.ok, message: redisHealth.message }
+    }
+  });
 });
 
 // Root endpoint guard during startup - respond to all methods
