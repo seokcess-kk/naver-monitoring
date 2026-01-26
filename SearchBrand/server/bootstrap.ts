@@ -1,9 +1,70 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
+import { pool } from "./db";
+import { closeRedisConnection } from "./queue/redis";
+import { closePlaceReviewQueue } from "./queue/place-review-queue";
 
 const app = express();
 app.set("trust proxy", 1);
 const httpServer = createServer(app);
+
+const SHUTDOWN_TIMEOUT_MS = 10000;
+let isShuttingDown = false;
+
+async function gracefulShutdown(signal: string): Promise<void> {
+  if (isShuttingDown) {
+    console.log(`[Shutdown] Already shutting down, ignoring ${signal}`);
+    return;
+  }
+  
+  isShuttingDown = true;
+  console.log(`\n[Shutdown] Received ${signal}, starting graceful shutdown...`);
+  
+  const forceExitTimeout = setTimeout(() => {
+    console.error("[Shutdown] Timeout exceeded, forcing exit");
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+  
+  try {
+    console.log("[Shutdown] 1/4 Closing HTTP server...");
+    await new Promise<void>((resolve, reject) => {
+      httpServer.close((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    console.log("[Shutdown] HTTP server closed");
+    
+    console.log("[Shutdown] 2/4 Closing PostgreSQL pool...");
+    await pool.end().catch((err) => {
+      console.warn("[Shutdown] PostgreSQL pool close error:", err.message);
+    });
+    console.log("[Shutdown] PostgreSQL pool closed");
+    
+    console.log("[Shutdown] 3/4 Closing Redis connection...");
+    await closeRedisConnection().catch((err) => {
+      console.warn("[Shutdown] Redis close error:", err.message);
+    });
+    console.log("[Shutdown] Redis connection closed");
+    
+    console.log("[Shutdown] 4/4 Closing BullMQ worker...");
+    await closePlaceReviewQueue().catch((err) => {
+      console.warn("[Shutdown] BullMQ worker close error:", err.message);
+    });
+    console.log("[Shutdown] BullMQ worker closed");
+    
+    clearTimeout(forceExitTimeout);
+    console.log("[Shutdown] Graceful shutdown completed");
+    process.exit(0);
+  } catch (error) {
+    console.error("[Shutdown] Error during shutdown:", error);
+    clearTimeout(forceExitTimeout);
+    process.exit(1);
+  }
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 declare module "http" {
   interface IncomingMessage {
