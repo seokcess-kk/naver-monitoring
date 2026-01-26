@@ -1,5 +1,7 @@
 import { checkRedisConnection, isRedisAvailable } from "../queue/redis";
 import { findChromePath } from "../utils/chrome-finder";
+import { db } from "../db";
+import { sql } from "drizzle-orm";
 
 export interface ServiceStatus {
   name: string;
@@ -93,11 +95,31 @@ async function checkOpenAIStatus(): Promise<ServiceStatus> {
   };
 }
 
+const DB_CHECK_TIMEOUT_MS = 3000;
+
 async function checkDatabaseStatus(): Promise<ServiceStatus> {
   const checkedAt = new Date().toISOString();
   const dbUrl = process.env.DATABASE_URL;
   
-  if (dbUrl && dbUrl.trim().length > 0) {
+  if (!dbUrl || dbUrl.trim().length === 0) {
+    return {
+      name: "PostgreSQL",
+      status: "error",
+      message: "DATABASE_URL이 설정되지 않았습니다.",
+      checkedAt,
+      affectedFeatures: ["전체 서비스"],
+    };
+  }
+  
+  try {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("DB 연결 타임아웃")), DB_CHECK_TIMEOUT_MS);
+    });
+    
+    const queryPromise = db.execute(sql`SELECT 1`);
+    
+    await Promise.race([queryPromise, timeoutPromise]);
+    
     return {
       name: "PostgreSQL",
       status: "ok",
@@ -105,15 +127,20 @@ async function checkDatabaseStatus(): Promise<ServiceStatus> {
       checkedAt,
       affectedFeatures: [],
     };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isTimeout = errorMessage.includes("타임아웃");
+    
+    return {
+      name: "PostgreSQL",
+      status: "error",
+      message: isTimeout 
+        ? `데이터베이스 연결 타임아웃 (${DB_CHECK_TIMEOUT_MS / 1000}초 초과)`
+        : `데이터베이스 연결 실패: ${errorMessage.substring(0, 100)}`,
+      checkedAt,
+      affectedFeatures: ["전체 서비스"],
+    };
   }
-  
-  return {
-    name: "PostgreSQL",
-    status: "error",
-    message: "DATABASE_URL이 설정되지 않았습니다.",
-    checkedAt,
-    affectedFeatures: ["전체 서비스"],
-  };
 }
 
 export async function getAllServicesStatus(forceRefresh = false): Promise<AllServicesStatus> {
