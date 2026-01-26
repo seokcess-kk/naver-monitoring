@@ -16,6 +16,7 @@
   - 1단계: 기존 템플릿 셀렉터 (ugcItem, ugcItemDesk, webItem, li.bx)
   - 2단계: 확장 셀렉터 (.fds-ugc-item-list > [data-template-id], [data-template-id*="Item"])
 - **데스크톱 인플루언서 블록**: `ugcItemDesk` 템플릿 대응
+- **인플루언서 블록 제목/설명**: `.fds-comps-text.ellipsis2` (제목), `.fds-comps-text` without ellipsis2 (설명)
 - **중복 URL 자동 제거**: Set 기반 중복 체크
 - **제목 추출 우선순위**: 제목 요소 → 링크 텍스트 → title 속성
 
