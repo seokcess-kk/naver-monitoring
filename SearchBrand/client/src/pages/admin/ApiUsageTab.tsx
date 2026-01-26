@@ -3,16 +3,36 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Zap } from "lucide-react";
+import { Zap, Search, BarChart3, MessageSquare } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import { apiRequest } from "@/lib/queryClient";
 import { API_TYPE_LABELS, API_TYPE_COLORS, type ApiUsageStats } from "./types";
 
+type FeatureRankings = {
+  search?: Array<{ userId: string; email: string; count: number }>;
+  sov?: Array<{ userId: string; email: string; count: number }>;
+  placeReview?: Array<{ userId: string; email: string; count: number }>;
+};
+
+const FEATURE_LABELS: Record<string, string> = {
+  search: "통합검색",
+  sov: "SOV 분석",
+  placeReview: "플레이스 리뷰",
+};
+
+const FEATURE_ICONS: Record<string, React.ReactNode> = {
+  search: <Search className="w-4 h-4" />,
+  sov: <BarChart3 className="w-4 h-4" />,
+  placeReview: <MessageSquare className="w-4 h-4" />,
+};
+
 export function ApiUsageTab() {
   const [dateRange, setDateRange] = useState<string>("7days");
+  const [selectedFeature, setSelectedFeature] = useState<string>("search");
   
   const getDateRange = () => {
     const end = new Date();
@@ -33,6 +53,15 @@ export function ApiUsageTab() {
     queryFn: async () => {
       const params = new URLSearchParams({ startDate, endDate });
       const res = await apiRequest("GET", `/api/admin/api-usage/stats?${params}`);
+      return res.json();
+    },
+  });
+  
+  const { data: featureRankings } = useQuery<FeatureRankings>({
+    queryKey: ["admin-feature-rankings", dateRange],
+    queryFn: async () => {
+      const params = new URLSearchParams({ startDate, endDate });
+      const res = await apiRequest("GET", `/api/admin/api-usage/feature-rankings?${params}`);
       return res.json();
     },
   });
@@ -137,31 +166,47 @@ export function ApiUsageTab() {
       
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">사용자별 API 사용량 순위</CardTitle>
+          <CardTitle className="text-base">기능별 사용자 순위</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <Tabs value={selectedFeature} onValueChange={setSelectedFeature}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="search" className="flex items-center gap-2">
+                {FEATURE_ICONS.search}
+                <span className="hidden sm:inline">{FEATURE_LABELS.search}</span>
+              </TabsTrigger>
+              <TabsTrigger value="sov" className="flex items-center gap-2">
+                {FEATURE_ICONS.sov}
+                <span className="hidden sm:inline">{FEATURE_LABELS.sov}</span>
+              </TabsTrigger>
+              <TabsTrigger value="placeReview" className="flex items-center gap-2">
+                {FEATURE_ICONS.placeReview}
+                <span className="hidden sm:inline">{FEATURE_LABELS.placeReview}</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>순위</TableHead>
+                <TableHead className="w-16">순위</TableHead>
                 <TableHead>이메일</TableHead>
-                <TableHead className="text-right">호출 횟수</TableHead>
-                <TableHead className="text-right">토큰 사용량</TableHead>
+                <TableHead className="text-right">사용 횟수</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {stats?.topUsers.map((user, idx) => (
+              {(featureRankings?.[selectedFeature as keyof FeatureRankings] || []).map((user, idx) => (
                 <TableRow key={user.userId || idx}>
-                  <TableCell>{idx + 1}</TableCell>
+                  <TableCell className="font-medium">{idx + 1}</TableCell>
                   <TableCell>{user.email}</TableCell>
-                  <TableCell className="text-right">{user.totalCalls.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{user.totalTokens.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{user.count.toLocaleString()}</TableCell>
                 </TableRow>
               ))}
-              {(!stats?.topUsers || stats.topUsers.length === 0) && (
+              {(!featureRankings?.[selectedFeature as keyof FeatureRankings] || 
+                featureRankings[selectedFeature as keyof FeatureRankings]?.length === 0) && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    데이터가 없습니다
+                  <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                    {FEATURE_LABELS[selectedFeature]} 사용 데이터가 없습니다
                   </TableCell>
                 </TableRow>
               )}

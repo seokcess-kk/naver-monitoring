@@ -1456,6 +1456,105 @@ router.get("/api-usage/stats", requireAdmin, async (req: AdminRequest, res: Resp
   }
 });
 
+// 기능별 사용자 순위 조회 (통합검색, SOV분석, 플레이스 리뷰)
+router.get("/api-usage/feature-rankings", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { startDate, endDate, feature } = req.query;
+    
+    const dateConditions = {
+      search: [] as any[],
+      sov: [] as any[],
+      placeReview: [] as any[],
+    };
+    
+    if (startDate && typeof startDate === "string") {
+      const start = new Date(startDate);
+      dateConditions.search.push(gte(searchLogs.createdAt, start));
+      dateConditions.sov.push(gte(sovRuns.createdAt, start));
+      dateConditions.placeReview.push(gte(placeReviewJobs.createdAt, start));
+    }
+    if (endDate && typeof endDate === "string") {
+      const end = new Date(endDate);
+      dateConditions.search.push(lte(searchLogs.createdAt, end));
+      dateConditions.sov.push(lte(sovRuns.createdAt, end));
+      dateConditions.placeReview.push(lte(placeReviewJobs.createdAt, end));
+    }
+    
+    const result: Record<string, Array<{ userId: string; email: string; count: number }>> = {};
+    
+    // 통합검색 사용자 순위
+    if (!feature || feature === "search") {
+      const searchRanking = await db
+        .select({
+          userId: searchLogs.userId,
+          email: users.email,
+          count: sql<number>`count(*)`,
+        })
+        .from(searchLogs)
+        .leftJoin(users, eq(searchLogs.userId, users.id))
+        .where(dateConditions.search.length > 0 ? and(...dateConditions.search) : undefined)
+        .groupBy(searchLogs.userId, users.email)
+        .orderBy(sql`count(*) desc`)
+        .limit(10);
+      
+      result.search = searchRanking.map(r => ({
+        userId: r.userId,
+        email: r.email || "알 수 없음",
+        count: Number(r.count),
+      }));
+    }
+    
+    // SOV 분석 사용자 순위
+    if (!feature || feature === "sov") {
+      const sovRanking = await db
+        .select({
+          userId: sovRuns.userId,
+          email: users.email,
+          count: sql<number>`count(*)`,
+        })
+        .from(sovRuns)
+        .leftJoin(users, eq(sovRuns.userId, users.id))
+        .where(dateConditions.sov.length > 0 ? and(...dateConditions.sov) : undefined)
+        .groupBy(sovRuns.userId, users.email)
+        .orderBy(sql`count(*) desc`)
+        .limit(10);
+      
+      result.sov = sovRanking.map(r => ({
+        userId: r.userId,
+        email: r.email || "알 수 없음",
+        count: Number(r.count),
+      }));
+    }
+    
+    // 플레이스 리뷰 사용자 순위
+    if (!feature || feature === "placeReview") {
+      const placeReviewRanking = await db
+        .select({
+          userId: placeReviewJobs.userId,
+          email: users.email,
+          count: sql<number>`count(*)`,
+        })
+        .from(placeReviewJobs)
+        .leftJoin(users, eq(placeReviewJobs.userId, users.id))
+        .where(dateConditions.placeReview.length > 0 ? and(...dateConditions.placeReview) : undefined)
+        .groupBy(placeReviewJobs.userId, users.email)
+        .orderBy(sql`count(*) desc`)
+        .limit(10);
+      
+      result.placeReview = placeReviewRanking.map(r => ({
+        userId: r.userId,
+        email: r.email || "알 수 없음",
+        count: Number(r.count),
+      }));
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error("[Admin] Failed to get feature rankings:", error);
+    res.status(500).json({ error: "기능별 사용자 순위 조회 실패" });
+  }
+});
+
 // API 사용 로그 목록 조회
 router.get("/api-usage/logs", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
