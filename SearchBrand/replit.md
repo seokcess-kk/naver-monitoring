@@ -8,6 +8,16 @@
 
 ## Recent Changes
 
+### 2026-01-26 스마트블록 크롤링 로직 개선
+- **헤더 셀렉터 일반화**: 다양한 템플릿 구조 대응
+  - `[data-template-id*="Header"] h2` 추가
+  - `.sds-comps-header h2` fallback 추가
+- **2단계 아이템 추출 전략**: 기존 호환성 + 확장성
+  - 1단계: 기존 템플릿 셀렉터 (ugcItem, webItem, li.bx)
+  - 2단계: 확장 셀렉터 ([data-template-id*="Item"], vertical-layout)
+- **중복 URL 자동 제거**: Set 기반 중복 체크
+- **제목 추출 우선순위**: 제목 요소 → 링크 텍스트 → title 속성
+
 ### 2026-01-26 회원 탈퇴 기능 구현
 - **3단계 탈퇴 프로세스**: Soft Delete → 익명화 → 완전 삭제
   - 1단계: `status='withdrawn'` + `deletedAt` 기록, 30일 유예 기간
