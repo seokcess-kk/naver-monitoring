@@ -297,16 +297,29 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
             // 제목 요소 탐색 (확장된 셀렉터)
             const titleEl =
               item.querySelector(".sds-comps-text-type-headline1") ||
+              item.querySelector(".fds-comps-text.ellipsis2") ||
               item.querySelector(".news_tit") ||
               item.querySelector(".api_txt_lines.tit") ||
               item.querySelector(".total_tit") ||
               item.querySelector('[class*="title"]') ||
               item.querySelector('h3');
 
-            const summaryEl =
+            // 설명 요소 탐색 (인플루언서 블록: .fds-comps-text 중 ellipsis2 아닌 것)
+            let summaryEl =
               item.querySelector(".sds-comps-text-type-body1") ||
               item.querySelector(".dsc_txt") ||
               item.querySelector('[class*="desc"]');
+            
+            // 인플루언서 블록 설명: ellipsis2 없는 .fds-comps-text
+            if (!summaryEl) {
+              const fdsTexts = Array.from(item.querySelectorAll(".fds-comps-text"));
+              for (const el of fdsTexts) {
+                if (!el.classList.contains("ellipsis2")) {
+                  summaryEl = el;
+                  break;
+                }
+              }
+            }
 
             // 대표 링크 탐색: 제목 링크 우선, 없으면 첫 번째 콘텐츠 링크
             let anchorEl = titleEl ? titleEl.closest("a") : null;
