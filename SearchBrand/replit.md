@@ -10,11 +10,12 @@
 
 ### 2026-01-26 스마트블록 크롤링 로직 개선
 - **헤더 셀렉터 일반화**: 다양한 템플릿 구조 대응
-  - `[data-template-id*="Header"] h2` 추가
-  - `.sds-comps-header h2` fallback 추가
+  - `[data-template-id*="Header"] h2` 및 `.sds-comps-text-type-headline1` (span) 추가
+  - 인플루언서 블록 헤더(span 기반) 정상 추출
 - **2단계 아이템 추출 전략**: 기존 호환성 + 확장성
-  - 1단계: 기존 템플릿 셀렉터 (ugcItem, webItem, li.bx)
-  - 2단계: 확장 셀렉터 ([data-template-id*="Item"], vertical-layout)
+  - 1단계: 기존 템플릿 셀렉터 (ugcItem, ugcItemDesk, webItem, li.bx)
+  - 2단계: 확장 셀렉터 (.fds-ugc-item-list > [data-template-id], [data-template-id*="Item"])
+- **데스크톱 인플루언서 블록**: `ugcItemDesk` 템플릿 대응
 - **중복 URL 자동 제거**: Set 기반 중복 체크
 - **제목 추출 우선순위**: 제목 요소 → 링크 텍스트 → title 속성
 
