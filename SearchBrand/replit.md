@@ -8,6 +8,24 @@
 
 ## Recent Changes
 
+### 2026-01-27 키워드 인사이트 기능 추가
+- **검색량 분석**: 네이버 광고 API를 통한 월간 검색량 (PC/모바일) 표시
+- **트렌드 분석**: 네이버 데이터랩 API를 통한 13개월 검색 추이
+  - MoM (전월 대비) 성장률 계산
+  - YoY (전년 대비) 성장률 계산
+- **경쟁도 지수**: 높음/중간/낮음 수준 표시
+- **UI 컴포넌트**:
+  - KeywordInsightCard: 검색량, PC/모바일 비율, 성장률 카드
+  - KeywordTrendChart: Recharts 기반 월별 트렌드 차트
+- **관련 파일**:
+  - server/naver-datalab-api.ts: 데이터랩 API 클라이언트
+  - client/src/components/keyword-insight-card.tsx
+  - client/src/components/keyword-trend-chart.tsx
+
+### 2026-01-27 모바일 스마트블록 기능 제거
+- 스마트블록 크롤링이 PC 환경만 지원하도록 변경
+- 모바일 관련 코드 및 UI 요소 완전 제거
+
 ### 2026-01-27 SOV 분석 기능 제거
 - SOV(Share of Voice) 분석 기능이 프로젝트에서 완전히 제거되었습니다.
 - 제거된 파일: sov-service.ts, content-extractor.ts, sov-analysis.tsx, sov-panel.tsx, SovRunsTab.tsx
