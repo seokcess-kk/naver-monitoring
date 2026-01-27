@@ -33,12 +33,6 @@ interface KeywordInsightCardProps {
 }
 
 function formatNumber(num: number): string {
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(1) + "M";
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + "K";
-  }
   return num.toLocaleString();
 }
 
@@ -115,16 +109,10 @@ export function KeywordInsightCard({ insight, isLoading }: KeywordInsightCardPro
               <p className="text-xs text-muted-foreground">월간 검색량 및 트렌드 분석</p>
             </div>
           </div>
-          <Badge 
-            variant="outline" 
-            className={`text-xs font-medium ${getCompIdxColor(insight.compIdx)}`}
-          >
-            경쟁도: {insight.compIdx}
-          </Badge>
         </div>
       </CardHeader>
       <CardContent className="pt-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
             <div className="flex items-center gap-2 mb-1">
               <Search className="w-3.5 h-3.5 text-muted-foreground" />
@@ -187,6 +175,21 @@ export function KeywordInsightCard({ insight, isLoading }: KeywordInsightCardPro
                 : '-'}
             </div>
             <div className="text-[10px] text-muted-foreground">YoY</div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
+            <div className="flex items-center gap-2 mb-1">
+              <BarChart3 className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">경쟁도</span>
+            </div>
+            <div className="mt-1">
+              <Badge 
+                variant="outline" 
+                className={`text-sm font-semibold ${getCompIdxColor(insight.compIdx)}`}
+              >
+                {insight.compIdx}
+              </Badge>
+            </div>
           </div>
         </div>
       </CardContent>

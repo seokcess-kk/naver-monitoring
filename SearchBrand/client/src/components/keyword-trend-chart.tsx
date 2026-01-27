@@ -134,7 +134,7 @@ export function KeywordTrendChart({ trend, totalVolume, keyword, isLoading }: Ke
               />
               <Tooltip content={<CustomTooltip />} />
               <Area
-                type="monotone"
+                type="linear"
                 dataKey="volume"
                 stroke="#10b981"
                 strokeWidth={2}
