@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -5,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useServiceStatus } from "@/components/service-status-alert";
 import {
   Layers,
@@ -14,6 +16,9 @@ import {
   ExternalLink,
   Zap,
   AlertTriangle,
+  Monitor,
+  Smartphone,
+  ArrowLeftRight,
 } from "lucide-react";
 
 interface SmartBlockPost {
@@ -32,8 +37,16 @@ interface SmartBlockResult {
   posts: SmartBlockPost[];
 }
 
+interface SmartBlockDifferences {
+  pcOnly: number;
+  mobileOnly: number;
+  rankDifferences: number;
+}
+
 interface SmartBlockSectionProps {
   results: SmartBlockResult[];
+  mobileResults?: SmartBlockResult[];
+  differences?: SmartBlockDifferences;
   isLoading: boolean;
   highlightTerm?: string;
 }
@@ -83,11 +96,28 @@ function getSectionStyle(title: string): {
 
 export function SmartBlockSection({
   results,
+  mobileResults,
+  differences,
   isLoading,
   highlightTerm,
 }: SmartBlockSectionProps) {
-  const { chromeAvailable, isError } = useServiceStatus();
+  const { chromeAvailable } = useServiceStatus();
   const isChromeAvailable = chromeAvailable !== false;
+  
+  const hasMobileData = mobileResults && mobileResults.length > 0;
+  const hasPcResults = results && results.length > 0;
+  
+  const [activeDevice, setActiveDevice] = useState<"pc" | "mobile">(() => {
+    if (hasPcResults) return "pc";
+    if (hasMobileData) return "mobile";
+    return "pc";
+  });
+  
+  const currentResults = activeDevice === "mobile" && hasMobileData 
+    ? mobileResults 
+    : (hasPcResults ? results : (hasMobileData ? mobileResults : []));
+  const totalDifferences = differences ? differences.pcOnly + differences.mobileOnly + differences.rankDifferences : 0;
+  const showTabs = hasPcResults || hasMobileData;
 
   if (isLoading) {
     return (
@@ -114,7 +144,10 @@ export function SmartBlockSection({
     );
   }
 
-  if (!results || results.length === 0) {
+  const hasPcData = results && results.length > 0;
+  const hasAnyData = hasPcData || hasMobileData;
+
+  if (!hasAnyData) {
     return (
       <section className="space-y-4 md:space-y-6">
         <div className="flex items-center gap-3 md:gap-4 pb-3 md:pb-4 border-b border-border/50">
@@ -169,17 +202,48 @@ export function SmartBlockSection({
             </p>
           </div>
         </div>
-        <Badge
-          variant="outline"
-          className="text-[10px] md:text-xs font-medium bg-violet-500/5 text-violet-600 dark:text-violet-400 border-violet-500/20"
-        >
-          <Zap className="w-2.5 h-2.5 md:w-3 md:h-3 mr-1 md:mr-1.5" />
-          Live Crawling
-        </Badge>
+        <div className="flex items-center gap-2">
+          {showTabs && (hasPcResults && hasMobileData) && (
+            <Tabs value={activeDevice} onValueChange={(v) => setActiveDevice(v as "pc" | "mobile")}>
+              <TabsList className="h-8">
+                <TabsTrigger value="pc" className="text-xs px-3 h-7 gap-1.5">
+                  <Monitor className="w-3 h-3" />
+                  PC {!hasPcResults && "(없음)"}
+                </TabsTrigger>
+                <TabsTrigger value="mobile" className="text-xs px-3 h-7 gap-1.5">
+                  <Smartphone className="w-3 h-3" />
+                  모바일 {!hasMobileData && "(없음)"}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+          {showTabs && !(hasPcResults && hasMobileData) && (
+            <Badge variant="outline" className="text-[10px] md:text-xs font-medium bg-muted/50 text-muted-foreground">
+              {hasPcResults ? <><Monitor className="w-3 h-3 mr-1" /> PC</> : <><Smartphone className="w-3 h-3 mr-1" /> 모바일</>}
+            </Badge>
+          )}
+          {totalDifferences > 0 && (
+            <Badge
+              variant="outline"
+              className="text-[10px] md:text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 cursor-help"
+              title={`PC만: ${differences?.pcOnly || 0}건, 모바일만: ${differences?.mobileOnly || 0}건, 순위차이: ${differences?.rankDifferences || 0}건`}
+            >
+              <ArrowLeftRight className="w-2.5 h-2.5 md:w-3 md:h-3 mr-1 md:mr-1.5" />
+              차이 {totalDifferences}건
+            </Badge>
+          )}
+          <Badge
+            variant="outline"
+            className="text-[10px] md:text-xs font-medium bg-violet-500/5 text-violet-600 dark:text-violet-400 border-violet-500/20"
+          >
+            <Zap className="w-2.5 h-2.5 md:w-3 md:h-3 mr-1 md:mr-1.5" />
+            Live
+          </Badge>
+        </div>
       </div>
 
       <div className="mobile-horizontal-scroll md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-5">
-        {results.map((section, idx) => {
+        {currentResults.map((section, idx) => {
           const style = getSectionStyle(section.sectionTitle);
           return (
             <Card

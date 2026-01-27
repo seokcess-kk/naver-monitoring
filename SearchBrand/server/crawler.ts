@@ -18,26 +18,40 @@ interface SmartBlockSection {
   posts: SmartBlockPost[];
 }
 
+export type DeviceMode = "pc" | "mobile";
+
 const crawlLimit = pLimit(2);
 
 const crawlCache = new LRUCache<string, SmartBlockSection[]>({
-  max: 100,
-  ttl: 5 * 60 * 1000,
+  max: 200,
+  ttl: 3 * 60 * 1000,
 });
 
-async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
+const DEVICE_CONFIGS = {
+  pc: {
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    viewport: { width: 1280, height: 1080 },
+    url: (keyword: string) => `https://search.naver.com/search.naver?query=${encodeURIComponent(keyword)}`,
+  },
+  mobile: {
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    viewport: { width: 390, height: 844 },
+    url: (keyword: string) => `https://m.search.naver.com/search.naver?query=${encodeURIComponent(keyword)}`,
+  },
+};
+
+async function executeCrawl(keyword: string, device: DeviceMode = "pc"): Promise<SmartBlockSection[]> {
   let connection: BrowserConnection | null = null;
+  const config = DEVICE_CONFIGS[device];
 
   try {
     connection = await connectBrowser();
 
     const page = await connection.browser.newPage();
-    await page.setViewport({ width: 1280, height: 1080 });
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    );
+    await page.setViewport(config.viewport);
+    await page.setUserAgent(config.userAgent);
 
-    const url = `https://search.naver.com/search.naver?query=${encodeURIComponent(keyword)}`;
+    const url = config.url(keyword);
     await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
 
     const sections = await page.evaluate(() => {
@@ -385,13 +399,13 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
             }
 
             // 대표 링크 탐색: 제목에서 추출 우선, heatmap 링크, 첫 번째 콘텐츠 링크
-            let anchorEl = titleEl ? titleEl.closest("a") : null;
+            let anchorEl: HTMLAnchorElement | null = titleEl ? titleEl.closest("a") : null;
             if (!anchorEl && heatmapLink) {
-              anchorEl = heatmapLink;
+              anchorEl = heatmapLink as HTMLAnchorElement;
             }
             if (!anchorEl) {
               // profile 영역 외부의 첫 번째 유효 링크
-              const allAnchors = Array.from(item.querySelectorAll('a[href^="http"]'));
+              const allAnchors = Array.from(item.querySelectorAll('a[href^="http"]')) as HTMLAnchorElement[];
               for (const a of allAnchors) {
                 if (!a.closest(".profile-group") && !a.closest(".sds-comps-profile")) {
                   anchorEl = a;
@@ -484,20 +498,80 @@ async function executeCrawl(keyword: string): Promise<SmartBlockSection[]> {
   }
 }
 
-export async function crawlNaverSearch(keyword: string): Promise<SmartBlockSection[]> {
-  const cacheKey = keyword.trim().toLowerCase();
+export async function crawlNaverSearch(keyword: string, device: DeviceMode = "pc"): Promise<SmartBlockSection[]> {
+  const cacheKey = `${device}:${keyword.trim().toLowerCase()}`;
   
   const cached = crawlCache.get(cacheKey);
   if (cached) {
-    console.log(`[Crawler] Cache hit for keyword: ${keyword}`);
+    console.log(`[Crawler] Cache hit for keyword: ${keyword} (${device})`);
     return cached;
   }
   
-  const result = await crawlLimit(() => executeCrawl(keyword));
+  const result = await crawlLimit(() => executeCrawl(keyword, device));
   
   if (result.length > 0) {
     crawlCache.set(cacheKey, result);
   }
   
   return result;
+}
+
+export interface SmartBlockComparison {
+  pc: SmartBlockSection[];
+  mobile: SmartBlockSection[];
+  differences: {
+    pcOnly: number;
+    mobileOnly: number;
+    rankDifferences: number;
+  };
+}
+
+export async function crawlNaverSearchBoth(keyword: string): Promise<SmartBlockComparison> {
+  const [pc, mobile] = await Promise.all([
+    crawlNaverSearch(keyword, "pc"),
+    crawlNaverSearch(keyword, "mobile"),
+  ]);
+
+  const pcUrls = new Set(pc.flatMap(s => s.posts.map(p => p.url)));
+  const mobileUrls = new Set(mobile.flatMap(s => s.posts.map(p => p.url)));
+
+  let pcOnly = 0;
+  let mobileOnly = 0;
+  let rankDifferences = 0;
+
+  pcUrls.forEach(url => {
+    if (!mobileUrls.has(url)) pcOnly++;
+  });
+
+  mobileUrls.forEach(url => {
+    if (!pcUrls.has(url)) mobileOnly++;
+  });
+
+  const pcRankMap = new Map<string, number>();
+  pc.forEach(section => {
+    section.posts.forEach(post => {
+      if (post.rank) pcRankMap.set(post.url, post.rank);
+    });
+  });
+
+  mobile.forEach(section => {
+    section.posts.forEach(post => {
+      if (post.rank && pcRankMap.has(post.url)) {
+        const pcRank = pcRankMap.get(post.url)!;
+        if (Math.abs(pcRank - post.rank) >= 2) {
+          rankDifferences++;
+        }
+      }
+    });
+  });
+
+  return {
+    pc,
+    mobile,
+    differences: {
+      pcOnly,
+      mobileOnly,
+      rankDifferences,
+    },
+  };
 }
