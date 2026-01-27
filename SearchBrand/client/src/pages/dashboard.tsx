@@ -39,16 +39,8 @@ interface QuotaStatus {
   resetAt: string;
 }
 
-interface SmartBlockDifferences {
-  pcOnly: number;
-  mobileOnly: number;
-  rankDifferences: number;
-}
-
 interface SearchResult {
   smartBlock: SmartBlockResult[];
-  smartBlockMobile?: SmartBlockResult[];
-  smartBlockDifferences?: SmartBlockDifferences;
   apiResults: ApiChannelResults;
   quota?: QuotaStatus;
 }
@@ -563,8 +555,6 @@ export default function Dashboard() {
                     </Card>
                     <SmartBlockSection 
                       results={searchResults.smartBlock} 
-                      mobileResults={searchResults.smartBlockMobile}
-                      differences={searchResults.smartBlockDifferences}
                       isLoading={isSearching}
                       highlightTerm={highlightTerm}
                     />

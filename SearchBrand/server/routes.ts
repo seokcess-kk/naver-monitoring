@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { registerAuthRoutes, isAuthenticated } from "./auth-routes";
 import { findUserById } from "./auth-service";
 import { searchAllChannels, searchSingleChannel, QuotaExceededError } from "./naver-api";
-import { crawlNaverSearch, crawlNaverSearchBoth, type DeviceMode, type SmartBlockComparison } from "./crawler";
+import { crawlNaverSearch } from "./crawler";
 import { insertApiKeySchema, updateApiKeySchema } from "@shared/schema";
 import { z } from "zod";
 import { rateLimit } from "express-rate-limit";
@@ -43,7 +43,6 @@ const searchQuerySchema = z.object({
   keyword: z.string().min(1, "키워드는 필수입니다").max(100, "키워드는 100자 이하여야 합니다").transform(s => s.trim()),
   sort: z.enum(["sim", "date"]).default("sim"),
   page: z.string().regex(/^\d+$/, "페이지 번호는 숫자여야 합니다").default("1").transform(s => Math.max(1, Math.min(100, parseInt(s, 10)))),
-  device: z.enum(["pc", "mobile", "both"]).default("both"),
 });
 
 const channelSearchQuerySchema = searchQuerySchema.extend({
@@ -186,7 +185,7 @@ export async function registerRoutes(
         return res.status(400).json(validation.error);
       }
       
-      const { keyword, sort, page, device } = validation.data;
+      const { keyword, sort, page } = validation.data;
 
       const apiKey = await storage.getApiKeyByUserId(userId);
       if (!apiKey) {
@@ -198,15 +197,10 @@ export async function registerRoutes(
         clientSecret: apiKey.clientSecret,
       };
 
-      const crawlPromise = device === "both"
-        ? crawlNaverSearchBoth(keyword).catch((err) => {
-            console.error("Crawl error:", err);
-            return { pc: [], mobile: [], differences: { pcOnly: 0, mobileOnly: 0, rankDifferences: 0 } } as SmartBlockComparison;
-          })
-        : crawlNaverSearch(keyword, device as DeviceMode).catch((err) => {
-            console.error("Crawl error:", err);
-            return [];
-          });
+      const crawlPromise = crawlNaverSearch(keyword).catch((err) => {
+        console.error("Crawl error:", err);
+        return [];
+      });
 
       const [smartBlockResult, searchResult] = await Promise.all([
         crawlPromise,
@@ -217,22 +211,11 @@ export async function registerRoutes(
         console.error("Search log error:", err);
       });
 
-      if (device === "both") {
-        const comparison = smartBlockResult as SmartBlockComparison;
-        res.json({
-          smartBlock: comparison.pc,
-          smartBlockMobile: comparison.mobile,
-          smartBlockDifferences: comparison.differences,
-          apiResults: searchResult.results,
-          quota: searchResult.quota,
-        });
-      } else {
-        res.json({
-          smartBlock: smartBlockResult,
-          apiResults: searchResult.results,
-          quota: searchResult.quota,
-        });
-      }
+      res.json({
+        smartBlock: smartBlockResult,
+        apiResults: searchResult.results,
+        quota: searchResult.quota,
+      });
     } catch (error) {
       if (error instanceof QuotaExceededError) {
         return res.status(429).json({
