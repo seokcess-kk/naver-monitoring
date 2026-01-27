@@ -382,4 +382,4 @@ export const insertApiUsageLogSchema = createInsertSchema(apiUsageLogs).omit({
 export type InsertApiUsageLog = z.infer<typeof insertApiUsageLogSchema>;
 export type ApiUsageLog = typeof apiUsageLogs.$inferSelect;
 
-export type ApiType = "naver_search" | "naver_ad" | "openai" | "browserless";
+export type ApiType = "naver_search" | "naver_ad" | "naver_datalab" | "openai" | "browserless";

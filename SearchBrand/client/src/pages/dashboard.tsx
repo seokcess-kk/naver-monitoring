@@ -5,6 +5,8 @@ import { Header } from "@/components/header";
 import { SearchPanel } from "@/components/search-panel";
 import { SmartBlockSection } from "@/components/smart-block-section";
 import { ApiResultsSection } from "@/components/api-results-section";
+import { KeywordInsightCard } from "@/components/keyword-insight-card";
+import { KeywordTrendChart } from "@/components/keyword-trend-chart";
 import { ApiKeySetup } from "@/components/api-key-setup";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +21,22 @@ const RECENT_SEARCHES_KEY = "search-scope-recent-searches";
 const MAX_RECENT_SEARCHES = 5;
 const SEARCH_RESULTS_KEY = "search-scope-search-results";
 const SEARCH_STATE_KEY = "search-scope-search-state";
+
+interface TrendDataPoint {
+  period: string;
+  ratio: number;
+}
+
+interface KeywordInsight {
+  keyword: string;
+  totalVolume: number;
+  pcVolume: number;
+  mobileVolume: number;
+  compIdx: string;
+  momGrowth: number | null;
+  yoyGrowth: number | null;
+  trend: TrendDataPoint[] | null;
+}
 
 interface KeywordVolumeData {
   keyword: string;
@@ -43,6 +61,7 @@ interface SearchResult {
   smartBlock: SmartBlockResult[];
   apiResults: ApiChannelResults;
   quota?: QuotaStatus;
+  keywordInsight?: KeywordInsight | null;
 }
 
 interface SmartBlockResult {
@@ -553,6 +572,24 @@ export default function Dashboard() {
                         </div>
                       )}
                     </Card>
+                    
+                    {searchResults.keywordInsight && (
+                      <div className="space-y-4">
+                        <KeywordInsightCard 
+                          insight={searchResults.keywordInsight}
+                          isLoading={isSearching}
+                        />
+                        {searchResults.keywordInsight.trend && searchResults.keywordInsight.trend.length > 0 && (
+                          <KeywordTrendChart
+                            trend={searchResults.keywordInsight.trend}
+                            totalVolume={searchResults.keywordInsight.totalVolume}
+                            keyword={searchResults.keywordInsight.keyword}
+                            isLoading={isSearching}
+                          />
+                        )}
+                      </div>
+                    )}
+                    
                     <SmartBlockSection 
                       results={searchResults.smartBlock} 
                       isLoading={isSearching}
