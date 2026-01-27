@@ -54,22 +54,33 @@ async function executeCrawl(keyword: string, device: DeviceMode = "pc"): Promise
     const url = config.url(keyword);
     await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
 
-    const sections = await page.evaluate(() => {
+    const sections = await page.evaluate((isMobile: boolean) => {
       const results: SmartBlockSection[] = [];
       const processedElements = new Set<Element>();
 
-      // 1. 플레이스(지도) 영역 추출
-      const placeSection =
-        document.querySelector("#loc-main-section-root") ||
-        document.querySelector("#place-main-section-root") ||
-        document.querySelector('[data-laim-exp-id*="loc_plc"]') ||
-        document.querySelector('[data-laim-exp-id*="nmb_hpl"]') ||
-        document.querySelector('.api_subject_bx[data-template-type="place"]');
+      // 1. 플레이스(지도) 영역 추출 - PC와 모바일 셀렉터 모두 지원
+      const placeSection = isMobile
+        ? (document.querySelector('.place_section') ||
+           document.querySelector('.place_list')?.parentElement ||
+           document.querySelector('[class*="PlaceList"]')?.closest('section') ||
+           document.querySelector('#loc-main-section-root') ||
+           document.querySelector('[data-laim-exp-id*="loc_plc"]'))
+        : (document.querySelector("#loc-main-section-root") ||
+           document.querySelector("#place-main-section-root") ||
+           document.querySelector('[data-laim-exp-id*="loc_plc"]') ||
+           document.querySelector('[data-laim-exp-id*="nmb_hpl"]') ||
+           document.querySelector('.api_subject_bx[data-template-type="place"]'));
 
       if (placeSection) {
         processedElements.add(placeSection);
         const placePosts: SmartBlockPost[] = [];
-        const listItems = placeSection.querySelectorAll("li");
+        
+        // 모바일과 PC 모두에서 작동하는 셀렉터
+        const listItems = placeSection.querySelectorAll(
+          isMobile 
+            ? ".place_item, .place_list li, li[class*='place']"
+            : "li"
+        );
 
         let rankCounter = 1;
         listItems.forEach((li) => {
@@ -88,25 +99,36 @@ async function executeCrawl(keyword: string, device: DeviceMode = "pc"): Promise
             )
               return;
 
-            const nameEl =
-              li.querySelector(".YwYLL") ||
-              li.querySelector(".q2LdB") ||
-              li.querySelector(".tit_place") ||
-              li.querySelector(".place_bluelink");
+            // 모바일과 PC 모두에서 작동하는 이름 셀렉터
+            const nameEl = isMobile
+              ? (li.querySelector(".place_name") ||
+                 li.querySelector(".place_title") ||
+                 li.querySelector("[class*='name']") ||
+                 li.querySelector(".YwYLL") ||
+                 li.querySelector("a"))
+              : (li.querySelector(".YwYLL") ||
+                 li.querySelector(".q2LdB") ||
+                 li.querySelector(".tit_place") ||
+                 li.querySelector(".place_bluelink"));
 
             const linkEl =
               li.querySelector("a.place_bluelink") ||
+              li.querySelector("a.place_link") ||
               li.querySelector('a[href*="map.naver.com"]') ||
+              li.querySelector('a[href*="place.naver.com"]') ||
               li.querySelector("a");
 
             if (nameEl) {
-              placePosts.push({
-                rank: rankCounter++,
-                title: (nameEl as HTMLElement).innerText.trim(),
-                url: linkEl ? (linkEl as HTMLAnchorElement).href.split("?")[0] : "#",
-                summary: "네이버 플레이스",
-                isPlace: true,
-              });
+              const title = (nameEl as HTMLElement).innerText.trim();
+              if (title && title.length > 0) {
+                placePosts.push({
+                  rank: rankCounter++,
+                  title,
+                  url: linkEl ? (linkEl as HTMLAnchorElement).href.split("?")[0] : "#",
+                  summary: "네이버 플레이스",
+                  isPlace: true,
+                });
+              }
             }
           } catch (e) {}
         });
@@ -476,9 +498,9 @@ async function executeCrawl(keyword: string, device: DeviceMode = "pc"): Promise
       }
 
       return results;
-    });
+    }, device === "mobile");
 
-    return sections;
+    return sections as SmartBlockSection[];
   } catch (error: any) {
     const errorMessage = error?.message || String(error);
     if (errorMessage.includes('Browser was not found') || 
@@ -532,37 +554,63 @@ export async function crawlNaverSearchBoth(keyword: string): Promise<SmartBlockC
     crawlNaverSearch(keyword, "mobile"),
   ]);
 
-  const pcUrls = new Set(pc.flatMap(s => s.posts.map(p => p.url)));
-  const mobileUrls = new Set(mobile.flatMap(s => s.posts.map(p => p.url)));
-
   let pcOnly = 0;
   let mobileOnly = 0;
   let rankDifferences = 0;
 
-  pcUrls.forEach(url => {
-    if (!mobileUrls.has(url)) pcOnly++;
-  });
+  // 섹션 타이틀별로 그룹화
+  const pcSectionMap = new Map<string, SmartBlockSection>();
+  const mobileSectionMap = new Map<string, SmartBlockSection>();
 
-  mobileUrls.forEach(url => {
-    if (!pcUrls.has(url)) mobileOnly++;
-  });
+  pc.forEach(section => pcSectionMap.set(section.sectionTitle, section));
+  mobile.forEach(section => mobileSectionMap.set(section.sectionTitle, section));
 
-  const pcRankMap = new Map<string, number>();
-  pc.forEach(section => {
-    section.posts.forEach(post => {
-      if (post.rank) pcRankMap.set(post.url, post.rank);
-    });
-  });
+  // 공통 섹션에서만 차이점 계산 (같은 섹션끼리 비교)
+  const allSectionTitles = new Set([...Array.from(pcSectionMap.keys()), ...Array.from(mobileSectionMap.keys())]);
 
-  mobile.forEach(section => {
-    section.posts.forEach(post => {
-      if (post.rank && pcRankMap.has(post.url)) {
-        const pcRank = pcRankMap.get(post.url)!;
-        if (Math.abs(pcRank - post.rank) >= 2) {
-          rankDifferences++;
+  allSectionTitles.forEach(sectionTitle => {
+    const pcSection = pcSectionMap.get(sectionTitle);
+    const mobileSection = mobileSectionMap.get(sectionTitle);
+
+    if (!pcSection && mobileSection) {
+      // 모바일에만 있는 섹션은 차이로 카운트하지 않음 (구조 차이)
+      return;
+    }
+    if (pcSection && !mobileSection) {
+      // PC에만 있는 섹션은 차이로 카운트하지 않음 (구조 차이)
+      return;
+    }
+
+    if (pcSection && mobileSection) {
+      // 같은 섹션 내에서 URL 비교
+      const pcUrls = new Set(pcSection.posts.map(p => p.url));
+      const mobileUrls = new Set(mobileSection.posts.map(p => p.url));
+
+      // PC에만 있는 항목
+      pcSection.posts.forEach(post => {
+        if (!mobileUrls.has(post.url)) pcOnly++;
+      });
+
+      // 모바일에만 있는 항목
+      mobileSection.posts.forEach(post => {
+        if (!pcUrls.has(post.url)) mobileOnly++;
+      });
+
+      // 순위 차이 (둘 다 있는 항목)
+      const pcRankMap = new Map<string, number>();
+      pcSection.posts.forEach(post => {
+        if (post.rank) pcRankMap.set(post.url, post.rank);
+      });
+
+      mobileSection.posts.forEach(post => {
+        if (post.rank && pcRankMap.has(post.url)) {
+          const pcRank = pcRankMap.get(post.url)!;
+          if (Math.abs(pcRank - post.rank) >= 2) {
+            rankDifferences++;
+          }
         }
-      }
-    });
+      });
+    }
   });
 
   return {
