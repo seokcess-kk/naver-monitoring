@@ -4,7 +4,7 @@
 
 **SEARCH SCOPE** - "See the Share. Shape the Strategy."
 
-네이버 검색 통합 모니터링 및 브랜드 점유율(SOV) 분석 서비스입니다. 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록 노출 현황을 실시간으로 확인할 수 있습니다. 시장 키워드 점유율을 파악하고 전략을 설계하세요.
+네이버 검색 통합 모니터링 및 플레이스 리뷰 분석 서비스입니다. 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록 노출 현황을 실시간으로 확인할 수 있습니다. 시장 키워드 점유율을 파악하고 전략을 설계하세요.
 
 ## Technology Stack
 
@@ -22,21 +22,23 @@
 - **ORM**: Drizzle ORM with PostgreSQL
 - **Session**: express-session with connect-pg-simple
 - **Crawling**: Puppeteer with p-limit concurrency control
+- **Background Jobs**: BullMQ with Redis
 - **Caching**: LRU cache for API responses
 
 ### Database
 - **Primary**: PostgreSQL (Replit-provisioned via DATABASE_URL)
 - **Session Store**: PostgreSQL (sessions table)
+- **Job Queue**: Redis (for BullMQ)
 
 ### External Services
 - **Naver Search API**: Blog, Cafe, KnowledgeiN, News search
 - **SendGrid**: Email verification and password reset
-- **OpenAI API**: text-embedding-3-small for SOV semantic analysis
+- **OpenAI API**: Place review sentiment analysis (optional)
 
 ## Directory Structure
 
 ```
-Naver-Monitor/
+SearchBrand/
 ├── client/                     # Frontend application
 │   ├── public/                 # Static assets
 │   │   └── favicon.png
@@ -47,8 +49,7 @@ Naver-Monitor/
 │   │   │   ├── api-results-section.tsx
 │   │   │   ├── header.tsx
 │   │   │   ├── search-panel.tsx
-│   │   │   ├── smart-block-section.tsx
-│   │   │   └── sov-panel.tsx
+│   │   │   └── smart-block-section.tsx
 │   │   ├── hooks/              # Custom React hooks
 │   │   │   ├── use-auth.ts
 │   │   │   ├── use-mobile.tsx
@@ -58,9 +59,12 @@ Naver-Monitor/
 │   │   │   ├── queryClient.ts
 │   │   │   └── utils.ts
 │   │   ├── pages/              # Page components
+│   │   │   ├── admin/          # Admin console modules
 │   │   │   ├── auth.tsx
 │   │   │   ├── dashboard.tsx
 │   │   │   ├── landing.tsx
+│   │   │   ├── place-review.tsx
+│   │   │   ├── profile.tsx
 │   │   │   ├── not-found.tsx
 │   │   │   └── reset-password.tsx
 │   │   ├── App.tsx             # Main app component with routing
@@ -71,16 +75,26 @@ Naver-Monitor/
 ├── server/                     # Backend application
 │   ├── middleware/             # Express middleware
 │   │   └── observability.ts    # Request logging, error handling
+│   ├── queue/                  # BullMQ job queues
+│   │   └── place-review-queue.ts
+│   ├── services/               # Business logic services
+│   │   ├── place-review-scraper.ts
+│   │   ├── place-review-analyzer.ts
+│   │   ├── service-status.ts
+│   │   └── rate-limiter.ts
+│   ├── utils/                  # Utility functions
+│   │   └── browserless.ts
 │   ├── auth-routes.ts          # Authentication endpoints
 │   ├── auth-service.ts         # Auth business logic
+│   ├── admin-routes.ts         # Admin console endpoints
 │   ├── crawler.ts              # Puppeteer SmartBlock crawler
 │   ├── crypto.ts               # AES-256-GCM encryption
 │   ├── db.ts                   # Database connection pool
 │   ├── email-service.ts        # SendGrid email service
-│   ├── index.ts                # Server entry point
+│   ├── bootstrap.ts            # Server entry point
+│   ├── app.ts                  # Express app setup
 │   ├── naver-api.ts            # Naver Search API client
 │   ├── routes.ts               # API route definitions
-│   ├── sov-service.ts          # SOV analysis service
 │   ├── static.ts               # Static file serving
 │   ├── storage.ts              # Database CRUD operations
 │   └── vite.ts                 # Vite dev server setup
@@ -95,7 +109,6 @@ Naver-Monitor/
 │
 ├── ARCHITECTURE.md             # This file
 ├── replit.md                   # Project documentation
-├── design_guidelines.md        # UI/UX design guidelines
 ├── package.json                # Dependencies
 ├── tsconfig.json               # TypeScript configuration
 ├── vite.config.ts              # Vite configuration
@@ -119,7 +132,7 @@ Naver-Monitor/
 - Custom hooks abstract API calls and state management
 - UI components from shadcn/ui are in `/components/ui/`
 
-### 2. API Layer (server/routes.ts, server/auth-routes.ts)
+### 2. API Layer (server/routes.ts, server/auth-routes.ts, server/admin-routes.ts)
 
 **Responsibilities:**
 - HTTP request handling
@@ -143,11 +156,11 @@ Naver-Monitor/
 | DELETE | /api/api-keys | Delete API key |
 | GET | /api/search | Unified search (SmartBlock + 4 channels) |
 | GET | /api/search/channel | Single channel search |
-| POST | /api/sov/run | Start SOV analysis |
-| GET | /api/sov/status/:runId | Get analysis status |
-| GET | /api/sov/result/:runId | Get analysis result |
+| POST | /api/place-review/analyze | Start place review analysis |
+| GET | /api/place-review/status/:analysisId | Get analysis status |
+| GET | /api/place-review/analyses | Get user's analyses |
 
-### 3. Service Layer (server/*-service.ts)
+### 3. Service Layer (server/*-service.ts, server/services/)
 
 **Responsibilities:**
 - Business logic implementation
@@ -157,9 +170,11 @@ Naver-Monitor/
 **Services:**
 - `auth-service.ts`: User registration, login, email verification, password reset
 - `email-service.ts`: SendGrid email delivery
-- `sov-service.ts`: SOV analysis with OpenAI embeddings
+- `place-review-analyzer.ts`: Place review sentiment analysis with OpenAI
+- `place-review-scraper.ts`: Place review data scraping
 - `naver-api.ts`: Naver Search API client with caching
 - `crawler.ts`: Puppeteer-based SmartBlock crawler
+- `service-status.ts`: System health checks
 
 ### 4. Data Layer (server/storage.ts, shared/schema.ts)
 
@@ -175,10 +190,21 @@ Naver-Monitor/
 | sessions | Session storage for express-session |
 | verification_tokens | Email verification and password reset tokens |
 | api_keys | User's Naver API credentials (encrypted) |
-| sov_runs | SOV analysis run records |
-| sov_exposures | Analyzed content exposures |
-| sov_scores | Brand relevance scores |
-| sov_results | Final SOV percentages |
+| search_logs | Search history logs |
+| place_review_analyses | Place review analysis records |
+| place_review_results | Place review analysis results |
+| api_usage_logs | API usage tracking |
+| audit_logs | Admin audit trail |
+
+**Archived Tables (데이터 보존용):**
+| Table | Description |
+|-------|-------------|
+| sov_runs | SOV 분석 실행 기록 (읽기 전용) |
+| sov_exposures | SOV 콘텐츠 노출 데이터 (읽기 전용) |
+| sov_scores | SOV 브랜드 관련성 점수 (읽기 전용) |
+| sov_results | SOV 결과 데이터 (읽기 전용) |
+
+*Note: SOV 기능은 2026-01-27에 제거되었지만, 기존 데이터 보존을 위해 테이블은 유지됩니다. 새로운 SOV 데이터는 생성되지 않습니다.*
 
 ## Security Architecture
 
@@ -198,7 +224,7 @@ Naver-Monitor/
 | /api/auth/* | 10 requests / 15 minutes |
 | /api/auth/resend-verification | 3 requests / 15 minutes |
 | /api/search | 30 requests / minute |
-| /api/sov/* | 10 requests / minute |
+| /api/place-review/* | 10 requests / minute |
 
 ## Caching Strategy
 
@@ -214,7 +240,8 @@ Naver-Monitor/
 | DATABASE_URL | PostgreSQL connection string | Yes |
 | SESSION_SECRET | Express session signing key | Yes |
 | ENCRYPTION_KEY | AES-256 key for API secrets | No (derives from SESSION_SECRET) |
-| OPENAI_API_KEY | OpenAI API for SOV embeddings | Yes (for SOV) |
+| BROWSERLESS_API_KEY | Cloud browser for crawling | No |
+| SENDGRID_API_KEY | Email delivery | No |
 
 ## Development Commands
 
@@ -227,10 +254,10 @@ npm run db:push    # Sync database schema
 ## Deployment
 
 - **Platform**: Replit Deployments
-- **Type**: Autoscale
+- **Type**: VM (Reserved VM)
 - **Port**: 5000
-- **Build**: `npm run build`
-- **Run**: `npm run start`
+- **Build**: `npm run deploy:build`
+- **Run**: `npm run deploy:start`
 
 ## Future Improvements
 

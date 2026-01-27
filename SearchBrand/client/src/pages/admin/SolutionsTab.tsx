@@ -155,7 +155,7 @@ export function SolutionsTab() {
             <div className="space-y-2">
               <label className="text-sm font-medium">코드</label>
               <Input 
-                placeholder="sov_analysis"
+                placeholder="place_review"
                 value={newSolution.code}
                 onChange={(e) => setNewSolution({ ...newSolution, code: e.target.value })}
               />
@@ -163,7 +163,7 @@ export function SolutionsTab() {
             <div className="space-y-2">
               <label className="text-sm font-medium">이름</label>
               <Input 
-                placeholder="SOV 분석"
+                placeholder="플레이스 리뷰"
                 value={newSolution.name}
                 onChange={(e) => setNewSolution({ ...newSolution, name: e.target.value })}
               />
@@ -171,7 +171,7 @@ export function SolutionsTab() {
             <div className="space-y-2">
               <label className="text-sm font-medium">설명 (선택)</label>
               <Input 
-                placeholder="브랜드 점유율을 분석합니다"
+                placeholder="플레이스 리뷰를 분석합니다"
                 value={newSolution.description}
                 onChange={(e) => setNewSolution({ ...newSolution, description: e.target.value })}
               />
