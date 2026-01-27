@@ -59,86 +59,183 @@ async function executeCrawl(keyword: string, device: DeviceMode = "pc"): Promise
       const processedElements = new Set<Element>();
 
       // 1. 플레이스(지도) 영역 추출 - PC와 모바일 셀렉터 모두 지원
-      const placeSection = isMobile
-        ? (document.querySelector('.place_section') ||
-           document.querySelector('.place_list')?.parentElement ||
-           document.querySelector('[class*="PlaceList"]')?.closest('section') ||
-           document.querySelector('#loc-main-section-root') ||
-           document.querySelector('[data-laim-exp-id*="loc_plc"]'))
-        : (document.querySelector("#loc-main-section-root") ||
-           document.querySelector("#place-main-section-root") ||
-           document.querySelector('[data-laim-exp-id*="loc_plc"]') ||
-           document.querySelector('[data-laim-exp-id*="nmb_hpl"]') ||
-           document.querySelector('.api_subject_bx[data-template-type="place"]'));
+      const placePosts: SmartBlockPost[] = [];
+      
+      if (isMobile) {
+        // 모바일: PC와 동일한 셀렉터 사용 (모바일도 PC 버전과 유사한 구조 사용)
+        // m.search.naver.com도 실제로는 PC와 비슷한 DOM 구조를 가짐
+        const mobileSelectors = [
+          '#loc-main-section-root',
+          '#place-main-section-root', 
+          '[data-laim-exp-id*="loc_plc"]',
+          '[data-laim-exp-id*="nmb_hpl"]',
+          '.api_subject_bx[data-template-type="place"]',
+          '[data-template-type="place"]',
+          '.place_section',
+        ];
 
-      if (placeSection) {
-        processedElements.add(placeSection);
-        const placePosts: SmartBlockPost[] = [];
-        
-        // 모바일과 PC 모두에서 작동하는 셀렉터
-        const listItems = placeSection.querySelectorAll(
-          isMobile 
-            ? ".place_item, .place_list li, li[class*='place']"
-            : "li"
-        );
+        let placeSection: Element | null = null;
+        for (const sel of mobileSelectors) {
+          placeSection = document.querySelector(sel);
+          if (placeSection) break;
+        }
 
-        let rankCounter = 1;
-        listItems.forEach((li) => {
-          try {
-            const docId =
-              li.getAttribute("data-loc_plce-doc-id") ||
-              li.getAttribute("data-loc_plc-doc-id") ||
-              li.getAttribute("data-nmb_hpl-doc-id") ||
-              li.getAttribute("data-doc-id") ||
-              "";
+        if (placeSection) {
+          processedElements.add(placeSection);
+          const listItems = placeSection.querySelectorAll('li');
+          
+          let rankCounter = 1;
+          listItems.forEach((li) => {
+            try {
+              // data 속성에서 플레이스 ID 추출
+              const docId =
+                li.getAttribute("data-loc_plce-doc-id") ||
+                li.getAttribute("data-loc_plc-doc-id") ||
+                li.getAttribute("data-nmb_hpl-doc-id") ||
+                li.getAttribute("data-doc-id") ||
+                "";
 
-            if (
-              docId.includes("nad") ||
-              li.classList.contains("type_ad") ||
-              li.getAttribute("data-nclk")?.includes("ads")
-            )
-              return;
+              // 광고 제외
+              if (
+                docId.includes("nad") ||
+                li.classList.contains("type_ad") ||
+                li.getAttribute("data-nclk")?.includes("ads")
+              )
+                return;
 
-            // 모바일과 PC 모두에서 작동하는 이름 셀렉터
-            const nameEl = isMobile
-              ? (li.querySelector(".place_name") ||
-                 li.querySelector(".place_title") ||
-                 li.querySelector("[class*='name']") ||
-                 li.querySelector(".YwYLL") ||
-                 li.querySelector("a"))
-              : (li.querySelector(".YwYLL") ||
-                 li.querySelector(".q2LdB") ||
-                 li.querySelector(".tit_place") ||
-                 li.querySelector(".place_bluelink"));
+              // 이름 추출 - 다양한 셀렉터 시도
+              const nameEl =
+                li.querySelector(".YwYLL") ||
+                li.querySelector(".q2LdB") ||
+                li.querySelector(".tit_place") ||
+                li.querySelector(".place_bluelink") ||
+                li.querySelector(".place_name") ||
+                li.querySelector(".name") ||
+                li.querySelector("a");
 
-            const linkEl =
-              li.querySelector("a.place_bluelink") ||
-              li.querySelector("a.place_link") ||
-              li.querySelector('a[href*="map.naver.com"]') ||
-              li.querySelector('a[href*="place.naver.com"]') ||
-              li.querySelector("a");
+              // 링크 추출
+              const linkEl =
+                li.querySelector("a.place_bluelink") ||
+                li.querySelector('a[href*="map.naver.com"]') ||
+                li.querySelector('a[href*="place.naver.com"]') ||
+                li.querySelector("a");
 
-            if (nameEl) {
-              const title = (nameEl as HTMLElement).innerText.trim();
-              if (title && title.length > 0) {
+              if (nameEl) {
+                const title = (nameEl as HTMLElement).innerText?.trim() || '';
+                let url = linkEl ? (linkEl as HTMLAnchorElement).href?.split("?")[0] : "#";
+                
+                // href가 없으면 data 속성에서 placeId로 URL 생성
+                if ((!url || url === '#') && docId) {
+                  url = `https://m.place.naver.com/place/${docId}`;
+                }
+                
+                if (title && title.length > 0 && !placePosts.some(p => p.title === title)) {
+                  placePosts.push({
+                    rank: rankCounter++,
+                    title,
+                    url,
+                    summary: "네이버 플레이스",
+                    isPlace: true,
+                  });
+                }
+              }
+            } catch (e) {}
+          });
+        }
+
+        // 추가: 플레이스 링크 직접 탐색 (섹션을 못 찾은 경우)
+        if (placePosts.length === 0) {
+          const allPlaceLinks = document.querySelectorAll(
+            'a[href*="place.naver.com"], a[href*="map.naver.com/place"]'
+          );
+          
+          let rankCounter = 1;
+          allPlaceLinks.forEach((anchor) => {
+            try {
+              const href = (anchor as HTMLAnchorElement).href;
+              if (!href || href.includes('nad')) return;
+              
+              // 가장 가까운 컨테이너에서 이름 찾기
+              const container = anchor.closest('li') || anchor.closest('div');
+              const nameEl = container?.querySelector('.place_name, .name, [class*="name"]') || anchor;
+              const title = (nameEl as HTMLElement)?.innerText?.trim() || '';
+              
+              if (title && title.length > 1 && !placePosts.some(p => p.url === href.split('?')[0])) {
                 placePosts.push({
                   rank: rankCounter++,
                   title,
-                  url: linkEl ? (linkEl as HTMLAnchorElement).href.split("?")[0] : "#",
+                  url: href.split('?')[0],
                   summary: "네이버 플레이스",
                   isPlace: true,
                 });
               }
-            }
-          } catch (e) {}
-        });
-
-        if (placePosts.length > 0) {
-          results.push({
-            sectionTitle: "플레이스 (지도)",
-            posts: placePosts,
+            } catch (e) {}
           });
         }
+      } else {
+        // PC용 기존 로직
+        const placeSection =
+          document.querySelector("#loc-main-section-root") ||
+          document.querySelector("#place-main-section-root") ||
+          document.querySelector('[data-laim-exp-id*="loc_plc"]') ||
+          document.querySelector('[data-laim-exp-id*="nmb_hpl"]') ||
+          document.querySelector('.api_subject_bx[data-template-type="place"]');
+
+        if (placeSection) {
+          processedElements.add(placeSection);
+          const listItems = placeSection.querySelectorAll("li");
+
+          let rankCounter = 1;
+          listItems.forEach((li) => {
+            try {
+              const docId =
+                li.getAttribute("data-loc_plce-doc-id") ||
+                li.getAttribute("data-loc_plc-doc-id") ||
+                li.getAttribute("data-nmb_hpl-doc-id") ||
+                li.getAttribute("data-doc-id") ||
+                "";
+
+              if (
+                docId.includes("nad") ||
+                li.classList.contains("type_ad") ||
+                li.getAttribute("data-nclk")?.includes("ads")
+              )
+                return;
+
+              const nameEl =
+                li.querySelector(".YwYLL") ||
+                li.querySelector(".q2LdB") ||
+                li.querySelector(".tit_place") ||
+                li.querySelector(".place_bluelink");
+
+              const linkEl =
+                li.querySelector("a.place_bluelink") ||
+                li.querySelector('a[href*="map.naver.com"]') ||
+                li.querySelector('a[href*="place.naver.com"]') ||
+                li.querySelector("a");
+
+              if (nameEl) {
+                const title = (nameEl as HTMLElement).innerText.trim();
+                if (title && title.length > 0) {
+                  placePosts.push({
+                    rank: rankCounter++,
+                    title,
+                    url: linkEl ? (linkEl as HTMLAnchorElement).href.split("?")[0] : "#",
+                    summary: "네이버 플레이스",
+                    isPlace: true,
+                  });
+                }
+              }
+            } catch (e) {}
+          });
+        }
+      }
+
+      if (placePosts.length > 0) {
+        results.push({
+          sectionTitle: "플레이스 (지도)",
+          posts: placePosts,
+        });
       }
 
       // 2. 뉴스 영역 추출
