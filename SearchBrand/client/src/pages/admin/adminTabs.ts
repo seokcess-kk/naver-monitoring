@@ -1,6 +1,5 @@
 import { 
   Users, 
-  Activity, 
   Search, 
   FileText, 
   Key, 
@@ -9,7 +8,6 @@ import {
   Server, 
   Zap, 
   Database,
-  Shield,
   type LucideIcon,
 } from "lucide-react";
 
@@ -48,10 +46,9 @@ export const TAB_GROUPS: TabGroup[] = [
     description: "검색 및 사용 현황 분석",
     priority: 2,
     tabs: [
-      { id: "sov", label: "SOV 분석", icon: Activity, priority: 1 },
-      { id: "logs", label: "검색 로그", icon: Search, priority: 2 },
-      { id: "insights", label: "인사이트", icon: BarChart3, priority: 3 },
-      { id: "api-usage", label: "API 사용량", icon: Zap, priority: 4 },
+      { id: "logs", label: "검색 로그", icon: Search, priority: 1 },
+      { id: "insights", label: "인사이트", icon: BarChart3, priority: 2 },
+      { id: "api-usage", label: "API 사용량", icon: Zap, priority: 3 },
     ],
   },
   {

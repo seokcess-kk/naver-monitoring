@@ -3,9 +3,6 @@ import { db } from "./db";
 import { 
   users, 
   apiKeys, 
-  sovRuns, 
-  sovExposures,
-  sovScores,
   searchLogs, 
   solutions, 
   userSolutions,
@@ -131,13 +128,6 @@ router.get("/users/:userId", requireAdmin, async (req: AdminRequest, res: Respon
       .where(eq(apiKeys.userId, userId))
       .limit(1);
     
-    const [sovStats] = await db
-      .select({ 
-        count: sql<number>`count(*)`,
-      })
-      .from(sovRuns)
-      .where(eq(sovRuns.userId, userId));
-    
     const [searchStats] = await db
       .select({ 
         count: sql<number>`count(*)`,
@@ -150,7 +140,6 @@ router.get("/users/:userId", requireAdmin, async (req: AdminRequest, res: Respon
       stats: {
         hasApiKey: !!apiKeyInfo,
         apiKeyUpdatedAt: apiKeyInfo?.updatedAt || null,
-        sovRunCount: Number(sovStats?.count || 0),
         searchCount: Number(searchStats?.count || 0),
       },
     });
@@ -233,70 +222,6 @@ router.patch("/users/:userId", requireAdmin, async (req: AdminRequest, res: Resp
   } catch (error) {
     console.error("[Admin] Failed to update user:", error);
     res.status(500).json({ error: "사용자 수정 실패" });
-  }
-});
-
-router.get("/sov-runs", requireAdmin, async (req: AdminRequest, res: Response) => {
-  try {
-    const { userId, status, startDate, endDate, keyword } = req.query;
-    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
-    
-    const conditions = [];
-    
-    if (userId && typeof userId === "string") {
-      conditions.push(eq(sovRuns.userId, userId));
-    }
-    if (status && typeof status === "string") {
-      conditions.push(eq(sovRuns.status, status));
-    }
-    if (startDate && typeof startDate === "string") {
-      conditions.push(gte(sovRuns.createdAt, new Date(startDate)));
-    }
-    if (endDate && typeof endDate === "string") {
-      const endOfDay = new Date(endDate);
-      endOfDay.setHours(23, 59, 59, 999);
-      conditions.push(lte(sovRuns.createdAt, endOfDay));
-    }
-    if (keyword && typeof keyword === "string") {
-      conditions.push(ilike(sovRuns.marketKeyword, `%${keyword}%`));
-    }
-    
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    
-    const [runs, countResult] = await Promise.all([
-      db
-        .select({
-          id: sovRuns.id,
-          userId: sovRuns.userId,
-          marketKeyword: sovRuns.marketKeyword,
-          brands: sovRuns.brands,
-          status: sovRuns.status,
-          totalExposures: sovRuns.totalExposures,
-          processedExposures: sovRuns.processedExposures,
-          errorMessage: sovRuns.errorMessage,
-          createdAt: sovRuns.createdAt,
-          completedAt: sovRuns.completedAt,
-        })
-        .from(sovRuns)
-        .where(whereClause)
-        .orderBy(desc(sovRuns.createdAt))
-        .limit(limit)
-        .offset(offset),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(sovRuns)
-        .where(whereClause),
-    ]);
-    
-    res.json({
-      runs,
-      total: Number(countResult[0]?.count || 0),
-      limit,
-      offset,
-    });
-  } catch (error) {
-    console.error("[Admin] Failed to list SOV runs:", error);
-    res.status(500).json({ error: "SOV 실행 목록 조회 실패" });
   }
 });
 
@@ -444,7 +369,7 @@ router.get("/audit-logs", requireAdmin, async (req: AdminRequest, res: Response)
 
 router.get("/stats/overview", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
-    const [userStats, sovStats, searchStats, apiKeyStats] = await Promise.all([
+    const [userStats, searchStats, apiKeyStats] = await Promise.all([
       db
         .select({
           total: sql<number>`count(*)`,
@@ -455,16 +380,7 @@ router.get("/stats/overview", requireAdmin, async (req: AdminRequest, res: Respo
       db
         .select({
           total: sql<number>`count(*)`,
-          completed: sql<number>`count(*) filter (where status = 'completed')`,
-          failed: sql<number>`count(*) filter (where status = 'failed')`,
-          pending: sql<number>`count(*) filter (where status IN ('pending', 'collecting', 'extracting', 'scoring'))`,
-        })
-        .from(sovRuns),
-      db
-        .select({
-          total: sql<number>`count(*)`,
           unified: sql<number>`count(*) filter (where search_type = 'unified')`,
-          sov: sql<number>`count(*) filter (where search_type = 'sov')`,
         })
         .from(searchLogs),
       db
@@ -478,16 +394,9 @@ router.get("/stats/overview", requireAdmin, async (req: AdminRequest, res: Respo
         active: Number(userStats[0]?.active || 0),
         suspended: Number(userStats[0]?.suspended || 0),
       },
-      sovRuns: {
-        total: Number(sovStats[0]?.total || 0),
-        completed: Number(sovStats[0]?.completed || 0),
-        failed: Number(sovStats[0]?.failed || 0),
-        pending: Number(sovStats[0]?.pending || 0),
-      },
       searchLogs: {
         total: Number(searchStats[0]?.total || 0),
         unified: Number(searchStats[0]?.unified || 0),
-        sov: Number(searchStats[0]?.sov || 0),
       },
       apiKeys: {
         total: Number(apiKeyStats[0]?.total || 0),
@@ -801,7 +710,6 @@ router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, re
     const shouldExcludeInactive = excludeInactive === "true";
 
     const searchCondition = and(gte(searchLogs.createdAt, filterStart), lt(searchLogs.createdAt, filterEnd));
-    const sovCondition = and(gte(sovRuns.createdAt, filterStart), lt(sovRuns.createdAt, filterEnd));
     const placeReviewCondition = and(gte(placeReviewJobs.createdAt, filterStart), lt(placeReviewJobs.createdAt, filterEnd));
 
     const statusFilter = shouldExcludeInactive 
@@ -811,9 +719,6 @@ router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, re
     const periodActiveResult = await db.execute(sql`
       SELECT COUNT(DISTINCT cu.user_id)::int as count FROM (
         SELECT user_id FROM search_logs 
-        WHERE created_at >= ${filterStart} AND created_at < ${filterEnd} AND user_id IS NOT NULL
-        UNION
-        SELECT user_id FROM sov_runs 
         WHERE created_at >= ${filterStart} AND created_at < ${filterEnd} AND user_id IS NOT NULL
         UNION
         SELECT user_id FROM place_review_jobs 
@@ -827,11 +732,6 @@ router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, re
       .select({ count: sql<number>`count(*)::int` })
       .from(searchLogs)
       .where(searchCondition);
-
-    const [sovCount] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(sovRuns)
-      .where(sovCondition);
 
     const [placeReviewCount] = await db
       .select({ count: sql<number>`count(*)::int` })
@@ -868,7 +768,7 @@ router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, re
       .groupBy(sql`date_trunc('day', ${searchLogs.createdAt})`)
       .orderBy(sql`date_trunc('day', ${searchLogs.createdAt})`);
 
-    const totalActivities = (searchCount?.count || 0) + (sovCount?.count || 0) + (placeReviewCount?.count || 0);
+    const totalActivities = (searchCount?.count || 0) + (placeReviewCount?.count || 0);
 
     res.json({
       activeUsers: {
@@ -876,7 +776,6 @@ router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, re
         totalActivities,
         breakdown: {
           searches: searchCount?.count || 0,
-          sovAnalyses: sovCount?.count || 0,
           placeReviews: placeReviewCount?.count || 0,
         },
       },
@@ -887,71 +786,6 @@ router.get("/insights/user-activity", requireAdmin, async (req: AdminRequest, re
   } catch (error) {
     console.error("[Admin] Failed to get user activity insights:", error);
     res.status(500).json({ error: "사용자 활동 인사이트 조회 실패" });
-  }
-});
-
-router.get("/insights/sov-trends", requireAdmin, async (req: AdminRequest, res: Response) => {
-  try {
-    const { startDate, endDate } = req.query;
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    const filterStart = startDate ? new Date(startDate as string) : new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const filterEnd = endDate ? new Date(endDate as string) : new Date(today.getTime() + 24 * 60 * 60 * 1000);
-
-    const dateCondition = and(gte(sovRuns.createdAt, filterStart), lt(sovRuns.createdAt, filterEnd));
-
-    const [totalRuns] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(sovRuns)
-      .where(dateCondition);
-
-    const [completedRuns] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(sovRuns)
-      .where(and(dateCondition, eq(sovRuns.status, "completed")));
-
-    const [failedRuns] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(sovRuns)
-      .where(and(dateCondition, eq(sovRuns.status, "failed")));
-
-    const recentKeywords = await db
-      .select({
-        keyword: sovRuns.marketKeyword,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(sovRuns)
-      .where(dateCondition)
-      .groupBy(sovRuns.marketKeyword)
-      .orderBy(sql`count(*) desc`)
-      .limit(10);
-
-    const dailyRunTrend = await db
-      .select({
-        date: sql<string>`date_trunc('day', ${sovRuns.createdAt})::date::text`,
-        total: sql<number>`count(*)::int`,
-        completed: sql<number>`count(*) filter (where ${sovRuns.status} = 'completed')::int`,
-        failed: sql<number>`count(*) filter (where ${sovRuns.status} = 'failed')::int`,
-      })
-      .from(sovRuns)
-      .where(dateCondition)
-      .groupBy(sql`date_trunc('day', ${sovRuns.createdAt})`)
-      .orderBy(sql`date_trunc('day', ${sovRuns.createdAt})`);
-
-    res.json({
-      summary: {
-        total: totalRuns?.count || 0,
-        completed: completedRuns?.count || 0,
-        failed: failedRuns?.count || 0,
-        successRate: totalRuns?.count ? Math.round((completedRuns?.count || 0) / totalRuns.count * 100) : 0,
-      },
-      recentKeywords,
-      dailyRunTrend,
-    });
-  } catch (error) {
-    console.error("[Admin] Failed to get SOV trends:", error);
-    res.status(500).json({ error: "SOV 트렌드 조회 실패" });
   }
 });
 
@@ -1047,28 +881,12 @@ router.get("/insights/system-performance", requireAdmin, async (req: AdminReques
     const filterEnd = endDate ? new Date(endDate as string) : new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
     const searchDateCondition = and(gte(searchLogs.createdAt, filterStart), lt(searchLogs.createdAt, filterEnd));
-    const sovDateCondition = and(gte(sovRuns.createdAt, filterStart), lt(sovRuns.createdAt, filterEnd));
     const jobDateCondition = and(gte(placeReviewJobs.createdAt, filterStart), lt(placeReviewJobs.createdAt, filterEnd));
 
     const [totalSearches] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(searchLogs)
       .where(searchDateCondition);
-
-    const [totalSovRuns] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(sovRuns)
-      .where(sovDateCondition);
-
-    const [completedSovRuns] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(sovRuns)
-      .where(and(sovDateCondition, eq(sovRuns.status, "completed")));
-
-    const [failedSovRuns] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(sovRuns)
-      .where(and(sovDateCondition, eq(sovRuns.status, "failed")));
 
     const [totalPlaceJobs] = await db
       .select({ count: sql<number>`count(*)::int` })
@@ -1105,19 +923,12 @@ router.get("/insights/system-performance", requireAdmin, async (req: AdminReques
       .groupBy(sql`date_trunc('day', ${searchLogs.createdAt})`)
       .orderBy(sql`date_trunc('day', ${searchLogs.createdAt})`);
 
-    const sovSuccessRate = totalSovRuns?.count ? Math.round((completedSovRuns?.count || 0) / totalSovRuns.count * 100) : 0;
     const placeSuccessRate = totalPlaceJobs?.count ? Math.round((completedPlaceJobs?.count || 0) / totalPlaceJobs.count * 100) : 0;
 
     res.json({
       apiUsage: {
         totalSearches: totalSearches?.count || 0,
         dailyUsage: dailyApiUsage,
-      },
-      sovQueue: {
-        total: totalSovRuns?.count || 0,
-        completed: completedSovRuns?.count || 0,
-        failed: failedSovRuns?.count || 0,
-        successRate: sovSuccessRate,
       },
       placeReviewQueue: {
         total: totalPlaceJobs?.count || 0,
@@ -1178,47 +989,6 @@ router.get("/export/search-logs", requireAdmin, async (req: AdminRequest, res: R
   } catch (error) {
     console.error("[Admin] Failed to export search logs:", error);
     res.status(500).json({ error: "검색 로그 내보내기 실패" });
-  }
-});
-
-router.get("/export/sov-runs", requireAdmin, async (req: AdminRequest, res: Response) => {
-  try {
-    const { status, startDate, endDate } = req.query;
-    
-    const conditions = [];
-    
-    if (status && typeof status === "string") {
-      conditions.push(eq(sovRuns.status, status as any));
-    }
-    if (startDate && typeof startDate === "string") {
-      conditions.push(gte(sovRuns.createdAt, new Date(startDate)));
-    }
-    if (endDate && typeof endDate === "string") {
-      const endOfDay = new Date(endDate);
-      endOfDay.setHours(23, 59, 59, 999);
-      conditions.push(lte(sovRuns.createdAt, endOfDay));
-    }
-    
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    
-    const runs = await db
-      .select()
-      .from(sovRuns)
-      .where(whereClause)
-      .orderBy(desc(sovRuns.createdAt))
-      .limit(10000);
-
-    const csvHeader = "ID,마켓키워드,브랜드,상태,처리노출수,전체노출수,생성일시,완료일시\n";
-    const csvBody = runs.map(run => 
-      `"${run.id}","${run.marketKeyword.replace(/"/g, '""')}","${run.brands.join(', ').replace(/"/g, '""')}","${run.status}","${run.processedExposures || 0}","${run.totalExposures || 0}","${run.createdAt ? new Date(run.createdAt).toISOString() : ''}","${run.completedAt ? new Date(run.completedAt).toISOString() : ''}"`
-    ).join("\n");
-
-    res.setHeader("Content-Type", "text/csv; charset=utf-8");
-    res.setHeader("Content-Disposition", `attachment; filename="sov-runs-${new Date().toISOString().split('T')[0]}.csv"`);
-    res.send("\uFEFF" + csvHeader + csvBody);
-  } catch (error) {
-    console.error("[Admin] Failed to export SOV runs:", error);
-    res.status(500).json({ error: "SOV 분석 내보내기 실패" });
   }
 });
 
@@ -1469,27 +1239,24 @@ router.get("/api-usage/stats", requireAdmin, async (req: AdminRequest, res: Resp
   }
 });
 
-// 기능별 사용자 순위 조회 (통합검색, SOV분석, 플레이스 리뷰)
+// 기능별 사용자 순위 조회 (통합검색, 플레이스 리뷰)
 router.get("/api-usage/feature-rankings", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
     const { startDate, endDate, feature } = req.query;
     
     const dateConditions = {
       search: [] as any[],
-      sov: [] as any[],
       placeReview: [] as any[],
     };
     
     if (startDate && typeof startDate === "string") {
       const start = new Date(startDate);
       dateConditions.search.push(gte(searchLogs.createdAt, start));
-      dateConditions.sov.push(gte(sovRuns.createdAt, start));
       dateConditions.placeReview.push(gte(placeReviewJobs.createdAt, start));
     }
     if (endDate && typeof endDate === "string") {
       const end = new Date(endDate);
       dateConditions.search.push(lte(searchLogs.createdAt, end));
-      dateConditions.sov.push(lte(sovRuns.createdAt, end));
       dateConditions.placeReview.push(lte(placeReviewJobs.createdAt, end));
     }
     
@@ -1511,28 +1278,6 @@ router.get("/api-usage/feature-rankings", requireAdmin, async (req: AdminRequest
         .limit(10);
       
       result.search = searchRanking.map(r => ({
-        userId: r.userId,
-        email: r.email || "알 수 없음",
-        count: Number(r.count),
-      }));
-    }
-    
-    // SOV 분석 사용자 순위
-    if (!feature || feature === "sov") {
-      const sovRanking = await db
-        .select({
-          userId: sovRuns.userId,
-          email: users.email,
-          count: sql<number>`count(*)`,
-        })
-        .from(sovRuns)
-        .leftJoin(users, eq(sovRuns.userId, users.id))
-        .where(dateConditions.sov.length > 0 ? and(...dateConditions.sov) : undefined)
-        .groupBy(sovRuns.userId, users.email)
-        .orderBy(sql`count(*) desc`)
-        .limit(10);
-      
-      result.sov = sovRanking.map(r => ({
         userId: r.userId,
         email: r.email || "알 수 없음",
         count: Number(r.count),
@@ -1671,8 +1416,8 @@ router.get("/users/:userId/usage", requireAdmin, async (req: AdminRequest, res: 
       .where(whereClause)
       .groupBy(apiUsageLogs.apiType);
     
-    // 최근 활동 (검색, SOV, 리뷰)
-    const [recentSearches, recentSovRuns, recentPlaceReviews] = await Promise.all([
+    // 최근 활동 (검색, 리뷰)
+    const [recentSearches, recentPlaceReviews] = await Promise.all([
       db
         .select({
           id: searchLogs.id,
@@ -1683,17 +1428,6 @@ router.get("/users/:userId/usage", requireAdmin, async (req: AdminRequest, res: 
         .from(searchLogs)
         .where(eq(searchLogs.userId, userId))
         .orderBy(desc(searchLogs.createdAt))
-        .limit(10),
-      db
-        .select({
-          id: sovRuns.id,
-          marketKeyword: sovRuns.marketKeyword,
-          status: sovRuns.status,
-          createdAt: sovRuns.createdAt,
-        })
-        .from(sovRuns)
-        .where(eq(sovRuns.userId, userId))
-        .orderBy(desc(sovRuns.createdAt))
         .limit(10),
       db
         .select({
@@ -1742,7 +1476,6 @@ router.get("/users/:userId/usage", requireAdmin, async (req: AdminRequest, res: 
       })),
       recentActivity: {
         searches: recentSearches,
-        sovRuns: recentSovRuns,
         placeReviews: recentPlaceReviews,
       },
       dailyActivity: dailyActivity.map(d => ({

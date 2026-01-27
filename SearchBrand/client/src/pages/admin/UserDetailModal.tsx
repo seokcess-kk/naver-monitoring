@@ -103,9 +103,8 @@ export function UserDetailModal({ user, open, onClose }: UserDetailModalProps) {
                   최근 활동
                 </h3>
                 <Tabs defaultValue="searches" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
+                  <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="searches">검색 ({usageStats?.recentActivity.searches.length || 0})</TabsTrigger>
-                    <TabsTrigger value="sov">SOV ({usageStats?.recentActivity.sovRuns.length || 0})</TabsTrigger>
                     <TabsTrigger value="reviews">리뷰 ({usageStats?.recentActivity.placeReviews.length || 0})</TabsTrigger>
                   </TabsList>
                   <TabsContent value="searches" className="mt-3">
@@ -119,19 +118,6 @@ export function UserDetailModal({ user, open, onClose }: UserDetailModalProps) {
                         </div>
                       ))}
                       {(!usageStats?.recentActivity.searches || usageStats.recentActivity.searches.length === 0) && (
-                        <p className="text-center text-muted-foreground py-4">없음</p>
-                      )}
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="sov" className="mt-3">
-                    <div className="max-h-40 overflow-y-auto space-y-2">
-                      {usageStats?.recentActivity.sovRuns.map(s => (
-                        <div key={s.id} className="flex justify-between items-center text-sm border-b pb-2">
-                          <span className="truncate max-w-[200px]">{s.marketKeyword}</span>
-                          <Badge variant={s.status === 'completed' ? 'default' : 'secondary'}>{s.status}</Badge>
-                        </div>
-                      ))}
-                      {(!usageStats?.recentActivity.sovRuns || usageStats.recentActivity.sovRuns.length === 0) && (
                         <p className="text-center text-muted-foreground py-4">없음</p>
                       )}
                     </div>

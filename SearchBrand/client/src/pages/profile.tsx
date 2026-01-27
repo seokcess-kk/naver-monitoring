@@ -32,7 +32,6 @@ import {
   User, 
   Mail, 
   Key, 
-  BarChart3, 
   Calendar,
   CheckCircle2,
   XCircle,
@@ -52,14 +51,6 @@ interface ApiKeyStatus {
   updatedAt: string | null;
 }
 
-interface SovRun {
-  id: string;
-  status: string;
-  marketKeyword: string;
-  brands: string[];
-  createdAt: string;
-}
-
 interface SearchStats {
   today: number;
   thisWeek: number;
@@ -77,10 +68,6 @@ export default function ProfilePage() {
 
   const { data: apiKey, isLoading: apiKeyLoading } = useQuery<ApiKeyStatus | null>({
     queryKey: ["/api/api-keys"],
-  });
-
-  const { data: sovRuns, isLoading: sovRunsLoading } = useQuery<SovRun[]>({
-    queryKey: ["/api/sov/runs"],
   });
 
   const { data: searchStats, isLoading: statsLoading } = useQuery<SearchStats>({
@@ -141,9 +128,6 @@ export default function ProfilePage() {
       day: "numeric",
     });
   };
-
-  const completedRuns = sovRuns?.filter(r => r.status === "completed") || [];
-  const recentRuns = sovRuns?.slice(0, 5) || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
@@ -303,7 +287,7 @@ export default function ProfilePage() {
                         {searchStats.byType.map((item) => (
                           <div key={item.searchType} className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg">
                             <Badge variant="outline" className="text-xs">
-                              {item.searchType === "unified" ? "통합검색" : "SOV 분석"}
+                              {item.searchType === "unified" ? "통합검색" : item.searchType}
                             </Badge>
                             <span className="font-medium">{item.count}회</span>
                           </div>
@@ -321,74 +305,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                SOV 분석 기록
-              </CardTitle>
-              <CardDescription>
-                브랜드 점유율 분석 이력
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {sovRunsLoading ? (
-                <Skeleton className="h-32 w-full" />
-              ) : sovRuns && sovRuns.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <div className="text-center p-4 bg-muted/50 rounded-lg">
-                      <p className="text-2xl font-bold text-primary">{sovRuns.length}</p>
-                      <p className="text-sm text-muted-foreground">전체 분석</p>
-                    </div>
-                    <div className="text-center p-4 bg-muted/50 rounded-lg">
-                      <p className="text-2xl font-bold text-green-600">{completedRuns.length}</p>
-                      <p className="text-sm text-muted-foreground">완료됨</p>
-                    </div>
-                    <div className="text-center p-4 bg-muted/50 rounded-lg">
-                      <p className="text-2xl font-bold text-muted-foreground">
-                        {new Set(sovRuns.flatMap(r => r.brands)).size}
-                      </p>
-                      <p className="text-sm text-muted-foreground">분석한 브랜드</p>
-                    </div>
-                  </div>
-
-                  <div className="border-t pt-4">
-                    <h4 className="text-sm font-medium mb-3">최근 분석</h4>
-                    <div className="space-y-2">
-                      {recentRuns.map((run) => (
-                        <div key={run.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <Badge variant={run.status === "completed" ? "default" : "secondary"}>
-                              {run.status === "completed" ? "완료" : run.status === "failed" ? "실패" : "진행중"}
-                            </Badge>
-                            <span className="font-medium">{run.marketKeyword}</span>
-                            <span className="text-sm text-muted-foreground">
-                              ({run.brands.length}개 브랜드)
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Calendar className="w-3 h-3" />
-                            {formatDate(run.createdAt)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <BarChart3 className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-                  <p className="text-muted-foreground">아직 분석 기록이 없습니다</p>
-                  <Link href="/">
-                    <Button variant="outline" size="sm" className="mt-4">
-                      첫 분석 시작하기
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
 
         <Card className="border-destructive/30 mt-6">

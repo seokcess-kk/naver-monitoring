@@ -14,7 +14,6 @@ export interface ServiceStatus {
 export interface AllServicesStatus {
   redis: ServiceStatus;
   chrome: ServiceStatus;
-  openai: ServiceStatus;
   database: ServiceStatus;
   overallStatus: "ok" | "degraded" | "error";
   checkedAt: string;
@@ -69,29 +68,6 @@ async function checkRedisStatus(): Promise<ServiceStatus> {
     message: "Redis에 연결할 수 없습니다. 플레이스 리뷰 분석이 비활성화됩니다.",
     checkedAt,
     affectedFeatures: ["플레이스 리뷰 분석"],
-  };
-}
-
-async function checkOpenAIStatus(): Promise<ServiceStatus> {
-  const checkedAt = new Date().toISOString();
-  const apiKey = process.env.OPENAI_API_KEY;
-  
-  if (apiKey && apiKey.trim().length > 0) {
-    return {
-      name: "OpenAI",
-      status: "ok",
-      message: "OpenAI API 키 설정됨",
-      checkedAt,
-      affectedFeatures: [],
-    };
-  }
-  
-  return {
-    name: "OpenAI",
-    status: "error",
-    message: "OPENAI_API_KEY가 설정되지 않았습니다. SOV 분석이 비활성화됩니다.",
-    checkedAt,
-    affectedFeatures: ["SOV 분석"],
   };
 }
 
@@ -150,14 +126,13 @@ export async function getAllServicesStatus(forceRefresh = false): Promise<AllSer
     return cachedStatus;
   }
   
-  const [redis, chrome, openai, database] = await Promise.all([
+  const [redis, chrome, database] = await Promise.all([
     checkRedisStatus(),
     checkChromeStatus(),
-    checkOpenAIStatus(),
     checkDatabaseStatus(),
   ]);
   
-  const services = [redis, chrome, openai, database];
+  const services = [redis, chrome, database];
   const errorCount = services.filter(s => s.status === "error").length;
   
   let overallStatus: "ok" | "degraded" | "error" = "ok";
@@ -170,7 +145,6 @@ export async function getAllServicesStatus(forceRefresh = false): Promise<AllSer
   cachedStatus = {
     redis,
     chrome,
-    openai,
     database,
     overallStatus,
     checkedAt: new Date().toISOString(),
@@ -182,11 +156,6 @@ export async function getAllServicesStatus(forceRefresh = false): Promise<AllSer
 
 export function getQuickRedisStatus(): boolean {
   return isRedisAvailable();
-}
-
-export function getQuickOpenAIStatus(): boolean {
-  const apiKey = process.env.OPENAI_API_KEY;
-  return !!(apiKey && apiKey.trim().length > 0);
 }
 
 export function getQuickChromeStatus(): boolean {

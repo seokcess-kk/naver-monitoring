@@ -8,18 +8,16 @@ import { crawlNaverSearch } from "./crawler";
 import { insertApiKeySchema, updateApiKeySchema } from "@shared/schema";
 import { z } from "zod";
 import { rateLimit } from "express-rate-limit";
-import { createSovRun, executeSovRun, getSovResultsByRun, getSovExposuresByRun, getSovResultsByTypeForRun } from "./sov-service";
 import { getKeywordVolume, isConfigured as isNaverAdConfigured } from "./naver-ad-api";
 import { 
   generateRateLimitKey, 
   validateRequest, 
-  assertSovRunAccessible, 
   toApiKeyPublic 
 } from "./utils/request-helpers";
 import adminRoutes from "./admin-routes";
 import { requireAdmin } from "./admin-middleware";
 import placeReviewRoutes, { initPlaceReviewWorker } from "./place-review-routes";
-import { getAllServicesStatus, getQuickRedisStatus, getQuickOpenAIStatus, getQuickChromeStatus } from "./services/service-status";
+import { getAllServicesStatus, getQuickRedisStatus, getQuickChromeStatus } from "./services/service-status";
 
 const searchLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -100,7 +98,6 @@ export async function registerRoutes(
   app.get("/api/services/quick-status", isAuthenticated, (_req, res) => {
     res.json({
       redis: getQuickRedisStatus(),
-      openai: getQuickOpenAIStatus(),
       chrome: getQuickChromeStatus(),
     });
   });
@@ -262,222 +259,6 @@ export async function registerRoutes(
       }
       console.error("Channel search error:", error);
       res.status(500).json({ message: "Channel search failed" });
-    }
-  });
-
-  const sovRunSchema = z.object({
-    marketKeyword: z.string().min(1, "키워드는 필수입니다").max(100, "키워드는 100자 이하여야 합니다"),
-    brands: z.array(z.string().min(1)).min(1, "최소 1개 이상의 브랜드가 필요합니다").max(10, "브랜드는 최대 10개까지 가능합니다"),
-  });
-
-  const sovLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 5,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: "SOV 분석 요청이 너무 많습니다. 잠시 후 다시 시도하세요." },
-    keyGenerator: generateRateLimitKey,
-    validate: { xForwardedForHeader: false },
-  });
-
-  app.post("/api/sov/run", isAuthenticated, sovLimiter, async (req: any, res) => {
-    try {
-      const userId = req.session.userId!;
-      
-      const validation = validateRequest(sovRunSchema, req.body);
-      if (!validation.success) {
-        return res.status(400).json(validation.error);
-      }
-
-      const { marketKeyword, brands } = validation.data;
-
-      const run = await createSovRun(userId, marketKeyword, brands);
-
-      // SOV 분석 로그 기록
-      storage.createSearchLog({ userId, searchType: "sov", keyword: marketKeyword }).catch((err) => {
-        console.error("Search log error:", err);
-      });
-
-      executeSovRun(run.id).catch((error) => {
-        console.error("[SOV] Background execution failed:", error);
-      });
-
-      res.status(201).json({
-        runId: run.id,
-        status: run.status,
-        message: "SOV 분석이 시작되었습니다.",
-      });
-    } catch (error) {
-      console.error("SOV run creation error:", error);
-      res.status(500).json({ message: "SOV 분석 시작에 실패했습니다." });
-    }
-  });
-
-  app.get("/api/sov/status/:runId", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.session.userId!;
-      const { runId } = req.params;
-
-      const access = await assertSovRunAccessible(runId, userId);
-      if (!access.success) {
-        return res.status(access.status).json({ message: access.message });
-      }
-      const { run } = access;
-
-      res.json({
-        runId: run.id,
-        status: run.status,
-        marketKeyword: run.marketKeyword,
-        brands: run.brands,
-        totalExposures: run.totalExposures,
-        processedExposures: run.processedExposures,
-        errorMessage: run.errorMessage,
-        createdAt: run.createdAt,
-        completedAt: run.completedAt,
-      });
-    } catch (error) {
-      console.error("SOV status check error:", error);
-      res.status(500).json({ message: "상태 조회에 실패했습니다." });
-    }
-  });
-
-  app.get("/api/sov/result/:runId", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.session.userId!;
-      const { runId } = req.params;
-
-      const access = await assertSovRunAccessible(runId, userId);
-      if (!access.success) {
-        return res.status(access.status).json({ message: access.message });
-      }
-      const { run } = access;
-
-      const results = await getSovResultsByRun(runId);
-      const exposures = await getSovExposuresByRun(runId);
-      const resultsByType = await getSovResultsByTypeForRun(runId);
-
-      const verifiedCount = exposures.filter(
-        (e) => e.extractionStatus?.startsWith("success")
-      ).length;
-      const unverifiedCount = exposures.length - verifiedCount;
-
-      res.json({
-        run: {
-          id: run.id,
-          status: run.status,
-          marketKeyword: run.marketKeyword,
-          brands: run.brands,
-          totalExposures: run.totalExposures,
-          verifiedCount,
-          unverifiedCount,
-          errorMessage: run.errorMessage,
-          createdAt: run.createdAt,
-          completedAt: run.completedAt,
-        },
-        results: results.map((r) => ({
-          brand: r.brand,
-          exposureCount: parseInt(r.exposureCount, 10),
-          sovPercentage: parseFloat(r.sovPercentage),
-        })),
-        resultsByType: resultsByType.map((r) => ({
-          blockType: r.blockType,
-          brand: r.brand,
-          exposureCount: parseInt(r.exposureCount, 10),
-          totalInType: parseInt(r.totalInType, 10),
-          sovPercentage: parseFloat(r.sovPercentage),
-        })),
-        exposures: exposures.map((e) => ({
-          id: e.id,
-          blockType: e.blockType,
-          title: e.title,
-          url: e.url,
-          position: parseInt(e.position, 10),
-          extractionStatus: e.extractionStatus,
-        })),
-      });
-    } catch (error) {
-      console.error("SOV result fetch error:", error);
-      res.status(500).json({ message: "결과 조회에 실패했습니다." });
-    }
-  });
-
-  app.get("/api/sov/runs", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.session.userId!
-      const runs = await storage.getSovRunsByUser(userId);
-
-      res.json(runs.map((run) => ({
-        id: run.id,
-        status: run.status,
-        statusMessage: run.statusMessage,
-        marketKeyword: run.marketKeyword,
-        brands: run.brands,
-        totalExposures: run.totalExposures,
-        processedExposures: run.processedExposures,
-        errorMessage: run.errorMessage,
-        createdAt: run.createdAt,
-        completedAt: run.completedAt,
-      })));
-    } catch (error) {
-      console.error("SOV runs fetch error:", error);
-      res.status(500).json({ message: "분석 목록 조회에 실패했습니다." });
-    }
-  });
-
-  const templateSchema = z.object({
-    name: z.string().min(1, "템플릿 이름은 필수입니다").max(50, "템플릿 이름은 50자 이하여야 합니다"),
-    marketKeyword: z.string().min(1, "시장 키워드는 필수입니다").max(100, "시장 키워드는 100자 이하여야 합니다"),
-    brands: z.array(z.string()).min(1, "최소 1개 브랜드가 필요합니다").max(10, "최대 10개 브랜드까지 가능합니다"),
-  });
-
-  app.get("/api/sov/templates", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.session.userId!;
-      const templates = await storage.getSovTemplatesByUser(userId);
-      res.json(templates);
-    } catch (error) {
-      console.error("Templates fetch error:", error);
-      res.status(500).json({ message: "템플릿 조회에 실패했습니다." });
-    }
-  });
-
-  app.post("/api/sov/templates", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.session.userId!;
-      const validation = validateRequest(templateSchema, req.body);
-      if (!validation.success) {
-        return res.status(400).json(validation.error);
-      }
-
-      const template = await storage.createSovTemplate({
-        userId,
-        ...validation.data,
-      });
-      res.status(201).json(template);
-    } catch (error) {
-      console.error("Template create error:", error);
-      res.status(500).json({ message: "템플릿 생성에 실패했습니다." });
-    }
-  });
-
-  app.delete("/api/sov/templates/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.session.userId!;
-      const { id } = req.params;
-
-      const template = await storage.getSovTemplateById(id);
-      if (!template) {
-        return res.status(404).json({ message: "템플릿을 찾을 수 없습니다." });
-      }
-      if (template.userId !== userId) {
-        return res.status(403).json({ message: "템플릿 삭제 권한이 없습니다." });
-      }
-
-      await storage.deleteSovTemplate(id);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Template delete error:", error);
-      res.status(500).json({ message: "템플릿 삭제에 실패했습니다." });
     }
   });
 

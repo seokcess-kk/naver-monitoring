@@ -1,6 +1,5 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { getSovRun } from "../sov-service";
 
 export function normalizeIPv6(ip: string): string {
   if (!ip.includes(":")) return ip;
@@ -77,38 +76,6 @@ export function validateRequest<T extends z.ZodTypeAny>(
 
 export function sendValidationError(res: Response, validation: ValidationFailure) {
   return res.status(400).json(validation.error);
-}
-
-type SovRunType = NonNullable<Awaited<ReturnType<typeof getSovRun>>>;
-
-type SovRunAccessSuccess = {
-  success: true;
-  run: SovRunType;
-};
-
-type SovRunAccessFailure = {
-  success: false;
-  status: number;
-  message: string;
-};
-
-type SovRunAccessResult = SovRunAccessSuccess | SovRunAccessFailure;
-
-export async function assertSovRunAccessible(
-  runId: string,
-  userId: string
-): Promise<SovRunAccessResult> {
-  const run = await getSovRun(runId);
-  
-  if (!run) {
-    return { success: false, status: 404, message: "분석 결과를 찾을 수 없습니다." };
-  }
-  
-  if (run.userId !== userId) {
-    return { success: false, status: 403, message: "접근 권한이 없습니다." };
-  }
-  
-  return { success: true, run };
 }
 
 export interface ApiKeyPublic {

@@ -70,7 +70,6 @@ export function SystemStatusTab() {
     { key: "database", ...status.database },
     { key: "redis", ...status.redis },
     { key: "chrome", ...status.chrome },
-    { key: "openai", ...status.openai },
   ] : [];
 
   return (
@@ -121,7 +120,7 @@ export function SystemStatusTab() {
                   <TableCell>
                     {service.affectedFeatures.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
-                        {service.affectedFeatures.map((feature, idx) => (
+                        {service.affectedFeatures.map((feature: string, idx: number) => (
                           <Badge key={idx} variant="outline" className="text-xs">{feature}</Badge>
                         ))}
                       </div>
@@ -156,10 +155,6 @@ export function SystemStatusTab() {
             <div className="p-4 border rounded-lg">
               <h4 className="font-semibold mb-2">Chrome/Puppeteer (선택)</h4>
               <p className="text-sm text-muted-foreground">웹 크롤링 서비스. 중단 시 스마트블록 크롤링 기능이 비활성화됩니다.</p>
-            </div>
-            <div className="p-4 border rounded-lg">
-              <h4 className="font-semibold mb-2">OpenAI (선택)</h4>
-              <p className="text-sm text-muted-foreground">AI 분석 서비스. 중단 시 SOV 분석 기능이 비활성화됩니다.</p>
             </div>
           </div>
         </CardContent>

@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Settings, Shield, Search, BarChart3, MessageSquare, Menu } from "lucide-react";
+import { LogOut, User, Settings, Shield, Search, MessageSquare, Menu } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -16,7 +16,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const navItems = [
   { href: "/", label: "통합검색", icon: Search },
-  { href: "/sov", label: "SOV 분석", icon: BarChart3 },
   { href: "/place-review", label: "플레이스 리뷰", icon: MessageSquare },
 ];
 

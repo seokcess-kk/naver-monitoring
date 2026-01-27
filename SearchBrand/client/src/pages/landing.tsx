@@ -36,11 +36,6 @@ export default function LandingPage() {
         "네이버 블로그, 카페, 지식iN, 뉴스 4개 채널의 API 검색 결과와 스마트블록(플레이스, VIEW, 뉴스) 크롤링 결과를 통합 분석합니다.",
     },
     {
-      question: "SOV 분석은 어떻게 작동하나요?",
-      answer:
-        "시장 키워드 검색 결과에서 스마트블록 콘텐츠를 수집하고, OpenAI 임베딩을 활용해 브랜드 관련성을 분석하여 노출 점유율을 계산합니다.",
-    },
-    {
       question: "무료로 사용할 수 있나요?",
       answer:
         "네, 기본 기능은 무료로 제공됩니다. 네이버 개발자 센터에서 발급받은 API 키만 등록하시면 바로 시작할 수 있습니다.",
@@ -152,7 +147,7 @@ export default function LandingPage() {
               <div className="space-y-6 md:space-y-8 animate-fade-in-up">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs md:text-sm font-medium">
                   <Zap className="w-3 h-3 md:w-4 md:h-4" />
-                  통합 검색&SOV 분석
+                  통합 검색 & 리뷰 분석
                 </div>
                 <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight leading-tight">
                   See the Share.
@@ -160,9 +155,9 @@ export default function LandingPage() {
                   <span className="gradient-text">Shape the Strategy</span>
                 </h1>
                 <p className="text-base md:text-lg text-muted-foreground max-w-lg">
-                  네이버 4개 채널 통합 검색부터 브랜드 점유율(SOV) 분석까지
+                  네이버 4개 채널 통합 검색부터 플레이스 리뷰 분석까지
                   <br className="hidden sm:block" />
-                  시장 키워드 점유율을 파악하고 전략을 설계하세요.
+                  검색 마케팅 현황을 파악하고 전략을 설계하세요.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                   <Button
@@ -226,13 +221,13 @@ export default function LandingPage() {
                             <PieChart className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
                           </div>
                           <div className="flex-1">
-                            <div className="text-sm font-medium">SOV 분석</div>
+                            <div className="text-sm font-medium">카페</div>
                             <div className="text-xs text-muted-foreground">
-                              브랜드A 점유율
+                              892건 검색됨
                             </div>
                           </div>
-                          <div className="text-lg font-bold text-primary">
-                            42.5%
+                          <div className="text-sm font-bold text-primary">
+                            #2
                           </div>
                         </div>
                       </CardContent>
@@ -276,7 +271,7 @@ export default function LandingPage() {
                 네이버 검색 마케팅에 필요한 모든 기능을 한 곳에서 사용하세요.
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               <Card className="hover-lift animate-fade-in-up-delay-1">
                 <CardContent className="p-5 md:p-6 text-center">
                   <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
@@ -310,22 +305,6 @@ export default function LandingPage() {
                 </CardContent>
               </Card>
               <Card className="hover-lift animate-fade-in-up-delay-3">
-                <CardContent className="p-5 md:p-6 text-center">
-                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-chart-5/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
-                    <PieChart className="w-6 h-6 md:w-7 md:h-7 text-chart-5" />
-                  </div>
-                  <h3 className="text-base md:text-lg font-semibold mb-2">
-                    SOV 점유율 분석
-                  </h3>
-                  <p className="text-xs md:text-sm text-muted-foreground">
-                    시장 키워드에서
-                  </p>
-                  <p className="text-xs md:text-sm text-muted-foreground">
-                    브랜드별 노출 점유율 측정
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="hover-lift animate-fade-in-up-delay-4">
                 <CardContent className="p-5 md:p-6 text-center">
                   <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-destructive/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
                     <BarChart3 className="w-6 h-6 md:w-7 md:h-7 text-destructive" />
@@ -404,7 +383,7 @@ export default function LandingPage() {
                   결과 확인
                 </h3>
                 <p className="text-xs md:text-sm text-muted-foreground">
-                  통합 검색 결과와 SOV 점유율을
+                  통합 검색 결과와 리뷰 분석을
                 </p>
                 <p className="text-xs md:text-sm text-muted-foreground">
                   한눈에 확인하세요

@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Activity, Search, Key } from "lucide-react";
+import { Users, Search, Key } from "lucide-react";
 import type { AdminStats } from "./types";
 
 interface StatsCardsProps {
@@ -10,8 +10,8 @@ interface StatsCardsProps {
 export function StatsCards({ stats }: StatsCardsProps) {
   if (!stats) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
           <Card key={i}>
             <CardContent className="pt-4">
               <Skeleton className="h-8 w-20 mb-2" />
@@ -24,7 +24,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
       <Card>
         <CardContent className="pt-4">
           <div className="flex items-center gap-2 mb-2">
@@ -40,24 +40,12 @@ export function StatsCards({ stats }: StatsCardsProps) {
       <Card>
         <CardContent className="pt-4">
           <div className="flex items-center gap-2 mb-2">
-            <Activity className="w-4 h-4 text-green-500" />
-            <span className="text-sm text-muted-foreground">SOV 분석</span>
-          </div>
-          <p className="text-2xl font-bold">{stats.sovRuns.total}</p>
-          <p className="text-xs text-muted-foreground">
-            완료 {stats.sovRuns.completed} / 실패 {stats.sovRuns.failed}
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="pt-4">
-          <div className="flex items-center gap-2 mb-2">
             <Search className="w-4 h-4 text-purple-500" />
             <span className="text-sm text-muted-foreground">검색 로그</span>
           </div>
           <p className="text-2xl font-bold">{stats.searchLogs.total}</p>
           <p className="text-xs text-muted-foreground">
-            통합 {stats.searchLogs.unified} / SOV {stats.searchLogs.sov}
+            통합 검색 {stats.searchLogs.unified}건
           </p>
         </CardContent>
       </Card>

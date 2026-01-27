@@ -12,7 +12,6 @@ import CompleteSignupPage from "@/pages/complete-signup";
 import ProfilePage from "@/pages/profile";
 import AdminPage from "@/pages/admin";
 import PlaceReviewPage from "@/pages/place-review";
-import SovAnalysisPage from "@/pages/sov-analysis";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -42,9 +41,6 @@ function Router() {
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/complete-signup" component={CompleteSignupPage} />
       <Route path="/admin" component={AdminPage} />
-      <Route path="/sov">
-        {isAuthenticated ? <SovAnalysisPage /> : <AuthPage />}
-      </Route>
       <Route path="/place-review">
         {isAuthenticated ? <PlaceReviewPage /> : <AuthPage />}
       </Route>

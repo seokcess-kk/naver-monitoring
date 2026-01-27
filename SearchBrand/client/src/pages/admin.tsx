@@ -11,7 +11,6 @@ import { apiRequest } from "@/lib/queryClient";
 import {
   StatsCards,
   UsersTab,
-  SovRunsTab,
   SearchLogsTab,
   AuditLogsTab,
   ApiKeysTab,
@@ -122,7 +121,6 @@ export default function AdminPage() {
               <StatsCards stats={stats} />
 
               <TabsContent value="users" className="mt-0"><UsersTab /></TabsContent>
-              <TabsContent value="sov" className="mt-0"><SovRunsTab /></TabsContent>
               <TabsContent value="logs" className="mt-0"><SearchLogsTab /></TabsContent>
               <TabsContent value="audit" className="mt-0"><AuditLogsTab /></TabsContent>
               <TabsContent value="apikeys" className="mt-0"><ApiKeysTab /></TabsContent>

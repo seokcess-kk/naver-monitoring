@@ -5,12 +5,11 @@ import { Button } from "@/components/ui/button";
 
 interface QuickStatus {
   redis: boolean;
-  openai: boolean;
   chrome: boolean;
 }
 
 interface ServiceStatusAlertProps {
-  service: "redis" | "openai" | "chrome";
+  service: "redis" | "chrome";
   featureName: string;
 }
 
@@ -18,10 +17,6 @@ const serviceMessages: Record<string, { title: string; description: string }> = 
   redis: {
     title: "리뷰 분석 서비스 점검 중",
     description: "현재 플레이스 리뷰 분석 서비스를 이용할 수 없습니다. 잠시 후 다시 시도해 주세요.",
-  },
-  openai: {
-    title: "SOV 분석 서비스 점검 중",
-    description: "현재 SOV 분석 서비스를 이용할 수 없습니다. 관리자에게 문의해 주세요.",
   },
   chrome: {
     title: "스마트블록 크롤링 서비스 점검 중",
@@ -106,7 +101,6 @@ export function useServiceStatus() {
     isLoading,
     isError,
     redisAvailable: isError ? null : (status?.redis ?? true),
-    openaiAvailable: isError ? null : (status?.openai ?? true),
     chromeAvailable: isError ? null : (status?.chrome ?? true),
   };
 }

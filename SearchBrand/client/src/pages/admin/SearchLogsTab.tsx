@@ -81,7 +81,7 @@ export function SearchLogsTab() {
     if (appliedFilters.searchType && appliedFilters.searchType !== "all") {
       const labels: Record<string, string> = {
         unified: "통합검색", blog: "블로그", cafe: "카페", 
-        kin: "지식iN", news: "뉴스", sov: "SOV"
+        kin: "지식iN", news: "뉴스"
       };
       badges.push({ label: "타입", value: labels[appliedFilters.searchType] || appliedFilters.searchType });
     }
@@ -122,7 +122,6 @@ export function SearchLogsTab() {
                 <SelectItem value="cafe">카페</SelectItem>
                 <SelectItem value="kin">지식iN</SelectItem>
                 <SelectItem value="news">뉴스</SelectItem>
-                <SelectItem value="sov">SOV</SelectItem>
               </SelectContent>
             </Select>
           </FilterField>

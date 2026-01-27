@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Zap, Search, BarChart3, MessageSquare, AlertTriangle, ShieldCheck, ShieldAlert, ShieldX } from "lucide-react";
+import { Zap, Search, MessageSquare, AlertTriangle, ShieldCheck, ShieldAlert, ShieldX } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
@@ -36,19 +36,16 @@ interface QuotaResponse {
 
 type FeatureRankings = {
   search?: Array<{ userId: string; email: string; count: number }>;
-  sov?: Array<{ userId: string; email: string; count: number }>;
   placeReview?: Array<{ userId: string; email: string; count: number }>;
 };
 
 const FEATURE_LABELS: Record<string, string> = {
   search: "통합검색",
-  sov: "SOV 분석",
   placeReview: "플레이스 리뷰",
 };
 
 const FEATURE_ICONS: Record<string, React.ReactNode> = {
   search: <Search className="w-4 h-4" />,
-  sov: <BarChart3 className="w-4 h-4" />,
   placeReview: <MessageSquare className="w-4 h-4" />,
 };
 
@@ -289,14 +286,10 @@ export function ApiUsageTab() {
         </CardHeader>
         <CardContent className="space-y-4">
           <Tabs value={selectedFeature} onValueChange={setSelectedFeature}>
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="search" className="flex items-center gap-2">
                 {FEATURE_ICONS.search}
                 <span className="hidden sm:inline">{FEATURE_LABELS.search}</span>
-              </TabsTrigger>
-              <TabsTrigger value="sov" className="flex items-center gap-2">
-                {FEATURE_ICONS.sov}
-                <span className="hidden sm:inline">{FEATURE_LABELS.sov}</span>
               </TabsTrigger>
               <TabsTrigger value="placeReview" className="flex items-center gap-2">
                 {FEATURE_ICONS.placeReview}

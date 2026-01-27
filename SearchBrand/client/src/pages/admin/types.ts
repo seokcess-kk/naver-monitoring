@@ -1,7 +1,6 @@
 export interface AdminStats {
   users: { total: number; active: number; suspended: number };
-  sovRuns: { total: number; completed: number; failed: number; pending: number };
-  searchLogs: { total: number; unified: number; sov: number };
+  searchLogs: { total: number; unified: number };
   apiKeys: { total: number };
 }
 
@@ -15,19 +14,6 @@ export interface AdminUser {
   emailVerified: boolean;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface SovRunAdmin {
-  id: string;
-  userId: string;
-  marketKeyword: string;
-  brands: string[];
-  status: string;
-  totalExposures: string;
-  processedExposures: string;
-  errorMessage: string | null;
-  createdAt: string;
-  completedAt: string | null;
 }
 
 export interface SearchLogAdmin {
@@ -93,19 +79,12 @@ export interface UserActivityInsights {
     totalActivities: number;
     breakdown: {
       searches: number;
-      sovAnalyses: number;
       placeReviews: number;
     };
   };
   popularKeywords: { keyword: string; count: number }[];
   searchByType: { searchType: string; count: number }[];
   dailySearchTrend: { date: string; count: number }[];
-}
-
-export interface SovTrendInsights {
-  summary: { total: number; completed: number; failed: number; successRate: number };
-  recentKeywords: { keyword: string; count: number }[];
-  dailyRunTrend: { date: string; total: number; completed: number; failed: number }[];
 }
 
 export interface PlaceReviewInsights {
@@ -117,7 +96,6 @@ export interface PlaceReviewInsights {
 
 export interface SystemPerformanceInsights {
   apiUsage: { totalSearches: number; dailyUsage: { date: string; searches: number }[] };
-  sovQueue: { total: number; completed: number; failed: number; successRate: number };
   placeReviewQueue: { total: number; completed: number; failed: number; pending: number; processing: number; successRate: number };
 }
 
@@ -153,7 +131,6 @@ export interface UserUsageStats {
   }>;
   recentActivity: {
     searches: Array<{ id: string; searchType: string; keyword: string; createdAt: string }>;
-    sovRuns: Array<{ id: string; marketKeyword: string; status: string; createdAt: string }>;
     placeReviews: Array<{ id: string; placeId: string; placeName: string | null; status: string; createdAt: string }>;
   };
   dailyActivity: Array<{ date: string; count: number }>;
@@ -174,7 +151,6 @@ export interface AllServicesStatus {
   database: ServiceStatus;
   redis: ServiceStatus;
   chrome: ServiceStatus;
-  openai: ServiceStatus;
 }
 
 export interface ServiceStatus {
