@@ -6,10 +6,12 @@ export { RateLimitTimeoutError };
 
 const NAVER_AD_API_BASE_URL = "https://api.searchad.naver.com";
 
-interface KeywordVolumeResult {
+export interface KeywordVolumeResult {
   keyword: string;
   monthlyPcQcCnt: number;
   monthlyMobileQcCnt: number;
+  totalVolume: number;
+  compIdx: string;
 }
 
 function generateSignature(timestamp: number, method: string, path: string): string {
@@ -115,14 +117,18 @@ async function fetchKeywordVolumeInternal(keyword: string, userId?: string | nul
     
     const pcCount = targetKeyword.monthlyPcQcCnt;
     const mobileCount = targetKeyword.monthlyMobileQcCnt;
+    const pcVolume = pcCount === "< 10" ? 5 : Number(pcCount) || 0;
+    const mobileVolume = mobileCount === "< 10" ? 5 : Number(mobileCount) || 0;
     
     const result: KeywordVolumeResult = {
       keyword: targetKeyword.relKeyword,
-      monthlyPcQcCnt: pcCount === "< 10" ? 5 : Number(pcCount) || 0,
-      monthlyMobileQcCnt: mobileCount === "< 10" ? 5 : Number(mobileCount) || 0,
+      monthlyPcQcCnt: pcVolume,
+      monthlyMobileQcCnt: mobileVolume,
+      totalVolume: pcVolume + mobileVolume,
+      compIdx: targetKeyword.compIdx || "낮음",
     };
     
-    console.log(`[NaverAdAPI] Volume result: PC=${result.monthlyPcQcCnt}, MO=${result.monthlyMobileQcCnt}`);
+    console.log(`[NaverAdAPI] Volume result: PC=${result.monthlyPcQcCnt}, MO=${result.monthlyMobileQcCnt}, Total=${result.totalVolume}, CompIdx=${result.compIdx}`);
     
     return result;
   } catch (error) {

@@ -8,7 +8,8 @@ import { crawlNaverSearch } from "./crawler";
 import { insertApiKeySchema, updateApiKeySchema } from "@shared/schema";
 import { z } from "zod";
 import { rateLimit } from "express-rate-limit";
-import { getKeywordVolume, isConfigured as isNaverAdConfigured } from "./naver-ad-api";
+import { getKeywordVolume, isConfigured as isNaverAdConfigured, type KeywordVolumeResult } from "./naver-ad-api";
+import { getKeywordTrend, isConfigured as isDataLabConfigured, type KeywordTrendData } from "./naver-datalab-api";
 import { 
   generateRateLimitKey, 
   validateRequest, 
@@ -202,19 +203,47 @@ export async function registerRoutes(
         return [];
       });
 
-      const [smartBlockResult, searchResult] = await Promise.all([
+      const volumePromise = isNaverAdConfigured() 
+        ? getKeywordVolume(keyword, userId).catch((err) => {
+            console.error("Keyword volume error:", err);
+            return null;
+          })
+        : Promise.resolve(null);
+
+      const trendPromise = isDataLabConfigured()
+        ? getKeywordTrend(keyword, userId).catch((err) => {
+            console.error("Keyword trend error:", err);
+            return null;
+          })
+        : Promise.resolve(null);
+
+      const [smartBlockResult, searchResult, volumeResult, trendResult] = await Promise.all([
         crawlPromise,
         searchAllChannels(keyword, sort, page, credentials, userId),
+        volumePromise,
+        trendPromise,
       ]);
 
       storage.createSearchLog({ userId, searchType: "unified", keyword }).catch((err) => {
         console.error("Search log error:", err);
       });
 
+      const keywordInsight = volumeResult ? {
+        keyword: volumeResult.keyword,
+        totalVolume: volumeResult.totalVolume,
+        pcVolume: volumeResult.monthlyPcQcCnt,
+        mobileVolume: volumeResult.monthlyMobileQcCnt,
+        compIdx: volumeResult.compIdx,
+        momGrowth: trendResult?.momGrowth ?? null,
+        yoyGrowth: trendResult?.yoyGrowth ?? null,
+        trend: trendResult?.trend ?? null,
+      } : null;
+
       res.json({
         smartBlock: smartBlockResult,
         apiResults: searchResult.results,
         quota: searchResult.quota,
+        keywordInsight,
       });
     } catch (error) {
       if (error instanceof QuotaExceededError) {
