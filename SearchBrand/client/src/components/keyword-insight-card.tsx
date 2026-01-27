@@ -75,12 +75,13 @@ export function KeywordInsightCard({ insight, isLoading }: KeywordInsightCardPro
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Skeleton className="h-16" />
-            <Skeleton className="h-16" />
-            <Skeleton className="h-16" />
-            <Skeleton className="h-16" />
+        <CardContent className="pt-5">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
           </div>
         </CardContent>
       </Card>
@@ -111,35 +112,35 @@ export function KeywordInsightCard({ insight, isLoading }: KeywordInsightCardPro
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-4">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
-            <div className="flex items-center gap-2 mb-1">
-              <Search className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">총 검색량</span>
+      <CardContent className="pt-5 pb-5">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Search className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground font-medium">총 검색량</span>
             </div>
-            <div className="text-xl font-bold text-foreground">
+            <div className="text-2xl font-bold text-foreground tabular-nums">
               {formatNumber(insight.totalVolume)}
             </div>
-            <div className="text-[10px] text-muted-foreground">월간 (30일)</div>
+            <div className="text-xs text-muted-foreground mt-1">월간 (30일)</div>
           </div>
 
-          <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
-            <div className="flex items-center gap-2 mb-1">
-              <Monitor className="w-3.5 h-3.5 text-blue-500" />
-              <Smartphone className="w-3.5 h-3.5 text-violet-500" />
-              <span className="text-xs text-muted-foreground">디바이스</span>
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Monitor className="w-4 h-4 text-blue-500" />
+              <Smartphone className="w-4 h-4 text-violet-500" />
+              <span className="text-xs text-muted-foreground font-medium">디바이스 비율</span>
             </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+            <div className="flex items-baseline gap-2">
+              <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
                 PC {pcRatio}%
               </span>
               <span className="text-muted-foreground">/</span>
-              <span className="text-sm font-semibold text-violet-600 dark:text-violet-400">
+              <span className="text-lg font-bold text-violet-600 dark:text-violet-400">
                 MO {mobileRatio}%
               </span>
             </div>
-            <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden flex">
+            <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden flex">
               <div 
                 className="h-full bg-blue-500/70" 
                 style={{ width: `${pcRatio}%` }}
@@ -151,41 +152,39 @@ export function KeywordInsightCard({ insight, isLoading }: KeywordInsightCardPro
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
-            <div className="flex items-center gap-2 mb-1">
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+            <div className="flex items-center gap-2 mb-2">
               {getGrowthIcon(insight.momGrowth)}
-              <span className="text-xs text-muted-foreground">전월 대비</span>
+              <span className="text-xs text-muted-foreground font-medium">전월 대비 (MoM)</span>
             </div>
-            <div className={`text-xl font-bold ${getGrowthColor(insight.momGrowth)}`}>
+            <div className={`text-2xl font-bold ${getGrowthColor(insight.momGrowth)}`}>
               {insight.momGrowth !== null 
                 ? `${insight.momGrowth > 0 ? '+' : ''}${insight.momGrowth.toFixed(1)}%` 
                 : '-'}
             </div>
-            <div className="text-[10px] text-muted-foreground">MoM</div>
           </div>
 
-          <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
-            <div className="flex items-center gap-2 mb-1">
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+            <div className="flex items-center gap-2 mb-2">
               {getGrowthIcon(insight.yoyGrowth)}
-              <span className="text-xs text-muted-foreground">전년 대비</span>
+              <span className="text-xs text-muted-foreground font-medium">전년 대비 (YoY)</span>
             </div>
-            <div className={`text-xl font-bold ${getGrowthColor(insight.yoyGrowth)}`}>
+            <div className={`text-2xl font-bold ${getGrowthColor(insight.yoyGrowth)}`}>
               {insight.yoyGrowth !== null 
                 ? `${insight.yoyGrowth > 0 ? '+' : ''}${insight.yoyGrowth.toFixed(1)}%` 
                 : '-'}
             </div>
-            <div className="text-[10px] text-muted-foreground">YoY</div>
           </div>
 
-          <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
-            <div className="flex items-center gap-2 mb-1">
-              <BarChart3 className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">경쟁도</span>
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50 col-span-2 lg:col-span-1">
+            <div className="flex items-center gap-2 mb-2">
+              <BarChart3 className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground font-medium">경쟁도</span>
             </div>
             <div className="mt-1">
               <Badge 
                 variant="outline" 
-                className={`text-sm font-semibold ${getCompIdxColor(insight.compIdx)}`}
+                className={`text-base font-bold px-3 py-1 ${getCompIdxColor(insight.compIdx)}`}
               >
                 {insight.compIdx}
               </Badge>
