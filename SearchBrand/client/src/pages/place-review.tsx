@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -476,7 +476,7 @@ function KeywordTreemap({ keywords }: { keywords: Array<{ keyword: string; count
   );
 }
 
-function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
+function CreateJobForm({ onSuccess }: { onSuccess: (jobId: string) => void }) {
   const { toast } = useToast();
   const [placeId, setPlaceId] = useState("");
   const [mode, setMode] = useState<ScrapeMode>("QTY");
@@ -506,7 +506,7 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
     onSuccess: (data) => {
       toast({ title: "분석 시작", description: `작업 ID: ${data.jobId}` });
       setPlaceId("");
-      onSuccess();
+      onSuccess(data.jobId);
     },
     onError: (error: Error) => {
       toast({ title: "오류", description: error.message, variant: "destructive" });
@@ -1135,6 +1135,8 @@ export default function PlaceReviewPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [trackedJobIds, setTrackedJobIds] = useState<Set<string>>(new Set());
+  const prevJobsRef = useRef<PlaceReviewJob[]>([]);
 
   const { data: jobsData, isLoading, refetch } = useQuery<{ jobs: PlaceReviewJob[] }>({
     queryKey: ["place-review-jobs"],
@@ -1143,8 +1145,41 @@ export default function PlaceReviewPage() {
       if (!res.ok) throw new Error("작업 목록 조회 실패");
       return res.json();
     },
-    refetchInterval: 5000,
+    refetchInterval: 3000,
   });
+
+  useEffect(() => {
+    const jobs = jobsData?.jobs || [];
+    const prevJobs = prevJobsRef.current;
+
+    jobs.forEach((job) => {
+      const prevJob = prevJobs.find((p) => p.id === job.id);
+      const wasProcessing = prevJob?.status === "processing" || prevJob?.status === "queued";
+      const isNowCompleted = job.status === "completed";
+      const isTracked = trackedJobIds.has(job.id);
+
+      if ((wasProcessing || isTracked) && isNowCompleted) {
+        setSelectedJobId(job.id);
+        setTrackedJobIds((prev) => {
+          const next = new Set(prev);
+          next.delete(job.id);
+          return next;
+        });
+        toast({
+          title: "분석 완료",
+          description: `${job.placeName || job.placeId} 리뷰 분석이 완료되었습니다.`,
+        });
+      }
+    });
+
+    prevJobsRef.current = jobs;
+  }, [jobsData, trackedJobIds, toast]);
+
+  const handleJobCreated = (jobId: string) => {
+    setTrackedJobIds((prev) => new Set(prev).add(jobId));
+    setSelectedJobId(jobId);
+    queryClient.invalidateQueries({ queryKey: ["place-review-jobs"] });
+  };
 
   const retryMutation = useMutation({
     mutationFn: async (job: PlaceReviewJob) => {
@@ -1160,8 +1195,7 @@ export default function PlaceReviewPage() {
     },
     onSuccess: (data) => {
       toast({ title: "재시도 시작", description: `새 작업 ID: ${data.jobId}` });
-      queryClient.invalidateQueries({ queryKey: ["place-review-jobs"] });
-      setSelectedJobId(data.jobId);
+      handleJobCreated(data.jobId);
     },
     onError: () => {
       toast({ title: "재시도 실패", variant: "destructive" });
@@ -1195,7 +1229,7 @@ export default function PlaceReviewPage() {
 
           <div className="grid gap-8 lg:grid-cols-3">
             <div className="space-y-6">
-              <CreateJobForm onSuccess={() => queryClient.invalidateQueries({ queryKey: ["place-review-jobs"] })} />
+              <CreateJobForm onSuccess={handleJobCreated} />
               
               <div>
                 <h2 className="text-lg font-semibold mb-3">분석 작업 목록</h2>
