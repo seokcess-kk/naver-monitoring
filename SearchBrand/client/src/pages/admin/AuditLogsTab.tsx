@@ -32,7 +32,6 @@ const targetTypeOptions = [
   { value: "api_key", label: "API 키" },
   { value: "solution", label: "솔루션" },
   { value: "user_solution", label: "사용자 솔루션" },
-  { value: "sov_run", label: "SOV 실행" },
   { value: "search_log", label: "검색 로그" },
   { value: "place_review_job", label: "플레이스 리뷰" },
 ];

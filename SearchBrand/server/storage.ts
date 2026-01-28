@@ -1,20 +1,9 @@
 import { 
   apiKeys, 
-  sovRuns, 
-  sovExposures, 
-  sovScores, 
-  sovResults,
-  sovTemplates,
   searchLogs,
   type ApiKey, 
   type InsertApiKey, 
   type UpdateApiKey,
-  type SovRun,
-  type SovExposure,
-  type SovScore,
-  type SovResult,
-  type SovTemplate,
-  type InsertSovTemplate,
   type InsertSearchLog,
   type SearchLog,
 } from "@shared/schema";
@@ -27,12 +16,6 @@ export interface IStorage {
   createApiKey(apiKey: InsertApiKey): Promise<ApiKey>;
   updateApiKey(userId: string, data: UpdateApiKey): Promise<ApiKey | undefined>;
   deleteApiKey(userId: string): Promise<void>;
-  
-  getSovRunsByUser(userId: string): Promise<SovRun[]>;
-  getSovRun(runId: string): Promise<SovRun | undefined>;
-  getSovExposuresByRun(runId: string): Promise<SovExposure[]>;
-  getSovScoresByExposure(exposureId: string): Promise<SovScore[]>;
-  getSovResultsByRun(runId: string): Promise<SovResult[]>;
 }
 
 function decryptApiKey(apiKey: ApiKey): ApiKey {
@@ -87,53 +70,6 @@ export class DatabaseStorage implements IStorage {
 
   async deleteApiKey(userId: string): Promise<void> {
     await db.delete(apiKeys).where(eq(apiKeys.userId, userId));
-  }
-
-  async getSovRunsByUser(userId: string): Promise<SovRun[]> {
-    return db
-      .select()
-      .from(sovRuns)
-      .where(eq(sovRuns.userId, userId))
-      .orderBy(desc(sovRuns.createdAt));
-  }
-
-  async getSovRun(runId: string): Promise<SovRun | undefined> {
-    const [run] = await db.select().from(sovRuns).where(eq(sovRuns.id, runId));
-    return run;
-  }
-
-  async getSovExposuresByRun(runId: string): Promise<SovExposure[]> {
-    return db.select().from(sovExposures).where(eq(sovExposures.runId, runId));
-  }
-
-  async getSovScoresByExposure(exposureId: string): Promise<SovScore[]> {
-    return db.select().from(sovScores).where(eq(sovScores.exposureId, exposureId));
-  }
-
-  async getSovResultsByRun(runId: string): Promise<SovResult[]> {
-    return db.select().from(sovResults).where(eq(sovResults.runId, runId));
-  }
-
-  async getSovTemplatesByUser(userId: string): Promise<SovTemplate[]> {
-    return db
-      .select()
-      .from(sovTemplates)
-      .where(eq(sovTemplates.userId, userId))
-      .orderBy(desc(sovTemplates.createdAt));
-  }
-
-  async getSovTemplateById(id: string): Promise<SovTemplate | undefined> {
-    const [template] = await db.select().from(sovTemplates).where(eq(sovTemplates.id, id));
-    return template;
-  }
-
-  async createSovTemplate(data: InsertSovTemplate): Promise<SovTemplate> {
-    const [template] = await db.insert(sovTemplates).values(data).returning();
-    return template;
-  }
-
-  async deleteSovTemplate(id: string): Promise<void> {
-    await db.delete(sovTemplates).where(eq(sovTemplates.id, id));
   }
 
   // 검색 로그 관련 메서드

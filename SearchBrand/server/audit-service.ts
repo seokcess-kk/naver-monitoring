@@ -13,7 +13,6 @@ export type AuditAction =
   | "user_solution_assign"
   | "user_solution_update"
   | "user_solution_revoke"
-  | "sov_run_delete"
   | "search_log_delete"
   | "update_place_name"
   | "sync_place_names";
@@ -23,7 +22,6 @@ export type AuditTargetType =
   | "api_key"
   | "solution"
   | "user_solution"
-  | "sov_run"
   | "search_log"
   | "place_review_job"
   | "place_review_jobs";

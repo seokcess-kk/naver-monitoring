@@ -26,11 +26,18 @@
 - 스마트블록 크롤링이 PC 환경만 지원하도록 변경
 - 모바일 관련 코드 및 UI 요소 완전 제거
 
+### 2026-01-28 SOV 코드 정리 완료
+- storage.ts: SOV 헬퍼 함수 및 import 제거
+- audit-service.ts: sov_run, sov_run_delete 타입 제거
+- AuditLogsTab.tsx: 'SOV 실행' 필터 옵션 제거
+- SearchLogsTab.tsx: sov 배지 특수 처리 제거
+- schema.ts: searchType 주석 업데이트
+
 ### 2026-01-27 SOV 분석 기능 제거
 - SOV(Share of Voice) 분석 기능이 프로젝트에서 완전히 제거되었습니다.
 - 제거된 파일: sov-service.ts, content-extractor.ts, sov-analysis.tsx, sov-panel.tsx, SovRunsTab.tsx
 - 관리자 콘솔에서 SOV 관련 탭, 인사이트, 내보내기 기능 제거
-- 데이터베이스의 sov_* 테이블은 기존 데이터 보존을 위해 유지됨
+- 데이터베이스의 sov_* 테이블은 기존 데이터 보존 및 계정 익명화를 위해 유지됨
 
 ### 2026-01-26 API 안정성 강화
 - **Quota 관리**: 네이버 검색 API 일일 한도(25,000건/Client ID) 추적

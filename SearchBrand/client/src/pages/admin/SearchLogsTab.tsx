@@ -186,7 +186,7 @@ export function SearchLogsTab() {
                 <TableRow key={log.id}>
                   <TableCell className="font-medium">{log.keyword}</TableCell>
                   <TableCell>
-                    <Badge variant={log.searchType === "sov" ? "default" : "secondary"}>
+                    <Badge variant="secondary">
                       {log.searchType === "unified" ? "통합검색" : log.searchType}
                     </Badge>
                   </TableCell>

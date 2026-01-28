@@ -182,7 +182,7 @@ export type SovResultByType = typeof sovResultsByType.$inferSelect;
 export const searchLogs = pgTable("search_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
-  searchType: varchar("search_type", { length: 20 }).notNull(), // 'unified' | 'sov'
+  searchType: varchar("search_type", { length: 20 }).notNull(), // 'unified' | 'blog' | 'cafe' | 'kin' | 'news'
   keyword: text("keyword").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
