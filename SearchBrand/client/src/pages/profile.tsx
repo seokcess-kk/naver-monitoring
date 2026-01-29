@@ -31,8 +31,6 @@ import {
 import { 
   User, 
   Mail, 
-  Key, 
-  Calendar,
   CheckCircle2,
   XCircle,
   ArrowLeft,
@@ -44,12 +42,6 @@ import {
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-
-interface ApiKeyStatus {
-  clientId: string;
-  hasClientSecret: boolean;
-  updatedAt: string | null;
-}
 
 interface SearchStats {
   today: number;
@@ -65,10 +57,6 @@ export default function ProfilePage() {
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [password, setPassword] = useState("");
-
-  const { data: apiKey, isLoading: apiKeyLoading } = useQuery<ApiKeyStatus | null>({
-    queryKey: ["/api/api-keys"],
-  });
 
   const { data: searchStats, isLoading: statsLoading } = useQuery<SearchStats>({
     queryKey: ["/api/search-stats"],
@@ -119,14 +107,6 @@ export default function ProfilePage() {
     const first = firstName?.[0] || "";
     const last = lastName?.[0] || "";
     return (first + last).toUpperCase() || "U";
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
   };
 
   return (
@@ -187,64 +167,6 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Key className="w-5 h-5" />
-                API 키 상태
-              </CardTitle>
-              <CardDescription>
-                네이버 검색 API 연동 상태
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {apiKeyLoading ? (
-                <Skeleton className="h-16 w-full" />
-              ) : apiKey ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-900">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      <div>
-                        <p className="font-medium text-green-700 dark:text-green-400">API 키 등록됨</p>
-                        <p className="text-sm text-muted-foreground">
-                          Client ID: {apiKey.clientId.slice(0, 8)}...
-                        </p>
-                      </div>
-                    </div>
-                    {apiKey.updatedAt && (
-                      <p className="text-xs text-muted-foreground">
-                        최종 수정: {formatDate(apiKey.updatedAt)}
-                      </p>
-                    )}
-                  </div>
-                  <Link href="/">
-                    <Button variant="outline" size="sm">
-                      API 키 수정하기
-                    </Button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-900">
-                    <XCircle className="w-5 h-5 text-amber-600" />
-                    <div>
-                      <p className="font-medium text-amber-700 dark:text-amber-400">API 키 미등록</p>
-                      <p className="text-sm text-muted-foreground">
-                        네이버 검색을 사용하려면 API 키를 등록하세요
-                      </p>
-                    </div>
-                  </div>
-                  <Link href="/">
-                    <Button size="sm">
-                      API 키 등록하기
-                    </Button>
-                  </Link>
-                </div>
-              )}
             </CardContent>
           </Card>
 

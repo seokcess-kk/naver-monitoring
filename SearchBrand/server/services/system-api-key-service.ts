@@ -33,7 +33,7 @@ export async function getAllSystemApiKeys(): Promise<SystemApiKey[]> {
     .select()
     .from(systemApiKeys)
     .orderBy(asc(systemApiKeys.priority));
-  return keys.map(decryptKey);
+  return keys;
 }
 
 export async function getActiveSystemApiKeys(): Promise<SystemApiKey[]> {
@@ -47,7 +47,7 @@ export async function getActiveSystemApiKeys(): Promise<SystemApiKey[]> {
 
 export async function getSystemApiKeyById(id: string): Promise<SystemApiKey | undefined> {
   const [key] = await db.select().from(systemApiKeys).where(eq(systemApiKeys.id, id));
-  return key ? decryptKey(key) : undefined;
+  return key;
 }
 
 export async function createSystemApiKey(data: InsertSystemApiKey): Promise<SystemApiKey> {
@@ -56,7 +56,7 @@ export async function createSystemApiKey(data: InsertSystemApiKey): Promise<Syst
     clientSecret: encrypt(data.clientSecret),
   };
   const [key] = await db.insert(systemApiKeys).values(encryptedData).returning();
-  return decryptKey(key);
+  return key;
 }
 
 export async function updateSystemApiKey(id: string, data: UpdateSystemApiKey): Promise<SystemApiKey | undefined> {
@@ -75,7 +75,7 @@ export async function updateSystemApiKey(id: string, data: UpdateSystemApiKey): 
     .where(eq(systemApiKeys.id, id))
     .returning();
   
-  return key ? decryptKey(key) : undefined;
+  return key;
 }
 
 export async function deleteSystemApiKey(id: string): Promise<void> {
@@ -90,21 +90,38 @@ export async function getAvailableSystemApiKey(): Promise<SystemApiKeyCredential
     return null;
   }
   
+  let fallbackKey: SystemApiKey | null = null;
+  let fallbackUsage = 0;
+  
   for (const key of activeKeys) {
     const dailyLimit = parseInt(key.dailyLimit, 10) || 25000;
     const usage = await getDailyUsage(key.clientId);
     
-    if (usage < dailyLimit) {
-      if (usage >= ROTATION_THRESHOLD && activeKeys.length > 1) {
-        console.log(`[SystemApiKey] Key ${key.name} approaching limit (${usage}/${dailyLimit}), but still usable`);
-      }
+    if (usage >= dailyLimit) {
+      console.log(`[SystemApiKey] Key ${key.name} exhausted (${usage}/${dailyLimit}), trying next...`);
+      continue;
+    }
+    
+    if (usage < ROTATION_THRESHOLD) {
       return {
         clientId: key.clientId,
         clientSecret: key.clientSecret,
       };
     }
     
-    console.log(`[SystemApiKey] Key ${key.name} exhausted (${usage}/${dailyLimit}), trying next...`);
+    if (!fallbackKey || usage < fallbackUsage) {
+      fallbackKey = key;
+      fallbackUsage = usage;
+    }
+    console.log(`[SystemApiKey] Key ${key.name} at threshold (${usage}/${dailyLimit}), looking for better option...`);
+  }
+  
+  if (fallbackKey) {
+    console.log(`[SystemApiKey] Using fallback key ${fallbackKey.name} (${fallbackUsage} used)`);
+    return {
+      clientId: fallbackKey.clientId,
+      clientSecret: fallbackKey.clientSecret,
+    };
   }
   
   console.error("[SystemApiKey] All system API keys exhausted");
