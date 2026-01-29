@@ -439,16 +439,8 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
-        <div className="space-y-4 md:space-y-5">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Search className="w-5 h-5 text-primary" />
-            </div>
-            <h1 className="text-xl md:text-2xl font-bold">통합검색</h1>
-          </div>
-
-          <div className="space-y-4">
-            <SearchPanel onSearch={handleSearch} isSearching={isSearching} />
+        <div className="space-y-4">
+          <SearchPanel onSearch={handleSearch} isSearching={isSearching} />
 
 
             {searchResults ? (
@@ -587,7 +579,6 @@ export default function Dashboard() {
                 </Card>
               )
             )}
-          </div>
         </div>
       </main>
     </div>

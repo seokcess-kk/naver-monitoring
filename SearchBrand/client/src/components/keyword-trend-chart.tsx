@@ -46,8 +46,8 @@ export function KeywordTrendChart({ trend, totalVolume, keyword, isLoading }: Ke
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-4">
-          <Skeleton className="h-52" />
+        <CardContent className="p-0">
+          <Skeleton className="h-56" />
         </CardContent>
       </Card>
     );
@@ -96,8 +96,8 @@ export function KeywordTrendChart({ trend, totalVolume, keyword, isLoading }: Ke
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-4 pb-4">
-        <div className="h-52">
+      <CardContent className="p-0">
+        <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={chartData}

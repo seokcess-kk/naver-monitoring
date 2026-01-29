@@ -122,7 +122,7 @@ export function KeywordInsightCard({
       </CardHeader>
       <CardContent className="pt-5 pb-5">
         <div className="grid grid-cols-3 grid-rows-2 gap-4">
-          <div className="p-4 rounded-xl bg-muted/30 border border-border/50 row-span-2 flex flex-col justify-center">
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50 row-span-2 flex flex-col items-center justify-center text-center">
             <div className="flex items-center gap-2 mb-3">
               <Search className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground font-medium">
@@ -137,7 +137,7 @@ export function KeywordInsightCard({
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center text-center">
             <div className="flex items-center gap-2 mb-2">
               {getGrowthIcon(insight.momGrowth)}
               <span className="text-xs text-muted-foreground font-medium">
@@ -153,7 +153,7 @@ export function KeywordInsightCard({
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center text-center">
             <div className="flex items-center gap-2 mb-2">
               {getGrowthIcon(insight.yoyGrowth)}
               <span className="text-xs text-muted-foreground font-medium">
@@ -169,7 +169,7 @@ export function KeywordInsightCard({
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center text-center">
             <div className="flex items-center gap-2 mb-2">
               <Monitor className="w-4 h-4 text-blue-500" />
               <Smartphone className="w-4 h-4 text-violet-500" />
@@ -186,7 +186,7 @@ export function KeywordInsightCard({
                 MO {mobileRatio}%
               </span>
             </div>
-            <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden flex">
+            <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden flex w-full">
               <div
                 className="h-full bg-blue-500/70"
                 style={{ width: `${pcRatio}%` }}
@@ -198,7 +198,7 @@ export function KeywordInsightCard({
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center text-center">
             <div className="flex items-center gap-2 mb-2">
               <BarChart3 className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground font-medium">
