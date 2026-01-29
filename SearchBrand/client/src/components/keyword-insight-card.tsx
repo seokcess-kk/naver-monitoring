@@ -78,7 +78,7 @@ export function KeywordInsightCard({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-5">
+        <CardContent className="pt-5 pb-4">
           <div className="grid grid-cols-3 grid-rows-2 gap-4">
             <Skeleton className="h-32 row-span-2" />
             <Skeleton className="h-20" />
@@ -120,7 +120,7 @@ export function KeywordInsightCard({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-5 pb-5">
+      <CardContent className="pt-5 pb-4">
         <div className="grid grid-cols-3 grid-rows-2 gap-4">
           <div className="p-4 rounded-xl bg-muted/30 border border-border/50 row-span-2 flex flex-col items-center justify-center text-center">
             <div className="flex items-center gap-2 mb-3">
