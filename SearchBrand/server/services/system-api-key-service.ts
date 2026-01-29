@@ -69,6 +69,7 @@ export async function updateSystemApiKey(id: string, data: UpdateSystemApiKey): 
   if (data.clientId !== undefined) updateData.clientId = data.clientId;
   if (data.clientSecret !== undefined) updateData.clientSecret = encrypt(data.clientSecret);
   if (data.dailyLimit !== undefined) updateData.dailyLimit = data.dailyLimit;
+  if (data.trendDailyLimit !== undefined) updateData.trendDailyLimit = data.trendDailyLimit;
   if (data.priority !== undefined) updateData.priority = data.priority;
   if (data.isActive !== undefined) updateData.isActive = data.isActive;
   
