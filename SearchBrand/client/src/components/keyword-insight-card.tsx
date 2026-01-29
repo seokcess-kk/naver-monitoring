@@ -62,7 +62,10 @@ function getCompIdxColor(compIdx: string): string {
   }
 }
 
-export function KeywordInsightCard({ insight, isLoading }: KeywordInsightCardProps) {
+export function KeywordInsightCard({
+  insight,
+  isLoading,
+}: KeywordInsightCardProps) {
   if (isLoading) {
     return (
       <Card className="border-border/50">
@@ -92,9 +95,10 @@ export function KeywordInsightCard({ insight, isLoading }: KeywordInsightCardPro
     return null;
   }
 
-  const pcRatio = insight.totalVolume > 0 
-    ? Math.round((insight.pcVolume / insight.totalVolume) * 100) 
-    : 0;
+  const pcRatio =
+    insight.totalVolume > 0
+      ? Math.round((insight.pcVolume / insight.totalVolume) * 100)
+      : 0;
   const mobileRatio = 100 - pcRatio;
 
   return (
@@ -106,8 +110,12 @@ export function KeywordInsightCard({ insight, isLoading }: KeywordInsightCardPro
               <BarChart3 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <CardTitle className="text-base font-bold">키워드 인사이트</CardTitle>
-              <p className="text-xs text-muted-foreground">월간 검색량 및 트렌드 분석</p>
+              <CardTitle className="text-base font-bold">
+                키워드 인사이트
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                월간 검색량 및 트렌드 분석
+              </p>
             </div>
           </div>
         </div>
@@ -117,19 +125,57 @@ export function KeywordInsightCard({ insight, isLoading }: KeywordInsightCardPro
           <div className="p-4 rounded-xl bg-muted/30 border border-border/50 row-span-2 flex flex-col justify-center">
             <div className="flex items-center gap-2 mb-3">
               <Search className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground font-medium">총 검색량</span>
+              <span className="text-xs text-muted-foreground font-medium">
+                총 검색량
+              </span>
             </div>
             <div className="text-4xl font-bold text-foreground tabular-nums">
               {formatNumber(insight.totalVolume)}
             </div>
-            <div className="text-sm text-muted-foreground mt-2">월간 (30일)</div>
+            <div className="text-sm text-muted-foreground mt-2">
+              월간 (30일)
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+            <div className="flex items-center gap-2 mb-2">
+              {getGrowthIcon(insight.momGrowth)}
+              <span className="text-xs text-muted-foreground font-medium">
+                전월 대비 (MoM)
+              </span>
+            </div>
+            <div
+              className={`text-2xl font-bold ${getGrowthColor(insight.momGrowth)}`}
+            >
+              {insight.momGrowth !== null
+                ? `${insight.momGrowth > 0 ? "+" : ""}${insight.momGrowth.toFixed(1)}%`
+                : "-"}
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+            <div className="flex items-center gap-2 mb-2">
+              {getGrowthIcon(insight.yoyGrowth)}
+              <span className="text-xs text-muted-foreground font-medium">
+                전년 대비 (YoY)
+              </span>
+            </div>
+            <div
+              className={`text-2xl font-bold ${getGrowthColor(insight.yoyGrowth)}`}
+            >
+              {insight.yoyGrowth !== null
+                ? `${insight.yoyGrowth > 0 ? "+" : ""}${insight.yoyGrowth.toFixed(1)}%`
+                : "-"}
+            </div>
           </div>
 
           <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
             <div className="flex items-center gap-2 mb-2">
               <Monitor className="w-4 h-4 text-blue-500" />
               <Smartphone className="w-4 h-4 text-violet-500" />
-              <span className="text-xs text-muted-foreground font-medium">디바이스 비율</span>
+              <span className="text-xs text-muted-foreground font-medium">
+                디바이스 비율
+              </span>
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
@@ -141,12 +187,12 @@ export function KeywordInsightCard({ insight, isLoading }: KeywordInsightCardPro
               </span>
             </div>
             <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden flex">
-              <div 
-                className="h-full bg-blue-500/70" 
+              <div
+                className="h-full bg-blue-500/70"
                 style={{ width: `${pcRatio}%` }}
               />
-              <div 
-                className="h-full bg-violet-500/70" 
+              <div
+                className="h-full bg-violet-500/70"
                 style={{ width: `${mobileRatio}%` }}
               />
             </div>
@@ -154,36 +200,14 @@ export function KeywordInsightCard({ insight, isLoading }: KeywordInsightCardPro
 
           <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
             <div className="flex items-center gap-2 mb-2">
-              {getGrowthIcon(insight.momGrowth)}
-              <span className="text-xs text-muted-foreground font-medium">전월 대비 (MoM)</span>
-            </div>
-            <div className={`text-2xl font-bold ${getGrowthColor(insight.momGrowth)}`}>
-              {insight.momGrowth !== null 
-                ? `${insight.momGrowth > 0 ? '+' : ''}${insight.momGrowth.toFixed(1)}%` 
-                : '-'}
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
-            <div className="flex items-center gap-2 mb-2">
-              {getGrowthIcon(insight.yoyGrowth)}
-              <span className="text-xs text-muted-foreground font-medium">전년 대비 (YoY)</span>
-            </div>
-            <div className={`text-2xl font-bold ${getGrowthColor(insight.yoyGrowth)}`}>
-              {insight.yoyGrowth !== null 
-                ? `${insight.yoyGrowth > 0 ? '+' : ''}${insight.yoyGrowth.toFixed(1)}%` 
-                : '-'}
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
-            <div className="flex items-center gap-2 mb-2">
               <BarChart3 className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground font-medium">경쟁도</span>
+              <span className="text-xs text-muted-foreground font-medium">
+                경쟁도
+              </span>
             </div>
             <div className="mt-1">
-              <Badge 
-                variant="outline" 
+              <Badge
+                variant="outline"
                 className={`text-base font-bold px-3 py-1 ${getCompIdxColor(insight.compIdx)}`}
               >
                 {insight.compIdx}

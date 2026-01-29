@@ -40,9 +40,12 @@ interface SmartBlockSectionProps {
 
 function highlightText(text: string, term: string): string {
   if (!term || term.length < 2) return text;
-  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${escaped})`, 'gi');
-  return text.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-500/40 px-0.5 rounded">$1</mark>');
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`(${escaped})`, "gi");
+  return text.replace(
+    regex,
+    '<mark class="bg-yellow-200 dark:bg-yellow-500/40 px-0.5 rounded">$1</mark>',
+  );
 }
 
 function getSectionIcon(title: string) {
@@ -133,10 +136,14 @@ export function SmartBlockSection({
           </div>
         </div>
         {chromeAvailable === false && (
-          <Alert variant="destructive" className="border-amber-500/50 bg-amber-500/10">
+          <Alert
+            variant="destructive"
+            className="border-amber-500/50 bg-amber-500/10"
+          >
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              스마트블록 크롤링 서비스가 점검 중입니다. 기본 검색 결과만 표시됩니다.
+              스마트블록 크롤링 서비스가 점검 중입니다. 기본 검색 결과만
+              표시됩니다.
             </AlertDescription>
           </Alert>
         )}
@@ -144,11 +151,19 @@ export function SmartBlockSection({
           <EmptyState
             variant="no-results"
             title="스마트블록 결과가 없습니다"
-            description={chromeAvailable === false ? "크롤링 서비스 점검 중으로 스마트블록을 수집할 수 없습니다." : "해당 키워드에 대한 스마트블록이 검색되지 않았습니다."}
-            suggestions={isChromeAvailable ? [
-              "다른 키워드로 검색해보세요",
-              "인기 키워드는 더 많은 결과를 보여줍니다"
-            ] : []}
+            description={
+              chromeAvailable === false
+                ? "크롤링 서비스 점검 중으로 스마트블록을 수집할 수 없습니다."
+                : "해당 키워드에 대한 스마트블록이 검색되지 않았습니다."
+            }
+            suggestions={
+              isChromeAvailable
+                ? [
+                    "다른 키워드로 검색해보세요",
+                    "인기 키워드는 더 많은 결과를 보여줍니다",
+                  ]
+                : []
+            }
           />
         </Card>
       </section>
@@ -172,9 +187,6 @@ export function SmartBlockSection({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-[10px] md:text-xs font-medium bg-muted/50 text-muted-foreground">
-            PC 검색결과
-          </Badge>
           <Badge
             variant="outline"
             className="text-[10px] md:text-xs font-medium bg-violet-500/5 text-violet-600 dark:text-violet-400 border-violet-500/20"
@@ -193,7 +205,9 @@ export function SmartBlockSection({
               key={idx}
               className="overflow-hidden border-border/50 shadow-sm w-[300px] md:w-auto shrink-0 hover-lift"
             >
-              <CardHeader className={`pb-2.5 md:pb-3 ${style.bg} border-b border-border/30`}>
+              <CardHeader
+                className={`pb-2.5 md:pb-3 ${style.bg} border-b border-border/30`}
+              >
                 <div className="flex items-center gap-2.5 md:gap-3">
                   <div
                     className={`w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center ${style.bg} ${style.text}`}
@@ -235,19 +249,38 @@ export function SmartBlockSection({
                             <div className="flex items-center gap-2">
                               <h4
                                 className="text-xs md:text-sm font-medium leading-snug line-clamp-1 group-hover:text-primary transition-colors"
-                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(highlightTerm ? highlightText(post.title, highlightTerm) : post.title) }}
+                                dangerouslySetInnerHTML={{
+                                  __html: sanitizeHtml(
+                                    highlightTerm
+                                      ? highlightText(post.title, highlightTerm)
+                                      : post.title,
+                                  ),
+                                }}
                               />
                               <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                             </div>
                             {post.summary && (
                               <p
                                 className="text-[10px] md:text-xs text-muted-foreground/80 line-clamp-2 mt-1 md:mt-1.5 leading-relaxed"
-                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(highlightTerm ? highlightText(post.summary, highlightTerm) : post.summary) }}
+                                dangerouslySetInnerHTML={{
+                                  __html: sanitizeHtml(
+                                    highlightTerm
+                                      ? highlightText(
+                                          post.summary,
+                                          highlightTerm,
+                                        )
+                                      : post.summary,
+                                  ),
+                                }}
                               />
                             )}
                             {post.isNews && (post.press || post.date) && (
                               <div className="flex items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2 text-[10px] md:text-[11px] text-muted-foreground/70">
-                                {post.press && <span className="font-medium">{post.press}</span>}
+                                {post.press && (
+                                  <span className="font-medium">
+                                    {post.press}
+                                  </span>
+                                )}
                                 {post.press && post.date && <span>·</span>}
                                 {post.date && <span>{post.date}</span>}
                               </div>
