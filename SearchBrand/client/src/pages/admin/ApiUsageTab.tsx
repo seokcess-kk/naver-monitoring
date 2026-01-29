@@ -7,7 +7,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Zap, Search, MessageSquare, AlertTriangle, ShieldCheck, ShieldAlert, ShieldX } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Zap, Search, MessageSquare, AlertTriangle, ShieldCheck, ShieldAlert, ShieldX, ChevronDown, ChevronUp } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
@@ -52,6 +54,7 @@ const FEATURE_ICONS: Record<string, React.ReactNode> = {
 export function ApiUsageTab() {
   const [dateRange, setDateRange] = useState<string>("7days");
   const [selectedFeature, setSelectedFeature] = useState<string>("search");
+  const [quotaExpanded, setQuotaExpanded] = useState(false);
   
   const getDateRange = () => {
     const end = new Date();
@@ -137,120 +140,104 @@ export function ApiUsageTab() {
         </Select>
       </div>
       
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="flex flex-wrap gap-3">
         {stats?.byApiType.map(api => (
-          <Card key={api.apiType}>
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div 
-                  className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: API_TYPE_COLORS[api.apiType] || "#888" }}
-                />
-                <span className="text-sm text-muted-foreground">
-                  {API_TYPE_LABELS[api.apiType] || api.apiType}
-                </span>
-              </div>
-              <p className="text-2xl font-bold">{api.totalCalls.toLocaleString()}</p>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="text-green-600">성공 {api.successRate}%</span>
-                {api.totalTokens > 0 && (
-                  <span>| 토큰 {api.totalTokens.toLocaleString()}</span>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                평균 응답 {api.avgResponseTime}ms
-              </p>
-            </CardContent>
-          </Card>
+          <div key={api.apiType} className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg">
+            <div 
+              className="w-2.5 h-2.5 rounded-full" 
+              style={{ backgroundColor: API_TYPE_COLORS[api.apiType] || "#888" }}
+            />
+            <span className="text-sm font-medium">
+              {API_TYPE_LABELS[api.apiType] || api.apiType}
+            </span>
+            <span className="text-lg font-bold">{api.totalCalls.toLocaleString()}</span>
+            <span className="text-xs text-muted-foreground">({api.successRate}%)</span>
+          </div>
         ))}
       </div>
       
       {quotaData && quotaData.quotas.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5" />
-                네이버 검색 API 일일 한도 (25,000건/일)
-              </span>
-              <div className="flex items-center gap-2 text-sm font-normal">
-                {quotaData.summary.exceededCount > 0 && (
-                  <Badge variant="destructive" className="flex items-center gap-1">
-                    <ShieldX className="w-3 h-3" />
-                    초과 {quotaData.summary.exceededCount}
-                  </Badge>
-                )}
-                {quotaData.summary.criticalCount > 0 && (
-                  <Badge variant="destructive" className="flex items-center gap-1">
-                    <ShieldAlert className="w-3 h-3" />
-                    위험 {quotaData.summary.criticalCount}
-                  </Badge>
-                )}
-                {quotaData.summary.warningCount > 0 && (
-                  <Badge variant="secondary" className="flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />
-                    경고 {quotaData.summary.warningCount}
-                  </Badge>
-                )}
-                <Badge variant="outline" className="flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3" />
-                  총 {quotaData.summary.totalClientIds}개
-                </Badge>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Client ID</TableHead>
-                  <TableHead>사용자</TableHead>
-                  <TableHead className="text-right">사용량</TableHead>
-                  <TableHead className="w-40">진행률</TableHead>
-                  <TableHead className="text-right">상태</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {quotaData.quotas.map((quota) => (
-                  <TableRow key={quota.clientId}>
-                    <TableCell className="font-mono text-xs">
-                      {quota.clientId.substring(0, 8)}...
-                    </TableCell>
-                    <TableCell>{quota.email}</TableCell>
-                    <TableCell className="text-right">
-                      {quota.used.toLocaleString()} / {quota.limit.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <Progress 
-                        value={Math.min(quota.percentageUsed, 100)} 
-                        className={`h-2 ${
-                          quota.status === "exceeded" || quota.status === "critical" 
-                            ? "[&>div]:bg-destructive" 
-                            : quota.status === "warning" 
-                            ? "[&>div]:bg-yellow-500" 
-                            : ""
-                        }`}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge 
-                        variant={
-                          quota.status === "exceeded" || quota.status === "critical" 
-                            ? "destructive" 
-                            : quota.status === "warning" 
-                            ? "secondary" 
-                            : "outline"
-                        }
-                      >
-                        {quota.percentageUsed.toFixed(1)}%
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <Collapsible open={quotaExpanded} onOpenChange={setQuotaExpanded}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors">
+                <CardTitle className="text-base flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    사용자별 API 한도
+                    {quotaExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </span>
+                  <div className="flex items-center gap-2 text-sm font-normal">
+                    {quotaData.summary.exceededCount > 0 && (
+                      <Badge variant="destructive" className="text-xs">초과 {quotaData.summary.exceededCount}</Badge>
+                    )}
+                    {quotaData.summary.criticalCount > 0 && (
+                      <Badge variant="destructive" className="text-xs">위험 {quotaData.summary.criticalCount}</Badge>
+                    )}
+                    {quotaData.summary.warningCount > 0 && (
+                      <Badge variant="secondary" className="text-xs">경고 {quotaData.summary.warningCount}</Badge>
+                    )}
+                    <Badge variant="outline" className="text-xs">총 {quotaData.summary.totalClientIds}개</Badge>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Client ID</TableHead>
+                      <TableHead>사용자</TableHead>
+                      <TableHead className="text-right">사용량</TableHead>
+                      <TableHead className="w-40">진행률</TableHead>
+                      <TableHead className="text-right">상태</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {quotaData.quotas.map((quota) => (
+                      <TableRow key={quota.clientId}>
+                        <TableCell className="font-mono text-xs">
+                          {quota.clientId.substring(0, 8)}...
+                        </TableCell>
+                        <TableCell>{quota.email}</TableCell>
+                        <TableCell className="text-right">
+                          {quota.used.toLocaleString()} / {quota.limit.toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <Progress 
+                            value={Math.min(quota.percentageUsed, 100)} 
+                            className={`h-2 ${
+                              quota.status === "exceeded" || quota.status === "critical" 
+                                ? "[&>div]:bg-destructive" 
+                                : quota.status === "warning" 
+                                ? "[&>div]:bg-yellow-500" 
+                                : ""
+                            }`}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge 
+                            variant={
+                              quota.status === "exceeded" || quota.status === "critical" 
+                                ? "destructive" 
+                                : quota.status === "warning" 
+                                ? "secondary" 
+                                : "outline"
+                            }
+                            className="text-xs"
+                          >
+                            {quota.percentageUsed.toFixed(1)}%
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
       )}
       
       <Card>

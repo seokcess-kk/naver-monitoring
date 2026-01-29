@@ -2,7 +2,6 @@ import {
   Users, 
   Search, 
   FileText, 
-  Key, 
   Package, 
   BarChart3, 
   Server, 
@@ -38,8 +37,7 @@ export const TAB_GROUPS: TabGroup[] = [
     tabs: [
       { id: "users", label: "사용자", icon: Users, priority: 1, isDefault: true },
       { id: "solutions", label: "솔루션", icon: Package, priority: 2 },
-      { id: "system-apikeys", label: "시스템 API 키", icon: KeyRound, priority: 3 },
-      { id: "apikeys", label: "사용자 API 키", icon: Key, priority: 4 },
+      { id: "system-apikeys", label: "API 키", icon: KeyRound, priority: 3 },
     ],
   },
   {

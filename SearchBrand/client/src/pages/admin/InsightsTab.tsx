@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, MessageSquare, RefreshCw, Zap } from "lucide-react";
+import { Users, MessageSquare, RefreshCw, Zap, Search } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { 
   UserActivityInsights, 
@@ -187,69 +187,29 @@ export function InsightsTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              활성 사용자
-              <span className="text-xs font-normal text-muted-foreground">({getDateRangeLabel()})</span>
-            </CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">검색, 리뷰 분석 중 하나 이상 사용한 사용자</p>
-          </CardHeader>
-          <CardContent>
-            {loadingUser ? (
-              <Skeleton className="h-20 w-full" />
-            ) : (
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">활성 사용자 수</span>
-                  <span className="font-semibold">{userActivity?.activeUsers.period || 0}명</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">총 활동 수</span>
-                  <span className="font-semibold">{userActivity?.activeUsers.totalActivities || 0}건</span>
-                </div>
-                <div className="border-t pt-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">검색</span>
-                    <span>{userActivity?.activeUsers.breakdown?.searches || 0}건</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">리뷰 분석</span>
-                    <span>{userActivity?.activeUsers.breakdown?.placeReviews || 0}건</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
-              플레이스 리뷰 현황
-              <span className="text-xs font-normal text-muted-foreground">({getDateRangeLabel()})</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loadingPlace ? (
-              <Skeleton className="h-16 w-full" />
-            ) : (
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">분석 작업</span>
-                  <span className="font-semibold">{placeReviews?.summary.completedJobs || 0}건</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">분석 리뷰</span>
-                  <span className="font-semibold">{placeReviews?.summary.totalReviews || 0}개</span>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <div className="flex flex-wrap gap-4 p-4 bg-muted/30 rounded-lg">
+        {loadingUser || loadingPlace ? (
+          <Skeleton className="h-8 w-full" />
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">활성 사용자</span>
+              <span className="font-semibold">{userActivity?.activeUsers.period || 0}명</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">검색</span>
+              <span className="font-semibold">{userActivity?.activeUsers.breakdown?.searches || 0}건</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">리뷰 분석</span>
+              <span className="font-semibold">{placeReviews?.summary.completedJobs || 0}건</span>
+              <span className="text-xs text-muted-foreground">({placeReviews?.summary.totalReviews || 0}개 리뷰)</span>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

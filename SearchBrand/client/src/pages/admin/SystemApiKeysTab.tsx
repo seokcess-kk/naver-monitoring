@@ -214,65 +214,57 @@ export function SystemApiKeysTab() {
   return (
     <div className="space-y-6">
       {summary && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold">{summary.activeKeys}</div>
-                <div className="text-sm text-muted-foreground">활성 키</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold">{summary.totalUsed.toLocaleString()}</div>
-                <div className="text-sm text-muted-foreground">검색 API 사용량</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold">{summary.totalRemaining.toLocaleString()}</div>
-                <div className="text-sm text-muted-foreground">검색 API 잔여</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium">검색 API</span>
+                <Badge variant="outline" className="text-xs">
+                  {summary.activeKeys}개 활성
+                </Badge>
+              </div>
+              <div className="flex items-baseline gap-2 mb-2">
+                <span className="text-2xl font-bold">
                   {summary.totalLimit > 0 ? Math.round((summary.totalUsed / summary.totalLimit) * 100) : 0}%
-                </div>
-                <div className="text-sm text-muted-foreground">검색 API 사용률</div>
-                <Progress 
-                  value={summary.totalLimit > 0 ? (summary.totalUsed / summary.totalLimit) * 100 : 0} 
-                  className="mt-2 h-2"
-                />
-              </CardContent>
-            </Card>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold">{(summary.trendTotalUsed ?? 0).toLocaleString()}</div>
-                <div className="text-sm text-muted-foreground">트렌드 API 사용량</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold">{(summary.trendTotalRemaining ?? 0).toLocaleString()}</div>
-                <div className="text-sm text-muted-foreground">트렌드 API 잔여</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold">
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {summary.totalUsed.toLocaleString()} / {summary.totalLimit.toLocaleString()}
+                </span>
+              </div>
+              <Progress 
+                value={summary.totalLimit > 0 ? (summary.totalUsed / summary.totalLimit) * 100 : 0} 
+                className="h-2"
+              />
+              <div className="text-xs text-muted-foreground mt-1">
+                잔여 {summary.totalRemaining.toLocaleString()}건
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium">트렌드 API</span>
+                <Badge variant="outline" className="text-xs">
+                  일일 한도
+                </Badge>
+              </div>
+              <div className="flex items-baseline gap-2 mb-2">
+                <span className="text-2xl font-bold">
                   {(summary.trendTotalLimit ?? 0) > 0 ? Math.round(((summary.trendTotalUsed ?? 0) / (summary.trendTotalLimit ?? 1)) * 100) : 0}%
-                </div>
-                <div className="text-sm text-muted-foreground">트렌드 API 사용률</div>
-                <Progress 
-                  value={(summary.trendTotalLimit ?? 0) > 0 ? ((summary.trendTotalUsed ?? 0) / (summary.trendTotalLimit ?? 1)) * 100 : 0} 
-                  className="mt-2 h-2"
-                />
-              </CardContent>
-            </Card>
-          </div>
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {(summary.trendTotalUsed ?? 0).toLocaleString()} / {(summary.trendTotalLimit ?? 0).toLocaleString()}
+                </span>
+              </div>
+              <Progress 
+                value={(summary.trendTotalLimit ?? 0) > 0 ? ((summary.trendTotalUsed ?? 0) / (summary.trendTotalLimit ?? 1)) * 100 : 0} 
+                className="h-2"
+              />
+              <div className="text-xs text-muted-foreground mt-1">
+                잔여 {(summary.trendTotalRemaining ?? 0).toLocaleString()}건
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
