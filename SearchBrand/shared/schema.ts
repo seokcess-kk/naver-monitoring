@@ -41,6 +41,41 @@ export type ApiKeyPublic = {
   updatedAt: Date | null;
 } | null;
 
+// 시스템 공용 API 키 (관리자 전용)
+export const systemApiKeys = pgTable("system_api_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 100 }).notNull(),
+  clientId: text("client_id").notNull().unique(),
+  clientSecret: text("client_secret").notNull(),
+  dailyLimit: varchar("daily_limit").default("25000").notNull(),
+  priority: varchar("priority").default("0").notNull(),
+  isActive: varchar("is_active", { length: 5 }).default("true").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_system_api_keys_is_active").on(table.isActive),
+  index("idx_system_api_keys_priority").on(table.priority),
+]);
+
+export const insertSystemApiKeySchema = createInsertSchema(systemApiKeys).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateSystemApiKeySchema = createInsertSchema(systemApiKeys).pick({
+  name: true,
+  clientId: true,
+  clientSecret: true,
+  dailyLimit: true,
+  priority: true,
+  isActive: true,
+}).partial();
+
+export type InsertSystemApiKey = z.infer<typeof insertSystemApiKeySchema>;
+export type UpdateSystemApiKey = z.infer<typeof updateSystemApiKeySchema>;
+export type SystemApiKey = typeof systemApiKeys.$inferSelect;
+
 // SOV (Share of Voice) 관련 테이블
 export const sovRuns = pgTable("sov_runs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
