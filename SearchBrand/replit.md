@@ -10,21 +10,26 @@
 
 ### 2026-01-29 시스템 API 키 풀 아키텍처 도입
 - **중앙 집중식 API 키 관리**: 사용자별 API 키 대신 관리자가 등록한 시스템 API 키 풀 사용
-- **자동 키 순환**: 일일 사용량이 24,000건(임계값) 도달 시 다음 활성 키로 자동 전환
+- **듀얼 쿼터 추적**: 동일 자격증명에 대해 검색 API와 트렌드 API를 별도로 추적
+  - 검색 API: 일일 25,000건 기본 한도, 24,000건(임계값) 도달 시 자동 순환
+  - 트렌드 API: 일일 1,000건 기본 한도, 950건(임계값) 도달 시 자동 순환
 - **관리자 기능**:
   - 시스템 API 키 CRUD (슈퍼관리자 전용)
-  - 실시간 사용량 모니터링 (관리자)
-  - 키별 상태 표시: 정상/경고/위험/소진
+  - 검색/트렌드 API 사용량 분리 모니터링
+  - 키별 듀얼 상태 표시: 검색 쿼터 + 트렌드 쿼터 각각
 - **보안**: 
   - Client Secret AES-256-GCM 암호화 저장
   - 관리자 API 응답에서 Secret 노출 방지 (hasClientSecret 플래그만 반환)
 - **에러 처리**: 모든 키 소진 시 503 NO_AVAILABLE_API_KEY 반환
 - **사용자 프로필**: API 키 섹션 제거 (시스템 키 사용으로 불필요)
+- **통합검색 UI**: API 키 설정 섹션 제거 (시스템 키로 자동 처리)
 - **관련 파일**:
-  - shared/schema.ts: systemApiKeys 테이블 스키마
-  - server/services/system-api-key-service.ts: 키 관리 및 순환 로직
+  - shared/schema.ts: systemApiKeys 테이블 스키마 (trendDailyLimit 필드)
+  - server/services/system-api-key-service.ts: 키 관리 및 듀얼 순환 로직
+  - server/services/quota-service.ts: 검색/트렌드 사용량 추적
+  - server/naver-datalab-api.ts: 트렌드 API 시스템 키 연동
   - server/admin-routes.ts: 관리자 API 엔드포인트
-  - client/src/pages/admin/SystemApiKeysTab.tsx: 관리자 UI
+  - client/src/pages/admin/SystemApiKeysTab.tsx: 관리자 UI (듀얼 쿼터 표시)
 
 ### 2026-01-27 키워드 인사이트 기능 추가
 - **검색량 분석**: 네이버 광고 API를 통한 월간 검색량 (PC/모바일) 표시
