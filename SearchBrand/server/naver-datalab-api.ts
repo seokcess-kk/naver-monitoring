@@ -63,7 +63,7 @@ export async function getKeywordTrend(
   endDate.setDate(endDate.getDate() - 1);
   
   const startDate = new Date(endDate);
-  startDate.setMonth(startDate.getMonth() - 13);
+  startDate.setMonth(startDate.getMonth() - 11);
   startDate.setDate(1);
 
   const body = {
@@ -141,9 +141,9 @@ export async function getKeywordTrend(
       }
     }
 
-    if (trendData.length >= 13) {
+    if (trendData.length >= 12) {
       const current = trendData[trendData.length - 1].ratio;
-      const yearAgo = trendData[trendData.length - 13].ratio;
+      const yearAgo = trendData[0].ratio;
       if (yearAgo > 0) {
         yoyGrowth = ((current - yearAgo) / yearAgo) * 100;
       }
