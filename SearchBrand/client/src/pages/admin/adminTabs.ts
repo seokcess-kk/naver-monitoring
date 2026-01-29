@@ -8,6 +8,7 @@ import {
   Zap, 
   Database,
   KeyRound,
+  MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,6 +39,7 @@ export const TAB_GROUPS: TabGroup[] = [
       { id: "users", label: "사용자", icon: Users, priority: 1, isDefault: true },
       { id: "solutions", label: "솔루션", icon: Package, priority: 2 },
       { id: "system-apikeys", label: "API 키", icon: KeyRound, priority: 3 },
+      { id: "feedback", label: "피드백", icon: MessageSquare, priority: 4 },
     ],
   },
   {

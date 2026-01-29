@@ -13,6 +13,7 @@ import ProfilePage from "@/pages/profile";
 import AdminPage from "@/pages/admin";
 import PlaceReviewPage from "@/pages/place-review";
 import NotFound from "@/pages/not-found";
+import { FeedbackButton } from "@/components/FeedbackButton";
 
 function Router() {
   const { user, isLoading, isAuthenticated } = useAuth();
@@ -55,6 +56,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        <FeedbackButton />
       </TooltipProvider>
     </QueryClientProvider>
   );

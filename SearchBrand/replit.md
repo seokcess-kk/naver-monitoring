@@ -8,6 +8,21 @@
 
 ## Recent Changes
 
+### 2026-01-29 사용자 피드백 시스템 추가
+- **피드백 버튼**: 모든 페이지 우측 하단에 고정 위치 "피드백" 버튼 추가
+- **피드백 모달**: 카테고리 선택 (기능요청/문의/오류), 내용 입력 폼
+- **이메일 알림**: SendGrid를 통해 관리자에게 새 피드백 자동 알림
+- **관리자 콘솔**: 운영/관리 그룹에 "피드백" 탭 추가
+  - 카테고리/상태별 필터링
+  - 페이지네이션
+  - 사용자 정보, 페이지 URL, 제출 일시 표시
+- **관련 파일**:
+  - shared/schema.ts: feedback 테이블 스키마
+  - server/feedback-routes.ts: 피드백 제출 API
+  - server/admin-routes.ts: 관리자 피드백 조회 API
+  - client/src/components/FeedbackButton.tsx, FeedbackModal.tsx
+  - client/src/pages/admin/FeedbackTab.tsx
+
 ### 2026-01-29 API 명칭 통일
 - **통일된 명칭**: 검색 API, 광고 API, 데이터랩 API
 - 모든 관리자 콘솔 및 대시보드 페이지에 일관된 명칭 적용

@@ -20,6 +20,7 @@ import {
   ApiUsageTab,
   DataQualityTab,
   SystemStatusTab,
+  FeedbackTab,
   AdminSidebar,
   DEFAULT_TAB,
   type AdminStats,
@@ -131,6 +132,7 @@ export default function AdminPage() {
               <TabsContent value="api-usage" className="mt-0"><ApiUsageTab /></TabsContent>
               <TabsContent value="data-quality" className="mt-0"><DataQualityTab /></TabsContent>
               <TabsContent value="system" className="mt-0"><SystemStatusTab /></TabsContent>
+              <TabsContent value="feedback" className="mt-0"><FeedbackTab /></TabsContent>
             </div>
           </main>
         </Tabs>

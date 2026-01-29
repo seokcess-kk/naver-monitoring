@@ -1,11 +1,14 @@
 import { 
   apiKeys, 
   searchLogs,
+  feedback,
   type ApiKey, 
   type InsertApiKey, 
   type UpdateApiKey,
   type InsertSearchLog,
   type SearchLog,
+  type InsertFeedback,
+  type Feedback,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, sql } from "drizzle-orm";
@@ -120,6 +123,11 @@ export class DatabaseStorage implements IStorage {
       thisMonth: monthResult?.count ?? 0,
       byType: byTypeResult,
     };
+  }
+
+  async createFeedback(data: InsertFeedback): Promise<Feedback> {
+    const [result] = await db.insert(feedback).values(data).returning();
+    return result;
   }
 }
 

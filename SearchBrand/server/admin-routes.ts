@@ -10,6 +10,7 @@ import {
   placeReviewAnalyses,
   placeReviews,
   apiUsageLogs,
+  feedback,
   insertSystemApiKeySchema,
   updateSystemApiKeySchema,
   type UserRole,
@@ -1661,6 +1662,56 @@ router.delete("/system-api-keys/:keyId", requireSuperAdmin, async (req: AdminReq
   } catch (error) {
     console.error("[Admin] Failed to delete system API key:", error);
     res.status(500).json({ error: "시스템 API 키 삭제 실패" });
+  }
+});
+
+router.get("/feedback", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { category, status, page: pageStr, limit: limitStr } = req.query;
+    const page = Math.max(1, parseInt(pageStr as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(limitStr as string) || 20));
+    const offset = (page - 1) * limit;
+
+    const conditions = [];
+    if (category && category !== "all") {
+      conditions.push(eq(feedback.category, category as string));
+    }
+    if (status && status !== "all") {
+      conditions.push(eq(feedback.status, status as string));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [feedbackList, totalResult] = await Promise.all([
+      db.select({
+        id: feedback.id,
+        userId: feedback.userId,
+        userEmail: users.email,
+        category: feedback.category,
+        content: feedback.content,
+        pageUrl: feedback.pageUrl,
+        userAgent: feedback.userAgent,
+        status: feedback.status,
+        createdAt: feedback.createdAt,
+      })
+        .from(feedback)
+        .leftJoin(users, eq(feedback.userId, users.id))
+        .where(whereClause)
+        .orderBy(desc(feedback.createdAt))
+        .limit(limit)
+        .offset(offset),
+      db.select({ count: count() }).from(feedback).where(whereClause),
+    ]);
+
+    res.json({
+      feedback: feedbackList,
+      total: totalResult[0]?.count || 0,
+      page,
+      pageSize: limit,
+    });
+  } catch (error) {
+    console.error("[Admin] Failed to fetch feedback:", error);
+    res.status(500).json({ error: "피드백 조회 실패" });
   }
 });
 

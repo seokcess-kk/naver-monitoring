@@ -11,6 +11,7 @@ export { InsightsTab } from "./InsightsTab";
 export { ApiUsageTab } from "./ApiUsageTab";
 export { DataQualityTab } from "./DataQualityTab";
 export { SystemStatusTab } from "./SystemStatusTab";
+export { FeedbackTab } from "./FeedbackTab";
 export { UserDetailModal } from "./UserDetailModal";
 export { AdminSidebar } from "./AdminSidebar";
 export { TabPageLayout, FilterRow, FilterField, ExportButton, ActionButton } from "./TabPageLayout";

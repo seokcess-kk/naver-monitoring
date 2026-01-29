@@ -420,3 +420,42 @@ export type InsertApiUsageLog = z.infer<typeof insertApiUsageLogSchema>;
 export type ApiUsageLog = typeof apiUsageLogs.$inferSelect;
 
 export type ApiType = "naver_search" | "naver_ad" | "naver_datalab" | "openai" | "browserless";
+
+// 사용자 피드백 테이블
+export const feedback = pgTable("feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  category: varchar("category", { length: 20 }).notNull(), // 'feature' | 'inquiry' | 'bug'
+  content: text("content").notNull(),
+  screenshotUrl: text("screenshot_url"),
+  pageUrl: text("page_url"),
+  userAgent: text("user_agent"),
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // 'pending' | 'in_progress' | 'resolved'
+  adminNote: text("admin_note"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_feedback_user_id").on(table.userId),
+  index("idx_feedback_category").on(table.category),
+  index("idx_feedback_status").on(table.status),
+  index("idx_feedback_created_at").on(table.createdAt),
+]);
+
+export const insertFeedbackSchema = createInsertSchema(feedback).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  adminNote: true,
+  status: true,
+});
+
+export const updateFeedbackSchema = createInsertSchema(feedback).pick({
+  status: true,
+  adminNote: true,
+}).partial();
+
+export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
+export type UpdateFeedback = z.infer<typeof updateFeedbackSchema>;
+export type Feedback = typeof feedback.$inferSelect;
+export type FeedbackCategory = "feature" | "inquiry" | "bug";
+export type FeedbackStatus = "pending" | "in_progress" | "resolved";

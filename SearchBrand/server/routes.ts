@@ -18,6 +18,7 @@ import {
 import adminRoutes from "./admin-routes";
 import { requireAdmin } from "./admin-middleware";
 import placeReviewRoutes, { initPlaceReviewWorker } from "./place-review-routes";
+import feedbackRoutes from "./feedback-routes";
 import { getAllServicesStatus, getQuickRedisStatus, getQuickChromeStatus } from "./services/service-status";
 import { getAvailableSystemApiKey, getSystemQuotaSummary } from "./services/system-api-key-service";
 
@@ -73,6 +74,7 @@ export async function registerRoutes(
 
   app.use("/api/admin", isAuthenticated, attachUserToRequest, adminRoutes);
   app.use("/api/place-review", placeReviewRoutes);
+  app.use("/api/feedback", attachUserToRequest, feedbackRoutes);
 
   initPlaceReviewWorker().catch((error) => {
     console.log("[PlaceReview] Worker not started (Redis may not be running):", error);
