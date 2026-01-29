@@ -10,20 +10,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Loader2, Sparkles, AlertCircle, Key } from "lucide-react";
+import { Search, Loader2, Sparkles, AlertCircle } from "lucide-react";
 
 interface SearchPanelProps {
   onSearch: (keyword: string, sort: "sim" | "date") => void;
   isSearching: boolean;
-  hasApiKey: boolean;
-  onOpenApiKeySetup?: () => void;
 }
 
 export function SearchPanel({
   onSearch,
   isSearching,
-  hasApiKey,
-  onOpenApiKeySetup,
 }: SearchPanelProps) {
   const [keyword, setKeyword] = useState("");
   const [sortType, setSortType] = useState<"sim" | "date">("sim");
@@ -76,9 +72,6 @@ export function SearchPanel({
       keywordInputRef.current?.focus();
       return;
     }
-    if (!hasApiKey) {
-      return;
-    }
     onSearch(keyword, sortType);
   };
 
@@ -94,32 +87,6 @@ export function SearchPanel({
             <h2 className="text-base md:text-lg font-bold tracking-tight">통합검색</h2>
           </div>
         </div>
-
-        {!hasApiKey && (
-          <div className="mb-4 p-3 md:p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
-            <AlertCircle className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs md:text-sm font-medium text-amber-800 dark:text-amber-200">
-                검색을 시작하려면 API 키를 먼저 등록하세요
-              </p>
-              <p className="text-[10px] md:text-xs text-amber-700/80 dark:text-amber-300/80 mt-0.5">
-                네이버 개발자센터에서 발급받은 Client ID와 Secret이 필요합니다.
-              </p>
-            </div>
-            {onOpenApiKeySetup && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onOpenApiKeySetup}
-                className="shrink-0 text-xs h-8 border-amber-500/50 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
-              >
-                <Key className="w-3 h-3 mr-1.5" />
-                키 등록
-              </Button>
-            )}
-          </div>
-        )}
 
         <form
           onSubmit={handleSubmit}
@@ -179,7 +146,7 @@ export function SearchPanel({
             <Button
               type="submit"
               size="lg"
-              disabled={isSearching || !hasApiKey}
+              disabled={isSearching}
               className="flex-1 md:flex-initial h-10 md:h-12 px-4 md:px-8 font-semibold shadow-sm self-end text-sm md:text-base"
               data-testid="button-search"
             >

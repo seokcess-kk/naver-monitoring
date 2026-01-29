@@ -2,9 +2,10 @@ import { db } from "../db";
 import { systemApiKeys, type SystemApiKey, type InsertSystemApiKey, type UpdateSystemApiKey } from "@shared/schema";
 import { eq, asc, and } from "drizzle-orm";
 import { encrypt, decrypt, isEncrypted } from "../crypto";
-import { getDailyUsage, checkDailyQuota, type QuotaStatus } from "./quota-service";
+import { getDailyUsage, checkDailyQuota, getTrendDailyUsage, checkTrendDailyQuota, type QuotaStatus } from "./quota-service";
 
 const ROTATION_THRESHOLD = 24000;
+const TREND_ROTATION_THRESHOLD = 950;
 
 export interface SystemApiKeyCredentials {
   clientId: string;
@@ -14,6 +15,8 @@ export interface SystemApiKeyCredentials {
 export interface SystemApiKeyWithQuota extends SystemApiKey {
   dailyUsage: number;
   quotaStatus: QuotaStatus;
+  trendDailyUsage: number;
+  trendQuotaStatus: QuotaStatus;
 }
 
 function decryptKey(key: SystemApiKey): SystemApiKey {
@@ -135,10 +138,15 @@ export async function getSystemApiKeysWithQuota(): Promise<SystemApiKeyWithQuota
     keys.map(async (key) => {
       const dailyUsage = await getDailyUsage(key.clientId);
       const quotaStatus = await checkDailyQuota(key.clientId);
+      const trendLimit = parseInt(key.trendDailyLimit, 10) || 1000;
+      const trendDailyUsage = await getTrendDailyUsage(key.clientId);
+      const trendQuotaStatus = await checkTrendDailyQuota(key.clientId, trendLimit);
       return {
         ...key,
         dailyUsage,
         quotaStatus,
+        trendDailyUsage,
+        trendQuotaStatus,
       };
     })
   );
@@ -153,6 +161,10 @@ export async function getSystemQuotaSummary(): Promise<{
   totalUsed: number;
   totalRemaining: number;
   allExhausted: boolean;
+  trendTotalLimit: number;
+  trendTotalUsed: number;
+  trendTotalRemaining: number;
+  trendAllExhausted: boolean;
 }> {
   const keysWithQuota = await getSystemApiKeysWithQuota();
   const activeKeys = keysWithQuota.filter(k => k.isActive === "true");
@@ -162,6 +174,11 @@ export async function getSystemQuotaSummary(): Promise<{
   const totalRemaining = Math.max(0, totalLimit - totalUsed);
   const allExhausted = activeKeys.every(k => k.dailyUsage >= parseInt(k.dailyLimit, 10));
   
+  const trendTotalLimit = activeKeys.reduce((sum, k) => sum + parseInt(k.trendDailyLimit, 10), 0);
+  const trendTotalUsed = activeKeys.reduce((sum, k) => sum + k.trendDailyUsage, 0);
+  const trendTotalRemaining = Math.max(0, trendTotalLimit - trendTotalUsed);
+  const trendAllExhausted = activeKeys.every(k => k.trendDailyUsage >= parseInt(k.trendDailyLimit, 10));
+  
   return {
     totalKeys: keysWithQuota.length,
     activeKeys: activeKeys.length,
@@ -169,5 +186,55 @@ export async function getSystemQuotaSummary(): Promise<{
     totalUsed,
     totalRemaining,
     allExhausted,
+    trendTotalLimit,
+    trendTotalUsed,
+    trendTotalRemaining,
+    trendAllExhausted,
   };
+}
+
+export async function getAvailableSystemApiKeyForTrend(): Promise<SystemApiKeyCredentials | null> {
+  const activeKeys = await getActiveSystemApiKeys();
+  
+  if (activeKeys.length === 0) {
+    console.warn("[SystemApiKey] No active system API keys available for trend");
+    return null;
+  }
+  
+  let fallbackKey: SystemApiKey | null = null;
+  let fallbackUsage = 0;
+  
+  for (const key of activeKeys) {
+    const trendLimit = parseInt(key.trendDailyLimit, 10) || 1000;
+    const usage = await getTrendDailyUsage(key.clientId);
+    
+    if (usage >= trendLimit) {
+      console.log(`[SystemApiKey] Key ${key.name} trend exhausted (${usage}/${trendLimit}), trying next...`);
+      continue;
+    }
+    
+    if (usage < TREND_ROTATION_THRESHOLD) {
+      return {
+        clientId: key.clientId,
+        clientSecret: key.clientSecret,
+      };
+    }
+    
+    if (!fallbackKey || usage < fallbackUsage) {
+      fallbackKey = key;
+      fallbackUsage = usage;
+    }
+    console.log(`[SystemApiKey] Key ${key.name} trend at threshold (${usage}/${trendLimit}), looking for better option...`);
+  }
+  
+  if (fallbackKey) {
+    console.log(`[SystemApiKey] Using fallback key ${fallbackKey.name} for trend (${fallbackUsage} used)`);
+    return {
+      clientId: fallbackKey.clientId,
+      clientSecret: fallbackKey.clientSecret,
+    };
+  }
+  
+  console.error("[SystemApiKey] All system API keys exhausted for trend");
+  return null;
 }

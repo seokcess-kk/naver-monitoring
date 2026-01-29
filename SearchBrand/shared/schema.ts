@@ -48,6 +48,7 @@ export const systemApiKeys = pgTable("system_api_keys", {
   clientId: text("client_id").notNull().unique(),
   clientSecret: text("client_secret").notNull(),
   dailyLimit: varchar("daily_limit").default("25000").notNull(),
+  trendDailyLimit: varchar("trend_daily_limit").default("1000").notNull(),
   priority: varchar("priority").default("0").notNull(),
   isActive: varchar("is_active", { length: 5 }).default("true").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -68,6 +69,7 @@ export const updateSystemApiKeySchema = createInsertSchema(systemApiKeys).pick({
   clientId: true,
   clientSecret: true,
   dailyLimit: true,
+  trendDailyLimit: true,
   priority: true,
   isActive: true,
 }).partial();

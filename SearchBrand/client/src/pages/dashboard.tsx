@@ -7,7 +7,6 @@ import { SmartBlockSection } from "@/components/smart-block-section";
 import { ApiResultsSection } from "@/components/api-results-section";
 import { KeywordInsightCard } from "@/components/keyword-insight-card";
 import { KeywordTrendChart } from "@/components/keyword-trend-chart";
-import { ApiKeySetup } from "@/components/api-key-setup";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Monitor, Smartphone, TrendingUp, Clock, Sparkles, FileText, MessageSquare, HelpCircle, Newspaper, X, Highlighter } from "lucide-react";
-import type { ApiKeyPublic } from "@shared/schema";
 
 const RECENT_SEARCHES_KEY = "search-scope-recent-searches";
 const MAX_RECENT_SEARCHES = 5;
@@ -207,7 +205,6 @@ export default function Dashboard() {
   const [currentSort, setCurrentSort] = useState<"sim" | "date">(savedState?.sort ?? "sim");
   const [keywordVolume, setKeywordVolume] = useState<KeywordVolumeData | null>(savedState?.keywordVolume ?? null);
   const [isLoadingVolume, setIsLoadingVolume] = useState(false);
-  const [apiKeySetupOpen, setApiKeySetupOpen] = useState<boolean | undefined>(undefined);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [highlightTerm, setHighlightTerm] = useState(savedState?.highlightTerm ?? "");
 
@@ -236,18 +233,6 @@ export default function Dashboard() {
     }
   }, [currentKeyword, currentSort, channelPages, keywordVolume, highlightTerm]);
 
-  const { data: apiKey, isLoading: apiKeyLoading, refetch: refetchApiKey } = useQuery<ApiKeyPublic>({
-    queryKey: ["/api/api-keys"],
-    enabled: !!user,
-  });
-
-  const hasApiKey = !!apiKey?.hasClientSecret;
-
-  useEffect(() => {
-    if (!apiKeyLoading && apiKeySetupOpen === undefined) {
-      setApiKeySetupOpen(!hasApiKey);
-    }
-  }, [apiKeyLoading, hasApiKey, apiKeySetupOpen]);
 
   const fetchKeywordVolume = async (keyword: string) => {
     setIsLoadingVolume(true);
@@ -268,8 +253,6 @@ export default function Dashboard() {
   };
 
   const handleSearch = async (keyword: string, sort: "sim" | "date") => {
-    if (!apiKey?.hasClientSecret) return;
-    
     if (searchAbortControllerRef.current) {
       searchAbortControllerRef.current.abort();
     }
@@ -410,7 +393,7 @@ export default function Dashboard() {
     }
   };
 
-  if (authLoading || apiKeyLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -445,19 +428,10 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <ApiKeySetup 
-            existingApiKey={apiKey} 
-            onSave={() => refetchApiKey()}
-            isOpen={apiKeySetupOpen}
-            onOpenChange={setApiKeySetupOpen}
-          />
-
           <div className="space-y-4 md:space-y-8">
             <SearchPanel 
                 onSearch={handleSearch} 
                 isSearching={isSearching}
-                hasApiKey={hasApiKey}
-                onOpenApiKeySetup={() => setApiKeySetupOpen(true)}
               />
 
                 {currentKeyword && (
@@ -606,7 +580,7 @@ export default function Dashboard() {
                       onExportCSV={exportSearchToCSV}
                     />
                   </>
-                ) : !isSearching && hasApiKey && (
+                ) : !isSearching && (
                   <Card className="border-dashed">
                     <CardContent className="py-12">
                       <div className="text-center space-y-6">

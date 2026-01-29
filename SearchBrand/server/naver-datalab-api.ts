@@ -1,4 +1,5 @@
 import { logApiUsage } from "./services/api-usage-logger";
+import { getAvailableSystemApiKeyForTrend } from "./services/system-api-key-service";
 
 const NAVER_DATALAB_API_URL = "https://openapi.naver.com/v1/datalab/search";
 
@@ -18,25 +19,26 @@ export interface KeywordTrendData {
   yoyGrowth: number | null;
 }
 
-export function isConfigured(): boolean {
-  return !!(
-    process.env.NAVER_DATALAB_CLIENT_ID &&
-    process.env.NAVER_DATALAB_CLIENT_SECRET
-  );
+export async function isConfigured(): Promise<boolean> {
+  const systemKey = await getAvailableSystemApiKeyForTrend();
+  return !!systemKey;
 }
 
-function getHeaders(): Record<string, string> {
-  const clientId = process.env.NAVER_DATALAB_CLIENT_ID;
-  const clientSecret = process.env.NAVER_DATALAB_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    throw new Error("DataLab API credentials are not configured");
+async function getHeadersWithCredentials(): Promise<{ headers: Record<string, string>; clientId: string } | null> {
+  const systemKey = await getAvailableSystemApiKeyForTrend();
+  
+  if (!systemKey) {
+    console.warn("[NaverDataLab] No available system API key for trend");
+    return null;
   }
 
   return {
-    "X-Naver-Client-Id": clientId,
-    "X-Naver-Client-Secret": clientSecret,
-    "Content-Type": "application/json",
+    headers: {
+      "X-Naver-Client-Id": systemKey.clientId,
+      "X-Naver-Client-Secret": systemKey.clientSecret,
+      "Content-Type": "application/json",
+    },
+    clientId: systemKey.clientId,
   };
 }
 
@@ -48,10 +50,13 @@ export async function getKeywordTrend(
   keyword: string,
   userId?: string | null
 ): Promise<KeywordTrendData | null> {
-  if (!isConfigured()) {
-    console.log("[NaverDataLab] Credentials not configured, skipping trend fetch");
+  const credentials = await getHeadersWithCredentials();
+  if (!credentials) {
+    console.log("[NaverDataLab] No available system API key, skipping trend fetch");
     return null;
   }
+
+  const { headers, clientId } = credentials;
 
   const today = new Date();
   const endDate = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -79,7 +84,7 @@ export async function getKeywordTrend(
   try {
     const response = await fetch(NAVER_DATALAB_API_URL, {
       method: "POST",
-      headers: getHeaders(),
+      headers,
       body: JSON.stringify(body),
     });
 
@@ -91,6 +96,7 @@ export async function getKeywordTrend(
 
       logApiUsage({
         userId,
+        clientId,
         apiType: "naver_datalab",
         endpoint: "/v1/datalab/search",
         success: false,
@@ -106,6 +112,7 @@ export async function getKeywordTrend(
 
     logApiUsage({
       userId,
+      clientId,
       apiType: "naver_datalab",
       endpoint: "/v1/datalab/search",
       success: true,

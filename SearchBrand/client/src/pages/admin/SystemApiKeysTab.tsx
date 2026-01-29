@@ -21,10 +21,16 @@ interface SystemApiKey {
   clientId: string;
   hasClientSecret: boolean;
   dailyLimit: string;
+  trendDailyLimit: string;
   priority: string;
   isActive: string;
   dailyUsage: number;
   quotaStatus: {
+    status: "ok" | "warning" | "critical" | "exceeded";
+    percentageUsed: number;
+  };
+  trendDailyUsage: number;
+  trendQuotaStatus: {
     status: "ok" | "warning" | "critical" | "exceeded";
     percentageUsed: number;
   };
@@ -39,6 +45,10 @@ interface SystemApiKeySummary {
   totalUsed: number;
   totalRemaining: number;
   allExhausted: boolean;
+  trendTotalLimit: number;
+  trendTotalUsed: number;
+  trendTotalRemaining: number;
+  trendAllExhausted: boolean;
 }
 
 interface SystemApiKeysResponse {
@@ -51,6 +61,7 @@ interface KeyFormData {
   clientId: string;
   clientSecret: string;
   dailyLimit: string;
+  trendDailyLimit: string;
   priority: string;
   isActive: string;
 }
@@ -60,6 +71,7 @@ const initialFormData: KeyFormData = {
   clientId: "",
   clientSecret: "",
   dailyLimit: "25000",
+  trendDailyLimit: "1000",
   priority: "0",
   isActive: "true",
 };
@@ -149,6 +161,7 @@ export function SystemApiKeysTab() {
       clientId: key.clientId,
       clientSecret: "",
       dailyLimit: key.dailyLimit,
+      trendDailyLimit: key.trendDailyLimit || "1000",
       priority: key.priority,
       isActive: key.isActive,
     });
@@ -168,6 +181,7 @@ export function SystemApiKeysTab() {
     const updateData: Partial<KeyFormData> = {
       name: formData.name,
       dailyLimit: formData.dailyLimit,
+      trendDailyLimit: formData.trendDailyLimit,
       priority: formData.priority,
       isActive: formData.isActive,
     };
@@ -200,37 +214,65 @@ export function SystemApiKeysTab() {
   return (
     <div className="space-y-6">
       {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold">{summary.activeKeys}</div>
-              <div className="text-sm text-muted-foreground">활성 키</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold">{summary.totalUsed.toLocaleString()}</div>
-              <div className="text-sm text-muted-foreground">오늘 사용량</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold">{summary.totalRemaining.toLocaleString()}</div>
-              <div className="text-sm text-muted-foreground">남은 한도</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold">
-                {summary.totalLimit > 0 ? Math.round((summary.totalUsed / summary.totalLimit) * 100) : 0}%
-              </div>
-              <div className="text-sm text-muted-foreground">전체 사용률</div>
-              <Progress 
-                value={summary.totalLimit > 0 ? (summary.totalUsed / summary.totalLimit) * 100 : 0} 
-                className="mt-2 h-2"
-              />
-            </CardContent>
-          </Card>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-bold">{summary.activeKeys}</div>
+                <div className="text-sm text-muted-foreground">활성 키</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-bold">{summary.totalUsed.toLocaleString()}</div>
+                <div className="text-sm text-muted-foreground">검색 API 사용량</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-bold">{summary.totalRemaining.toLocaleString()}</div>
+                <div className="text-sm text-muted-foreground">검색 API 잔여</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-bold">
+                  {summary.totalLimit > 0 ? Math.round((summary.totalUsed / summary.totalLimit) * 100) : 0}%
+                </div>
+                <div className="text-sm text-muted-foreground">검색 API 사용률</div>
+                <Progress 
+                  value={summary.totalLimit > 0 ? (summary.totalUsed / summary.totalLimit) * 100 : 0} 
+                  className="mt-2 h-2"
+                />
+              </CardContent>
+            </Card>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-bold">{(summary.trendTotalUsed ?? 0).toLocaleString()}</div>
+                <div className="text-sm text-muted-foreground">트렌드 API 사용량</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-bold">{(summary.trendTotalRemaining ?? 0).toLocaleString()}</div>
+                <div className="text-sm text-muted-foreground">트렌드 API 잔여</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-bold">
+                  {(summary.trendTotalLimit ?? 0) > 0 ? Math.round(((summary.trendTotalUsed ?? 0) / (summary.trendTotalLimit ?? 1)) * 100) : 0}%
+                </div>
+                <div className="text-sm text-muted-foreground">트렌드 API 사용률</div>
+                <Progress 
+                  value={(summary.trendTotalLimit ?? 0) > 0 ? ((summary.trendTotalUsed ?? 0) / (summary.trendTotalLimit ?? 1)) * 100 : 0} 
+                  className="mt-2 h-2"
+                />
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
 
@@ -254,8 +296,8 @@ export function SystemApiKeysTab() {
                 <TableHead>이름</TableHead>
                 <TableHead>Client ID</TableHead>
                 <TableHead>상태</TableHead>
-                <TableHead>사용량</TableHead>
-                <TableHead>한도</TableHead>
+                <TableHead>검색 API</TableHead>
+                <TableHead>트렌드 API</TableHead>
                 <TableHead>우선순위</TableHead>
                 {isSuperAdmin && <TableHead></TableHead>}
               </TableRow>
@@ -294,14 +336,26 @@ export function SystemApiKeysTab() {
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
-                      <div className="text-sm">{key.dailyUsage.toLocaleString()}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {key.dailyUsage.toLocaleString()} / {parseInt(key.dailyLimit).toLocaleString()}
+                      </div>
                       <Progress 
                         value={key.quotaStatus.percentageUsed} 
                         className="h-1.5 w-20"
                       />
                     </div>
                   </TableCell>
-                  <TableCell>{parseInt(key.dailyLimit).toLocaleString()}</TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="text-xs text-muted-foreground">
+                        {(key.trendDailyUsage ?? 0).toLocaleString()} / {parseInt(key.trendDailyLimit || "1000").toLocaleString()}
+                      </div>
+                      <Progress 
+                        value={key.trendQuotaStatus?.percentageUsed ?? 0} 
+                        className="h-1.5 w-20"
+                      />
+                    </div>
+                  </TableCell>
                   <TableCell>{key.priority}</TableCell>
                   {isSuperAdmin && (
                     <TableCell>
@@ -363,7 +417,7 @@ export function SystemApiKeysTab() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>일일 한도</Label>
+                <Label>검색 API 일일 한도</Label>
                 <Input 
                   type="number"
                   value={formData.dailyLimit}
@@ -371,13 +425,21 @@ export function SystemApiKeysTab() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>우선순위 (낮을수록 먼저 사용)</Label>
+                <Label>트렌드 API 일일 한도</Label>
                 <Input 
                   type="number"
-                  value={formData.priority}
-                  onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value }))}
+                  value={formData.trendDailyLimit}
+                  onChange={(e) => setFormData(prev => ({ ...prev, trendDailyLimit: e.target.value }))}
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>우선순위 (낮을수록 먼저 사용)</Label>
+              <Input 
+                type="number"
+                value={formData.priority}
+                onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value }))}
+              />
             </div>
           </div>
           <DialogFooter>
@@ -420,13 +482,23 @@ export function SystemApiKeysTab() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>일일 한도</Label>
+                <Label>검색 API 일일 한도</Label>
                 <Input 
                   type="number"
                   value={formData.dailyLimit}
                   onChange={(e) => setFormData(prev => ({ ...prev, dailyLimit: e.target.value }))}
                 />
               </div>
+              <div className="space-y-2">
+                <Label>트렌드 API 일일 한도</Label>
+                <Input 
+                  type="number"
+                  value={formData.trendDailyLimit}
+                  onChange={(e) => setFormData(prev => ({ ...prev, trendDailyLimit: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>우선순위</Label>
                 <Input 
@@ -435,13 +507,13 @@ export function SystemApiKeysTab() {
                   onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value }))}
                 />
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch 
-                checked={formData.isActive === "true"}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked ? "true" : "false" }))}
-              />
-              <Label>활성화</Label>
+              <div className="flex items-center gap-2 pt-6">
+                <Switch 
+                  checked={formData.isActive === "true"}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked ? "true" : "false" }))}
+                />
+                <Label>활성화</Label>
+              </div>
             </div>
           </div>
           <DialogFooter>

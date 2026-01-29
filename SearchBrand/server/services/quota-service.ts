@@ -77,6 +77,48 @@ export async function getDailyUsage(clientId: string): Promise<number> {
   return result[0]?.count || 0;
 }
 
+export async function getTrendDailyUsage(clientId: string): Promise<number> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const result = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(apiUsageLogs)
+    .where(
+      and(
+        eq(apiUsageLogs.clientId, clientId),
+        eq(apiUsageLogs.apiType, "naver_datalab"),
+        eq(apiUsageLogs.success, "true"),
+        gte(apiUsageLogs.createdAt, today)
+      )
+    );
+  
+  return result[0]?.count || 0;
+}
+
+const TREND_DAILY_LIMIT = 1000;
+
+export async function checkTrendDailyQuota(clientId: string, customLimit?: number): Promise<QuotaStatus> {
+  const used = await getTrendDailyUsage(clientId);
+  const limit = customLimit ?? TREND_DAILY_LIMIT;
+  const remaining = Math.max(0, limit - used);
+  const status = getStatusLevel(used, limit);
+  const allowed = status !== "exceeded";
+  const percentageUsed = (used / limit) * 100;
+  
+  return {
+    clientId,
+    allowed,
+    used,
+    limit,
+    remaining,
+    percentageUsed: Math.round(percentageUsed * 10) / 10,
+    status,
+    resetAt: getResetTime(),
+    message: getWarningMessage(status, used, limit),
+  };
+}
+
 export async function checkDailyQuota(clientId: string): Promise<QuotaStatus> {
   const used = await getDailyUsage(clientId);
   const remaining = Math.max(0, DAILY_LIMIT - used);
