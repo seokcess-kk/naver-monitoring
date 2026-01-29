@@ -19,6 +19,7 @@ import adminRoutes from "./admin-routes";
 import { requireAdmin } from "./admin-middleware";
 import placeReviewRoutes, { initPlaceReviewWorker } from "./place-review-routes";
 import { getAllServicesStatus, getQuickRedisStatus, getQuickChromeStatus } from "./services/service-status";
+import { getAvailableSystemApiKey, getSystemQuotaSummary } from "./services/system-api-key-service";
 
 const searchLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -177,6 +178,16 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/system-quota", isAuthenticated, async (_req, res) => {
+    try {
+      const summary = await getSystemQuotaSummary();
+      res.json(summary);
+    } catch (error) {
+      console.error("System quota error:", error);
+      res.status(500).json({ message: "시스템 쿼터 조회 실패" });
+    }
+  });
+
   app.get("/api/search", isAuthenticated, searchLimiter, async (req: any, res) => {
     try {
       const userId = req.session.userId!;
@@ -188,15 +199,13 @@ export async function registerRoutes(
       
       const { keyword, sort, page } = validation.data;
 
-      const apiKey = await storage.getApiKeyByUserId(userId);
-      if (!apiKey) {
-        return res.status(400).json({ message: "API key not configured" });
+      const credentials = await getAvailableSystemApiKey();
+      if (!credentials) {
+        return res.status(503).json({ 
+          message: "현재 사용 가능한 API 키가 없습니다. 관리자에게 문의하세요.",
+          code: "NO_AVAILABLE_API_KEY"
+        });
       }
-
-      const credentials = {
-        clientId: apiKey.clientId,
-        clientSecret: apiKey.clientSecret,
-      };
 
       const crawlPromise = crawlNaverSearch(keyword).catch((err) => {
         console.error("Crawl error:", err);
@@ -248,7 +257,7 @@ export async function registerRoutes(
     } catch (error) {
       if (error instanceof QuotaExceededError) {
         return res.status(429).json({
-          message: error.message,
+          message: "모든 API 키의 일일 한도가 소진되었습니다. 내일 다시 시도해주세요.",
           quota: error.quota,
         });
       }
@@ -268,15 +277,13 @@ export async function registerRoutes(
       
       const { keyword, channel, sort, page } = validation.data;
 
-      const apiKey = await storage.getApiKeyByUserId(userId);
-      if (!apiKey) {
-        return res.status(400).json({ message: "API key not configured" });
+      const credentials = await getAvailableSystemApiKey();
+      if (!credentials) {
+        return res.status(503).json({ 
+          message: "현재 사용 가능한 API 키가 없습니다. 관리자에게 문의하세요.",
+          code: "NO_AVAILABLE_API_KEY"
+        });
       }
-
-      const credentials = {
-        clientId: apiKey.clientId,
-        clientSecret: apiKey.clientSecret,
-      };
 
       const result = await searchSingleChannel(channel, keyword, sort, page, credentials, userId);
 
@@ -284,7 +291,7 @@ export async function registerRoutes(
     } catch (error) {
       if (error instanceof QuotaExceededError) {
         return res.status(429).json({
-          message: error.message,
+          message: "모든 API 키의 일일 한도가 소진되었습니다. 내일 다시 시도해주세요.",
           quota: error.quota,
         });
       }
