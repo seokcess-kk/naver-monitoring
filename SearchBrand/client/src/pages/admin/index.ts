@@ -5,6 +5,7 @@ export { UsersTab } from "./UsersTab";
 export { SearchLogsTab } from "./SearchLogsTab";
 export { AuditLogsTab } from "./AuditLogsTab";
 export { ApiKeysTab } from "./ApiKeysTab";
+export { SystemApiKeysTab } from "./SystemApiKeysTab";
 export { SolutionsTab } from "./SolutionsTab";
 export { InsightsTab } from "./InsightsTab";
 export { ApiUsageTab } from "./ApiUsageTab";

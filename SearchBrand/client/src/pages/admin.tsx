@@ -14,6 +14,7 @@ import {
   SearchLogsTab,
   AuditLogsTab,
   ApiKeysTab,
+  SystemApiKeysTab,
   SolutionsTab,
   InsightsTab,
   ApiUsageTab,
@@ -123,6 +124,7 @@ export default function AdminPage() {
               <TabsContent value="users" className="mt-0"><UsersTab /></TabsContent>
               <TabsContent value="logs" className="mt-0"><SearchLogsTab /></TabsContent>
               <TabsContent value="audit" className="mt-0"><AuditLogsTab /></TabsContent>
+              <TabsContent value="system-apikeys" className="mt-0"><SystemApiKeysTab /></TabsContent>
               <TabsContent value="apikeys" className="mt-0"><ApiKeysTab /></TabsContent>
               <TabsContent value="solutions" className="mt-0"><SolutionsTab /></TabsContent>
               <TabsContent value="insights" className="mt-0"><InsightsTab /></TabsContent>

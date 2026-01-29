@@ -10,6 +10,8 @@ import {
   placeReviewAnalyses,
   placeReviews,
   apiUsageLogs,
+  insertSystemApiKeySchema,
+  updateSystemApiKeySchema,
   type UserRole,
   type UserStatus,
 } from "@shared/schema";
@@ -17,6 +19,14 @@ import { requireAdmin, requireSuperAdmin, type AdminRequest } from "./admin-midd
 import { logAudit, getAuditLogs } from "./audit-service";
 import { desc, eq, and, or, ilike, sql, gte, lte, lt, count, isNull, not } from "drizzle-orm";
 import { z } from "zod";
+import {
+  getAllSystemApiKeys,
+  getSystemApiKeysWithQuota,
+  createSystemApiKey,
+  updateSystemApiKey,
+  deleteSystemApiKey,
+  getSystemQuotaSummary,
+} from "./services/system-api-key-service";
 
 const router = Router();
 
@@ -1549,6 +1559,103 @@ router.get("/api-usage/quota", requireAdmin, async (req: AdminRequest, res: Resp
   } catch (error) {
     console.error("[Admin] Failed to get quota status:", error);
     res.status(500).json({ error: "Quota 상태 조회 실패" });
+  }
+});
+
+router.get("/system-api-keys", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const keysWithQuota = await getSystemApiKeysWithQuota();
+    const summary = await getSystemQuotaSummary();
+    
+    const safeKeys = keysWithQuota.map(k => ({
+      id: k.id,
+      name: k.name,
+      clientId: k.clientId,
+      hasClientSecret: true,
+      dailyLimit: k.dailyLimit,
+      priority: k.priority,
+      isActive: k.isActive,
+      dailyUsage: k.dailyUsage,
+      quotaStatus: k.quotaStatus,
+      createdAt: k.createdAt,
+      updatedAt: k.updatedAt,
+    }));
+    
+    res.json({ keys: safeKeys, summary });
+  } catch (error) {
+    console.error("[Admin] Failed to get system API keys:", error);
+    res.status(500).json({ error: "시스템 API 키 조회 실패" });
+  }
+});
+
+router.post("/system-api-keys", requireSuperAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const validation = insertSystemApiKeySchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error.errors[0]?.message || "잘못된 요청" });
+    }
+    
+    const key = await createSystemApiKey(validation.data);
+    
+    res.status(201).json({
+      id: key.id,
+      name: key.name,
+      clientId: key.clientId,
+      hasClientSecret: true,
+      dailyLimit: key.dailyLimit,
+      priority: key.priority,
+      isActive: key.isActive,
+      createdAt: key.createdAt,
+    });
+  } catch (error: any) {
+    console.error("[Admin] Failed to create system API key:", error);
+    if (error?.code === "23505") {
+      return res.status(409).json({ error: "이미 등록된 Client ID입니다." });
+    }
+    res.status(500).json({ error: "시스템 API 키 생성 실패" });
+  }
+});
+
+router.put("/system-api-keys/:keyId", requireSuperAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { keyId } = req.params;
+    const validation = updateSystemApiKeySchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error.errors[0]?.message || "잘못된 요청" });
+    }
+    
+    const key = await updateSystemApiKey(keyId, validation.data);
+    if (!key) {
+      return res.status(404).json({ error: "시스템 API 키를 찾을 수 없습니다." });
+    }
+    
+    res.json({
+      id: key.id,
+      name: key.name,
+      clientId: key.clientId,
+      hasClientSecret: true,
+      dailyLimit: key.dailyLimit,
+      priority: key.priority,
+      isActive: key.isActive,
+      updatedAt: key.updatedAt,
+    });
+  } catch (error: any) {
+    console.error("[Admin] Failed to update system API key:", error);
+    if (error?.code === "23505") {
+      return res.status(409).json({ error: "이미 등록된 Client ID입니다." });
+    }
+    res.status(500).json({ error: "시스템 API 키 수정 실패" });
+  }
+});
+
+router.delete("/system-api-keys/:keyId", requireSuperAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { keyId } = req.params;
+    await deleteSystemApiKey(keyId);
+    res.status(204).send();
+  } catch (error) {
+    console.error("[Admin] Failed to delete system API key:", error);
+    res.status(500).json({ error: "시스템 API 키 삭제 실패" });
   }
 });
 
