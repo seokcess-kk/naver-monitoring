@@ -5,14 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Eye, Zap, Clock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import type { AdminUser, UserUsageStats, API_TYPE_LABELS } from "./types";
-
-const API_LABELS: Record<string, string> = {
-  naver_search: "네이버 검색",
-  naver_ad: "네이버 광고",
-  openai: "OpenAI",
-  browserless: "Browserless",
-};
+import { API_TYPE_LABELS } from "./types";
+import type { AdminUser, UserUsageStats } from "./types";
 
 interface UserDetailModalProps {
   user: AdminUser | null;
@@ -81,7 +75,7 @@ export function UserDetailModal({ user, open, onClose }: UserDetailModalProps) {
                   {usageStats?.apiUsage.map(api => (
                     <div key={api.apiType} className="border rounded-lg p-3">
                       <p className="text-xs text-muted-foreground">
-                        {API_LABELS[api.apiType] || api.apiType}
+                        {API_TYPE_LABELS[api.apiType] || api.apiType}
                       </p>
                       <p className="text-lg font-bold">{api.totalCalls}</p>
                       <p className="text-xs text-muted-foreground">

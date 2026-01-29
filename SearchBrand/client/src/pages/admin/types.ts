@@ -164,8 +164,9 @@ export interface ServiceStatus {
 export type DateRangeOption = "today" | "7d" | "30d" | "custom";
 
 export const API_TYPE_LABELS: Record<string, string> = {
-  naver_search: "네이버 검색",
-  naver_ad: "네이버 광고",
+  naver_search: "검색 API",
+  naver_ad: "광고 API",
+  naver_datalab: "데이터랩 API",
   openai: "OpenAI",
   browserless: "Browserless",
 };
@@ -173,6 +174,7 @@ export const API_TYPE_LABELS: Record<string, string> = {
 export const API_TYPE_COLORS: Record<string, string> = {
   naver_search: "#22c55e",
   naver_ad: "#3b82f6",
+  naver_datalab: "#06b6d4",
   openai: "#8b5cf6",
   browserless: "#f59e0b",
 };

@@ -243,7 +243,7 @@ export function SystemApiKeysTab() {
           <Card>
             <CardContent className="pt-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium">트렌드 API</span>
+                <span className="text-sm font-medium">데이터랩 API</span>
                 <Badge variant="outline" className="text-xs">
                   일일 한도
                 </Badge>
@@ -289,7 +289,7 @@ export function SystemApiKeysTab() {
                 <TableHead>Client ID</TableHead>
                 <TableHead>상태</TableHead>
                 <TableHead>검색 API</TableHead>
-                <TableHead>트렌드 API</TableHead>
+                <TableHead>데이터랩 API</TableHead>
                 <TableHead>우선순위</TableHead>
                 {isSuperAdmin && <TableHead></TableHead>}
               </TableRow>
@@ -378,7 +378,7 @@ export function SystemApiKeysTab() {
           <DialogHeader>
             <DialogTitle>시스템 API 키 추가</DialogTitle>
             <DialogDescription>
-              모든 사용자가 공유하는 네이버 검색 API 키를 추가합니다.
+              모든 사용자가 공유하는 시스템 API 키를 추가합니다.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -417,7 +417,7 @@ export function SystemApiKeysTab() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>트렌드 API 일일 한도</Label>
+                <Label>데이터랩 API 일일 한도</Label>
                 <Input 
                   type="number"
                   value={formData.trendDailyLimit}
@@ -482,7 +482,7 @@ export function SystemApiKeysTab() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>트렌드 API 일일 한도</Label>
+                <Label>데이터랩 API 일일 한도</Label>
                 <Input 
                   type="number"
                   value={formData.trendDailyLimit}

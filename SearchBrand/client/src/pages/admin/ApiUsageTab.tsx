@@ -253,8 +253,8 @@ export function ApiUsageTab() {
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Area type="monotone" dataKey="naver_search" name="네이버 검색" stackId="1" stroke="#22c55e" fill="#22c55e" fillOpacity={0.6} />
-                <Area type="monotone" dataKey="naver_ad" name="네이버 광고" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="naver_search" name="검색 API" stackId="1" stroke="#22c55e" fill="#22c55e" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="naver_ad" name="광고 API" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
                 <Area type="monotone" dataKey="openai" name="OpenAI" stackId="1" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} />
                 <Area type="monotone" dataKey="browserless" name="Browserless" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} />
               </AreaChart>

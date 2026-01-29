@@ -476,7 +476,7 @@ export default function Dashboard() {
                               </div>
                             </div>
                             <p className="text-[9px] md:text-[10px] text-muted-foreground/70">
-                              출처: 네이버 광고 API
+                              출처: 광고 API
                             </p>
                           </div>
                         ) : keywordVolume?.error ? (
@@ -499,7 +499,7 @@ export default function Dashboard() {
                               rel="noopener noreferrer"
                               className="text-[10px] md:text-xs text-primary hover:underline mt-0.5 inline-block"
                             >
-                              네이버 광고 API 설정하기 →
+                              광고 API 설정하기 →
                             </a>
                           </div>
                         ) : (
