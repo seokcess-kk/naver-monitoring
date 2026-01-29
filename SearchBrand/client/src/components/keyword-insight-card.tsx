@@ -68,7 +68,7 @@ export function KeywordInsightCard({
 }: KeywordInsightCardProps) {
   if (isLoading) {
     return (
-      <Card className="border-border/50">
+      <Card className="border-border/50 h-full flex flex-col">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-3">
             <Skeleton className="w-10 h-10 rounded-xl" />
@@ -78,7 +78,7 @@ export function KeywordInsightCard({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-5 pb-4">
+        <CardContent className="pt-5 pb-4 flex-1 flex flex-col justify-center">
           <div className="grid grid-cols-3 grid-rows-2 gap-4">
             <Skeleton className="h-32 row-span-2" />
             <Skeleton className="h-20" />
@@ -102,7 +102,7 @@ export function KeywordInsightCard({
   const mobileRatio = 100 - pcRatio;
 
   return (
-    <Card className="border-border/50 overflow-hidden">
+    <Card className="border-border/50 overflow-hidden h-full flex flex-col">
       <CardHeader className="pb-3 bg-gradient-to-r from-blue-500/5 to-violet-500/5 border-b border-border/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -120,7 +120,7 @@ export function KeywordInsightCard({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-5 pb-4">
+      <CardContent className="pt-5 pb-4 flex-1 flex flex-col justify-center">
         <div className="grid grid-cols-3 grid-rows-2 gap-4">
           <div className="p-4 rounded-xl bg-muted/30 border border-border/50 row-span-2 flex flex-col items-center justify-center text-center">
             <div className="flex items-center gap-2 mb-3">

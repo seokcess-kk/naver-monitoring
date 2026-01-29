@@ -36,7 +36,7 @@ function estimateVolume(ratio: number, lastRatio: number, totalVolume: number): 
 export function KeywordTrendChart({ trend, totalVolume, keyword, isLoading }: KeywordTrendChartProps) {
   if (isLoading) {
     return (
-      <Card className="border-border/50">
+      <Card className="border-border/50 h-full flex flex-col">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-3">
             <Skeleton className="w-10 h-10 rounded-xl" />
@@ -46,8 +46,8 @@ export function KeywordTrendChart({ trend, totalVolume, keyword, isLoading }: Ke
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-5 pb-4 px-0">
-          <Skeleton className="h-60" />
+        <CardContent className="pt-5 pb-4 px-0 flex-1 flex flex-col">
+          <Skeleton className="flex-1 min-h-[15rem]" />
         </CardContent>
       </Card>
     );
@@ -82,7 +82,7 @@ export function KeywordTrendChart({ trend, totalVolume, keyword, isLoading }: Ke
   };
 
   return (
-    <Card className="border-border/50 overflow-hidden">
+    <Card className="border-border/50 overflow-hidden h-full flex flex-col">
       <CardHeader className="pb-3 bg-gradient-to-r from-emerald-500/5 to-teal-500/5 border-b border-border/30">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
@@ -96,8 +96,8 @@ export function KeywordTrendChart({ trend, totalVolume, keyword, isLoading }: Ke
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-5 pb-4 px-0">
-        <div className="h-60">
+      <CardContent className="pt-5 pb-4 px-0 flex-1 flex flex-col">
+        <div className="flex-1 min-h-[15rem]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={chartData}
