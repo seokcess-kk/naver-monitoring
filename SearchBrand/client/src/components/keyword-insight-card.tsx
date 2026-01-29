@@ -76,8 +76,8 @@ export function KeywordInsightCard({ insight, isLoading }: KeywordInsightCardPro
           </div>
         </CardHeader>
         <CardContent className="pt-5">
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            <Skeleton className="h-20" />
+          <div className="grid grid-cols-3 grid-rows-2 gap-4">
+            <Skeleton className="h-32 row-span-2" />
             <Skeleton className="h-20" />
             <Skeleton className="h-20" />
             <Skeleton className="h-20" />
@@ -113,16 +113,16 @@ export function KeywordInsightCard({ insight, isLoading }: KeywordInsightCardPro
         </div>
       </CardHeader>
       <CardContent className="pt-5 pb-5">
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
-            <div className="flex items-center gap-2 mb-2">
+        <div className="grid grid-cols-3 grid-rows-2 gap-4">
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50 row-span-2 flex flex-col justify-center">
+            <div className="flex items-center gap-2 mb-3">
               <Search className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground font-medium">총 검색량</span>
             </div>
-            <div className="text-2xl font-bold text-foreground tabular-nums">
+            <div className="text-4xl font-bold text-foreground tabular-nums">
               {formatNumber(insight.totalVolume)}
             </div>
-            <div className="text-xs text-muted-foreground mt-1">월간 (30일)</div>
+            <div className="text-sm text-muted-foreground mt-2">월간 (30일)</div>
           </div>
 
           <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
@@ -176,7 +176,7 @@ export function KeywordInsightCard({ insight, isLoading }: KeywordInsightCardPro
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-muted/30 border border-border/50 col-span-2 lg:col-span-1">
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
             <div className="flex items-center gap-2 mb-2">
               <BarChart3 className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground font-medium">경쟁도</span>
