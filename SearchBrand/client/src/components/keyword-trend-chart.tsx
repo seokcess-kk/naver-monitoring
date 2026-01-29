@@ -101,31 +101,28 @@ export function KeywordTrendChart({ trend, totalVolume, keyword, isLoading }: Ke
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={chartData}
-              margin={{ top: 20, right: 20, left: 0, bottom: 10 }}
+              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
             >
               <defs>
                 <linearGradient id="volumeGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
-                  <stop offset="50%" stopColor="#10b981" stopOpacity={0.15} />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid 
                 strokeDasharray="3 3" 
                 stroke="hsl(var(--border))" 
-                opacity={0.3}
-                vertical={false}
+                opacity={0.5}
               />
               <XAxis 
                 dataKey="period" 
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                stroke="hsl(var(--border))"
+                tick={{ fontSize: 11 }}
+                stroke="hsl(var(--muted-foreground))"
                 tickLine={false}
-                axisLine={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
-                dy={5}
+                axisLine={false}
               />
               <YAxis 
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                tick={{ fontSize: 11 }}
                 stroke="hsl(var(--muted-foreground))"
                 tickLine={false}
                 axisLine={false}
@@ -134,19 +131,14 @@ export function KeywordTrendChart({ trend, totalVolume, keyword, isLoading }: Ke
                   if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
                   return value.toString();
                 }}
-                width={45}
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#10b981", strokeWidth: 1, strokeDasharray: "4 4" }} />
+              <Tooltip content={<CustomTooltip />} />
               <Area
-                type="monotone"
+                type="linear"
                 dataKey="volume"
                 stroke="#10b981"
-                strokeWidth={2.5}
+                strokeWidth={2}
                 fill="url(#volumeGradient)"
-                dot={{ r: 3, fill: "#10b981", stroke: "#fff", strokeWidth: 2 }}
-                activeDot={{ r: 6, fill: "#10b981", stroke: "#fff", strokeWidth: 2, filter: "drop-shadow(0 2px 4px rgba(16,185,129,0.4))" }}
-                animationDuration={1000}
-                animationEasing="ease-out"
               />
             </AreaChart>
           </ResponsiveContainer>
