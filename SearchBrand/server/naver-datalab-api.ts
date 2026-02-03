@@ -63,7 +63,7 @@ export async function getKeywordTrend(
   endDate.setDate(endDate.getDate() - 1);
   
   const startDate = new Date(endDate);
-  startDate.setMonth(startDate.getMonth() - 12);
+  startDate.setMonth(startDate.getMonth() - 11);
   startDate.setDate(1);
 
   const body = {
