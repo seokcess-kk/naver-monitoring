@@ -91,7 +91,7 @@ export function KeywordTrendChart({ trend, totalVolume, keyword, isLoading }: Ke
           <div>
             <CardTitle className="text-base font-bold">월별 검색량 트렌드</CardTitle>
             <p className="text-xs text-muted-foreground">
-              '{keyword}' 키워드의 최근 {trend.length}개월 추이
+              '{keyword}' 키워드의 최근 12개월 추이
             </p>
           </div>
         </div>
