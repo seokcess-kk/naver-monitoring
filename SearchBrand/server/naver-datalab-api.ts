@@ -59,12 +59,9 @@ export async function getKeywordTrend(
   const { headers, clientId } = credentials;
 
   const today = new Date();
-  const endDate = new Date(today.getFullYear(), today.getMonth(), 1);
-  endDate.setDate(endDate.getDate() - 1);
+  const endDate = new Date(today.getFullYear(), today.getMonth(), 0);
   
-  const startDate = new Date(endDate);
-  startDate.setMonth(startDate.getMonth() - 11);
-  startDate.setDate(1);
+  const startDate = new Date(endDate.getFullYear(), endDate.getMonth() - 11, 1);
 
   const body = {
     startDate: formatDate(startDate),
