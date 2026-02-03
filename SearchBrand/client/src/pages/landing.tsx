@@ -183,12 +183,12 @@ export default function LandingPage() {
                 </div>
                 <div className="flex items-center gap-4 md:gap-6 text-xs md:text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-chart-2" />
-                    무료 플랜 제공
+                    <Zap className="w-4 h-4 text-violet-500" />
+                    AI 자동 분석
                   </div>
                   <div className="flex items-center gap-2">
-                    <Lock className="w-4 h-4 text-chart-2" />
-                    API 키 암호화 저장
+                    <Shield className="w-4 h-4 text-chart-2" />
+                    무료 체험 가능
                   </div>
                 </div>
               </div>
@@ -196,58 +196,62 @@ export default function LandingPage() {
               <div className="relative hidden md:block animate-fade-in-up-delay-2">
                 <div className="aspect-square max-w-lg mx-auto bg-gradient-to-br from-primary/20 via-chart-2/20 to-chart-5/20 rounded-3xl p-6 lg:p-8 flex items-center justify-center">
                   <div className="w-full space-y-3 lg:space-y-4">
-                    <Card className="hover-lift glass-card">
-                      <CardContent className="p-3 lg:p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-chart-2/20 flex items-center justify-center">
-                            <Search className="w-4 h-4 lg:w-5 lg:h-5 text-chart-2" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="text-sm font-medium">블로그</div>
-                            <div className="text-xs text-muted-foreground">
-                              1,234건 검색됨
-                            </div>
-                          </div>
-                          <div className="text-sm font-bold text-chart-2">
-                            #3
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
                     <Card className="hover-lift glass-card border-primary/30">
                       <CardContent className="p-3 lg:p-4">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 mb-2">
                           <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-primary/20 flex items-center justify-center">
                             <PieChart className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
                           </div>
                           <div className="flex-1">
-                            <div className="text-sm font-medium">카페</div>
+                            <div className="text-sm font-medium">감성 분석</div>
                             <div className="text-xs text-muted-foreground">
-                              892건 검색됨
+                              128개 리뷰 분석 완료
                             </div>
                           </div>
-                          <div className="text-sm font-bold text-primary">
-                            #2
-                          </div>
+                        </div>
+                        <div className="flex gap-2 text-xs">
+                          <span className="px-2 py-1 rounded bg-green-500/10 text-green-600">긍정 72%</span>
+                          <span className="px-2 py-1 rounded bg-gray-500/10 text-gray-500">중립 18%</span>
+                          <span className="px-2 py-1 rounded bg-red-500/10 text-red-500">부정 10%</span>
                         </div>
                       </CardContent>
                     </Card>
                     <Card className="hover-lift glass-card">
                       <CardContent className="p-3 lg:p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-chart-5/20 flex items-center justify-center">
-                            <Globe className="w-4 h-4 lg:w-5 lg:h-5 text-chart-5" />
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-chart-2/20 flex items-center justify-center">
+                            <BarChart3 className="w-4 h-4 lg:w-5 lg:h-5 text-chart-2" />
                           </div>
                           <div className="flex-1">
-                            <div className="text-sm font-medium">뉴스</div>
+                            <div className="text-sm font-medium">주요 키워드</div>
                             <div className="text-xs text-muted-foreground">
-                              567건 검색됨
+                              자동 추출된 키워드
                             </div>
                           </div>
-                          <div className="text-sm font-bold text-chart-5">
-                            #1
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 text-xs">
+                          <span className="px-2 py-1 rounded-full bg-primary/10 text-primary">친절</span>
+                          <span className="px-2 py-1 rounded-full bg-primary/10 text-primary">맛있는</span>
+                          <span className="px-2 py-1 rounded-full bg-red-500/10 text-red-500">대기시간</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="hover-lift glass-card">
+                      <CardContent className="p-3 lg:p-4">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-violet-500/20 flex items-center justify-center">
+                            <Zap className="w-4 h-4 lg:w-5 lg:h-5 text-violet-500" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-sm font-medium flex items-center gap-1.5">
+                              AI 요약
+                              <span className="px-1.5 py-0.5 text-[10px] rounded bg-violet-500/10 text-violet-500">AI</span>
+                            </div>
                           </div>
                         </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          전반적으로 높은 만족도. 대기시간 개선 시 고객 경험 향상 기대...
+                        </p>
                       </CardContent>
                     </Card>
                   </div>
