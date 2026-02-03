@@ -16,9 +16,8 @@ import { ServiceStatusAlert, useServiceStatus } from "@/components/service-statu
 import { 
   Loader2, Play, Trash2, BarChart3, MessageSquare, TrendingUp, TrendingDown, Minus, 
   RefreshCw, Search, Filter, Download, RotateCcw, AlertTriangle, Lightbulb, ChevronLeft, ChevronRight,
-  Calendar, ArrowUpDown, FileText
+  Calendar, ArrowUpDown
 } from "lucide-react";
-import { PlaceReviewReportModal } from "@/components/place-review-report-modal";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   Treemap
@@ -612,14 +611,12 @@ function JobList({
   jobs, 
   onSelect, 
   selectedJobId, 
-  onRetry,
-  onViewReport,
+  onRetry 
 }: { 
   jobs: PlaceReviewJob[]; 
   onSelect: (id: string) => void; 
   selectedJobId: string | null;
   onRetry: (job: PlaceReviewJob) => void;
-  onViewReport: (jobId: string) => void;
 }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -673,19 +670,6 @@ function JobList({
                 <StatusBadge status={job.status} />
               </div>
               <div className="flex items-center gap-1">
-                {job.status === "completed" && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onViewReport(job.id);
-                    }}
-                    title="리포트 보기"
-                  >
-                    <FileText className="w-4 h-4" />
-                  </Button>
-                )}
                 {job.status === "failed" && (
                   <Button
                     variant="ghost"
@@ -1151,8 +1135,6 @@ export default function PlaceReviewPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [reportJobId, setReportJobId] = useState<string | null>(null);
-  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   const { data: jobsData, isLoading, refetch } = useQuery<{ jobs: PlaceReviewJob[] }>({
     queryKey: ["place-review-jobs"],
@@ -1227,10 +1209,6 @@ export default function PlaceReviewPage() {
                     onSelect={setSelectedJobId}
                     selectedJobId={selectedJobId}
                     onRetry={(job) => retryMutation.mutate(job)}
-                    onViewReport={(jobId) => {
-                      setReportJobId(jobId);
-                      setReportModalOpen(true);
-                    }}
                   />
                 )}
               </div>
@@ -1252,17 +1230,6 @@ export default function PlaceReviewPage() {
           </div>
         </div>
       </main>
-
-      <PlaceReviewReportModal
-        jobId={reportJobId}
-        open={reportModalOpen}
-        onOpenChange={(open) => {
-          setReportModalOpen(open);
-          if (!open) {
-            setReportJobId(null);
-          }
-        }}
-      />
     </div>
   );
 }
