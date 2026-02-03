@@ -442,143 +442,143 @@ export default function Dashboard() {
         <div className="space-y-4">
           <SearchPanel onSearch={handleSearch} isSearching={isSearching} />
 
-
-            {searchResults ? (
-              <>
-                {searchResults.keywordInsight && (
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                    <KeywordInsightCard
-                      insight={searchResults.keywordInsight}
-                      isLoading={isSearching}
-                    />
-                    {searchResults.keywordInsight.trend &&
-                      searchResults.keywordInsight.trend.length > 0 && (
-                        <KeywordTrendChart
-                          trend={searchResults.keywordInsight.trend}
-                          totalVolume={searchResults.keywordInsight.totalVolume}
-                          keyword={searchResults.keywordInsight.keyword}
-                          isLoading={isSearching}
-                        />
-                      )}
-                  </div>
-                )}
-
-                <Card className="p-3 flex items-center gap-2 flex-wrap">
-                  <Highlighter className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <Input
-                    placeholder="브랜드/URL 하이라이트 (2글자 이상)"
-                    value={highlightTerm}
-                    onChange={(e) => setHighlightTerm(e.target.value)}
-                    className="h-9 text-sm max-w-xs"
+          {searchResults ? (
+            <>
+              {searchResults.keywordInsight && (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  <KeywordInsightCard
+                    insight={searchResults.keywordInsight}
+                    isLoading={isSearching}
                   />
-                  {highlightTerm && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-9 px-2"
-                      onClick={() => setHighlightTerm("")}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  )}
-                </Card>
+                  {searchResults.keywordInsight.trend &&
+                    searchResults.keywordInsight.trend.length > 0 && (
+                      <KeywordTrendChart
+                        trend={searchResults.keywordInsight.trend}
+                        totalVolume={searchResults.keywordInsight.totalVolume}
+                        keyword={searchResults.keywordInsight.keyword}
+                        isLoading={isSearching}
+                      />
+                    )}
+                </div>
+              )}
 
-                <SmartBlockSection
-                  results={searchResults.smartBlock}
-                  isLoading={isSearching}
-                  highlightTerm={highlightTerm}
+              <Card className="p-3 flex items-center gap-2 flex-wrap">
+                <Highlighter className="w-4 h-4 text-muted-foreground shrink-0" />
+                <Input
+                  placeholder="브랜드/URL 하이라이트 (2글자 이상)"
+                  value={highlightTerm}
+                  onChange={(e) => setHighlightTerm(e.target.value)}
+                  className="h-9 text-sm max-w-xs"
                 />
-                <ApiResultsSection
-                  results={searchResults.apiResults}
-                  smartBlockResults={searchResults.smartBlock}
-                  channelPages={channelPages}
-                  channelLoading={channelLoading}
-                  onChannelPageChange={handleChannelPageChange}
-                  isLoading={isSearching}
-                  highlightTerm={highlightTerm}
-                  onExportCSV={exportSearchToCSV}
-                />
-              </>
-            ) : (
-              !isSearching && (
-                <Card className="border-dashed">
-                  <CardContent className="py-12">
-                    <div className="text-center space-y-6">
-                      <div className="flex justify-center">
-                        <div className="p-4 rounded-full bg-primary/5">
-                          <Sparkles className="w-10 h-10 text-primary/60" />
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold mb-2">
-                          검색 결과가 여기에 표시됩니다
-                        </h3>
-                        <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                          키워드를 입력하면 블로그, 카페, 지식iN, 뉴스 및
-                          스마트블록 결과를 한눈에 확인할 수 있습니다.
-                        </p>
-                      </div>
+                {highlightTerm && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 px-2"
+                    onClick={() => setHighlightTerm("")}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+              </Card>
 
-                      {recentSearches.length > 0 && (
-                        <div className="pt-4 border-t max-w-md mx-auto">
-                          <div className="flex items-center justify-center gap-2 mb-3 text-sm text-muted-foreground">
-                            <Clock className="w-4 h-4" />
-                            <span>최근 검색어</span>
-                          </div>
-                          <div className="flex flex-wrap justify-center gap-2">
-                            {recentSearches.map((keyword) => (
-                              <Badge
-                                key={keyword}
-                                variant="secondary"
-                                className="cursor-pointer hover:bg-secondary/80 transition-colors group pr-1"
-                                onClick={() => handleRecentSearchClick(keyword)}
-                              >
-                                {keyword}
-                                <button
-                                  onClick={(e) =>
-                                    handleRemoveRecentSearch(keyword, e)
-                                  }
-                                  className="ml-1.5 p-0.5 rounded-full hover:bg-muted-foreground/20"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-lg mx-auto pt-4">
-                        <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-muted/30">
-                          <FileText className="w-5 h-5 text-green-500" />
-                          <span className="text-xs text-muted-foreground">
-                            블로그
-                          </span>
-                        </div>
-                        <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-muted/30">
-                          <MessageSquare className="w-5 h-5 text-orange-500" />
-                          <span className="text-xs text-muted-foreground">
-                            카페
-                          </span>
-                        </div>
-                        <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-muted/30">
-                          <HelpCircle className="w-5 h-5 text-blue-500" />
-                          <span className="text-xs text-muted-foreground">
-                            지식iN
-                          </span>
-                        </div>
-                        <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-muted/30">
-                          <Newspaper className="w-5 h-5 text-purple-500" />
-                          <span className="text-xs text-muted-foreground">
-                            뉴스
-                          </span>
-                        </div>
+              <SmartBlockSection
+                results={searchResults.smartBlock}
+                isLoading={isSearching}
+                highlightTerm={highlightTerm}
+              />
+              <ApiResultsSection
+                results={searchResults.apiResults}
+                smartBlockResults={searchResults.smartBlock}
+                channelPages={channelPages}
+                channelLoading={channelLoading}
+                onChannelPageChange={handleChannelPageChange}
+                isLoading={isSearching}
+                highlightTerm={highlightTerm}
+                onExportCSV={exportSearchToCSV}
+              />
+            </>
+          ) : (
+            !isSearching && (
+              <Card className="border-dashed">
+                <CardContent className="py-12">
+                  <div className="text-center space-y-6">
+                    <div className="flex justify-center">
+                      <div className="p-4 rounded-full bg-primary/5">
+                        <Sparkles className="w-10 h-10 text-primary/60" />
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              )
-            )}
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">
+                        검색 결과가 여기에 표시됩니다
+                      </h3>
+                      <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                        키워드를 입력하면 블로그, 카페, 지식iN, 뉴스 및
+                        스마트블록 결과를
+                        <br /> 한눈에 확인할 수 있습니다.
+                      </p>
+                    </div>
+
+                    {recentSearches.length > 0 && (
+                      <div className="pt-4 border-t max-w-md mx-auto">
+                        <div className="flex items-center justify-center gap-2 mb-3 text-sm text-muted-foreground">
+                          <Clock className="w-4 h-4" />
+                          <span>최근 검색어</span>
+                        </div>
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {recentSearches.map((keyword) => (
+                            <Badge
+                              key={keyword}
+                              variant="secondary"
+                              className="cursor-pointer hover:bg-secondary/80 transition-colors group pr-1"
+                              onClick={() => handleRecentSearchClick(keyword)}
+                            >
+                              {keyword}
+                              <button
+                                onClick={(e) =>
+                                  handleRemoveRecentSearch(keyword, e)
+                                }
+                                className="ml-1.5 p-0.5 rounded-full hover:bg-muted-foreground/20"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-lg mx-auto pt-4">
+                      <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-muted/30">
+                        <FileText className="w-5 h-5 text-green-500" />
+                        <span className="text-xs text-muted-foreground">
+                          블로그
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-muted/30">
+                        <MessageSquare className="w-5 h-5 text-orange-500" />
+                        <span className="text-xs text-muted-foreground">
+                          카페
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-muted/30">
+                        <HelpCircle className="w-5 h-5 text-blue-500" />
+                        <span className="text-xs text-muted-foreground">
+                          지식iN
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-muted/30">
+                        <Newspaper className="w-5 h-5 text-purple-500" />
+                        <span className="text-xs text-muted-foreground">
+                          뉴스
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          )}
         </div>
       </main>
     </div>
