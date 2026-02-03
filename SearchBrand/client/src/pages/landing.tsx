@@ -8,11 +8,13 @@ import {
   Globe,
   ArrowRight,
   PieChart,
-  Key,
+  MapPin,
   Mail,
-  Lock,
   ChevronDown,
   CheckCircle2,
+  UserPlus,
+  Sparkles,
+  MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -26,19 +28,19 @@ export default function LandingPage() {
 
   const faqs = [
     {
-      question: "API 키는 어떻게 보관되나요?",
+      question: "어떤 플레이스를 분석할 수 있나요?",
       answer:
-        "고객님의 네이버 API 키는 AES-256-GCM 방식으로 암호화되어 안전하게 저장됩니다. 서버에서도 복호화된 키를 로그에 남기지 않습니다.",
+        "네이버 플레이스에 등록된 모든 업체의 리뷰를 분석할 수 있습니다. 플레이스 URL이나 업체 ID만 입력하면 됩니다.",
     },
     {
-      question: "어떤 채널을 분석하나요?",
+      question: "AI 분석은 어떻게 작동하나요?",
       answer:
-        "네이버 블로그, 카페, 지식iN, 뉴스 4개 채널의 API 검색 결과와 스마트블록(플레이스, VIEW, 뉴스) 크롤링 결과를 통합 분석합니다.",
+        "수집된 리뷰를 AI가 감성(긍정/부정/중립)으로 분류하고, 핵심 키워드를 추출합니다. 전체 리뷰를 요약하고 개선 제안까지 자동으로 생성합니다.",
     },
     {
       question: "무료로 사용할 수 있나요?",
       answer:
-        "네, 기본 기능은 무료로 제공됩니다. 네이버 개발자 센터에서 발급받은 API 키만 등록하시면 바로 시작할 수 있습니다.",
+        "네, 회원가입만 하면 무료로 플레이스 리뷰 분석 기능을 사용할 수 있습니다. 별도의 API 키 발급이 필요 없습니다.",
     },
   ];
 
@@ -336,61 +338,61 @@ export default function LandingPage() {
                 3단계로 시작하세요
               </h2>
               <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
-                복잡한 설정 없이 간단하게 검색 모니터링을 시작할 수 있습니다.
+                복잡한 설정 없이 바로 리뷰 분석을 시작할 수 있습니다.
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-4xl mx-auto">
               <div className="relative text-center animate-fade-in-up-delay-1">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                  <Key className="w-6 h-6 md:w-7 md:h-7 text-primary" />
+                  <UserPlus className="w-6 h-6 md:w-7 md:h-7 text-primary" />
                 </div>
                 <div className="absolute top-7 left-[60%] w-[80%] h-0.5 bg-gradient-to-r from-primary/30 to-transparent hidden md:block" />
                 <div className="text-xs font-bold text-primary mb-2">
                   STEP 1
                 </div>
                 <h3 className="text-base md:text-lg font-semibold mb-2">
-                  API 키 등록
+                  회원가입
                 </h3>
                 <p className="text-xs md:text-sm text-muted-foreground">
-                  네이버 개발자 센터에서
+                  이메일로 간편하게
                 </p>
                 <p className="text-xs md:text-sm text-muted-foreground">
-                  발급받은 API 키를 등록하세요
+                  무료 계정을 만드세요
                 </p>
               </div>
               <div className="relative text-center animate-fade-in-up-delay-2">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-chart-2/10 flex items-center justify-center mx-auto mb-4">
-                  <Search className="w-6 h-6 md:w-7 md:h-7 text-chart-2" />
+                  <MapPin className="w-6 h-6 md:w-7 md:h-7 text-chart-2" />
                 </div>
                 <div className="absolute top-7 left-[60%] w-[80%] h-0.5 bg-gradient-to-r from-chart-2/30 to-transparent hidden md:block" />
                 <div className="text-xs font-bold text-chart-2 mb-2">
                   STEP 2
                 </div>
                 <h3 className="text-base md:text-lg font-semibold mb-2">
-                  검색 & 분석
+                  플레이스 URL 입력
                 </h3>
                 <p className="text-xs md:text-sm text-muted-foreground">
-                  키워드를 입력하면 4채널 검색과
+                  분석할 네이버 플레이스의
                 </p>
                 <p className="text-xs md:text-sm text-muted-foreground">
-                  스마트블록 크롤링이 자동 실행됩니다
+                  URL이나 ID를 입력하세요
                 </p>
               </div>
               <div className="relative text-center animate-fade-in-up-delay-3">
-                <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-chart-5/10 flex items-center justify-center mx-auto mb-4">
-                  <BarChart3 className="w-6 h-6 md:w-7 md:h-7 text-chart-5" />
+                <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-violet-500/10 flex items-center justify-center mx-auto mb-4">
+                  <Sparkles className="w-6 h-6 md:w-7 md:h-7 text-violet-500" />
                 </div>
-                <div className="text-xs font-bold text-chart-5 mb-2">
+                <div className="text-xs font-bold text-violet-500 mb-2">
                   STEP 3
                 </div>
                 <h3 className="text-base md:text-lg font-semibold mb-2">
-                  결과 확인
+                  AI 분석 확인
                 </h3>
                 <p className="text-xs md:text-sm text-muted-foreground">
-                  통합 검색 결과와 리뷰 분석을
+                  감성 분석, 키워드, AI 요약을
                 </p>
                 <p className="text-xs md:text-sm text-muted-foreground">
-                  한눈에 확인하세요
+                  리포트로 확인하세요
                 </p>
               </div>
             </div>
@@ -408,24 +410,24 @@ export default function LandingPage() {
                 </h2>
                 <div className="space-y-4">
                   <div className="flex items-start gap-4 p-4 rounded-lg bg-background border">
-                    <div className="w-10 h-10 rounded-lg bg-chart-2/10 flex items-center justify-center shrink-0">
-                      <Lock className="w-5 h-5 text-chart-2" />
+                    <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-5 h-5 text-violet-500" />
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">AES-256 암호화</h4>
+                      <h4 className="font-semibold mb-1">AI 기반 분석</h4>
                       <p className="text-sm text-muted-foreground">
-                        API 키는 군사급 암호화 방식으로 안전하게 저장됩니다
+                        GPT-4 기반 AI가 리뷰를 분석하고 개선 제안을 제공합니다
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-4 p-4 rounded-lg bg-background border">
                     <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <Mail className="w-5 h-5 text-primary" />
+                      <MessageSquare className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">이메일 인증</h4>
+                      <h4 className="font-semibold mb-1">감성 분석</h4>
                       <p className="text-sm text-muted-foreground">
-                        SendGrid 기반 이메일 인증으로 계정 보안을 강화합니다
+                        긍정/부정/중립 감성과 핵심 키워드를 자동 추출합니다
                       </p>
                     </div>
                   </div>
@@ -434,9 +436,9 @@ export default function LandingPage() {
                       <CheckCircle2 className="w-5 h-5 text-chart-5" />
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-1">실시간 데이터</h4>
+                      <h4 className="font-semibold mb-1">실시간 수집</h4>
                       <p className="text-sm text-muted-foreground">
-                        검색 시점의 실제 네이버 검색 결과를 수집합니다
+                        네이버 플레이스의 최신 리뷰를 실시간으로 수집합니다
                       </p>
                     </div>
                   </div>
