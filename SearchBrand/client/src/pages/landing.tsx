@@ -149,7 +149,7 @@ export default function LandingPage() {
               <div className="space-y-6 md:space-y-8 animate-fade-in-up">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs md:text-sm font-medium">
                   <Zap className="w-3 h-3 md:w-4 md:h-4" />
-                  통합 검색 & 리뷰 분석
+                  리뷰 분석 & 통합검색
                 </div>
                 <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight leading-tight">
                   See the Share.
@@ -205,16 +205,22 @@ export default function LandingPage() {
                             <PieChart className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
                           </div>
                           <div className="flex-1">
-                            <div className="text-sm font-medium">감성 분석</div>
+                            <div className="text-sm font-medium">감정 분석</div>
                             <div className="text-xs text-muted-foreground">
                               128개 리뷰 분석 완료
                             </div>
                           </div>
                         </div>
                         <div className="flex gap-2 text-xs">
-                          <span className="px-2 py-1 rounded bg-green-500/10 text-green-600">긍정 72%</span>
-                          <span className="px-2 py-1 rounded bg-gray-500/10 text-gray-500">중립 18%</span>
-                          <span className="px-2 py-1 rounded bg-red-500/10 text-red-500">부정 10%</span>
+                          <span className="px-2 py-1 rounded bg-green-500/10 text-green-600">
+                            긍정 72%
+                          </span>
+                          <span className="px-2 py-1 rounded bg-gray-500/10 text-gray-500">
+                            중립 18%
+                          </span>
+                          <span className="px-2 py-1 rounded bg-red-500/10 text-red-500">
+                            부정 10%
+                          </span>
                         </div>
                       </CardContent>
                     </Card>
@@ -225,16 +231,24 @@ export default function LandingPage() {
                             <BarChart3 className="w-4 h-4 lg:w-5 lg:h-5 text-chart-2" />
                           </div>
                           <div className="flex-1">
-                            <div className="text-sm font-medium">주요 키워드</div>
+                            <div className="text-sm font-medium">
+                              주요 키워드
+                            </div>
                             <div className="text-xs text-muted-foreground">
                               자동 추출된 키워드
                             </div>
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-1.5 text-xs">
-                          <span className="px-2 py-1 rounded-full bg-primary/10 text-primary">친절</span>
-                          <span className="px-2 py-1 rounded-full bg-primary/10 text-primary">맛있는</span>
-                          <span className="px-2 py-1 rounded-full bg-red-500/10 text-red-500">대기시간</span>
+                          <span className="px-2 py-1 rounded-full bg-primary/10 text-primary">
+                            친절
+                          </span>
+                          <span className="px-2 py-1 rounded-full bg-primary/10 text-primary">
+                            맛있는
+                          </span>
+                          <span className="px-2 py-1 rounded-full bg-red-500/10 text-red-500">
+                            대기시간
+                          </span>
                         </div>
                       </CardContent>
                     </Card>
@@ -247,12 +261,15 @@ export default function LandingPage() {
                           <div className="flex-1">
                             <div className="text-sm font-medium flex items-center gap-1.5">
                               AI 요약
-                              <span className="px-1.5 py-0.5 text-[10px] rounded bg-violet-500/10 text-violet-500">AI</span>
+                              <span className="px-1.5 py-0.5 text-[10px] rounded bg-violet-500/10 text-violet-500">
+                                AI
+                              </span>
                             </div>
                           </div>
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                          전반적으로 높은 만족도. 대기시간 개선 시 고객 경험 향상 기대...
+                          전반적으로 높은 만족도. 대기시간 개선 시 고객 경험
+                          향상 기대...
                         </p>
                       </CardContent>
                     </Card>
