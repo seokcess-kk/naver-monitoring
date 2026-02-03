@@ -155,9 +155,9 @@ export default function LandingPage() {
                   <span className="gradient-text">Shape the Strategy</span>
                 </h1>
                 <p className="text-base md:text-lg text-muted-foreground max-w-lg">
-                  네이버 4개 채널 통합 검색부터 플레이스 리뷰 분석까지
+                  네이버 플레이스 리뷰 AI 분석으로 고객 인사이트를 파악하고
                   <br className="hidden sm:block" />
-                  검색 마케팅 현황을 파악하고 전략을 설계하세요.
+                  통합검색 분석으로 검색 마케팅 전략을 설계하세요.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                   <Button
@@ -275,7 +275,23 @@ export default function LandingPage() {
               <Card className="hover-lift animate-fade-in-up-delay-1">
                 <CardContent className="p-5 md:p-6 text-center">
                   <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
-                    <Search className="w-6 h-6 md:w-7 md:h-7 text-primary" />
+                    <BarChart3 className="w-6 h-6 md:w-7 md:h-7 text-primary" />
+                  </div>
+                  <h3 className="text-base md:text-lg font-semibold mb-2">
+                    플레이스 리뷰 분석
+                  </h3>
+                  <p className="text-xs md:text-sm text-muted-foreground">
+                    네이버 플레이스 리뷰를
+                  </p>
+                  <p className="text-xs md:text-sm text-muted-foreground">
+                    AI가 감정·키워드 분석
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="hover-lift animate-fade-in-up-delay-2">
+                <CardContent className="p-5 md:p-6 text-center">
+                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-chart-2/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
+                    <Search className="w-6 h-6 md:w-7 md:h-7 text-chart-2" />
                   </div>
                   <h3 className="text-base md:text-lg font-semibold mb-2">
                     4채널 통합 검색
@@ -288,10 +304,10 @@ export default function LandingPage() {
                   </p>
                 </CardContent>
               </Card>
-              <Card className="hover-lift animate-fade-in-up-delay-2">
+              <Card className="hover-lift animate-fade-in-up-delay-3">
                 <CardContent className="p-5 md:p-6 text-center">
-                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-chart-2/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
-                    <Globe className="w-6 h-6 md:w-7 md:h-7 text-chart-2" />
+                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-chart-5/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
+                    <Globe className="w-6 h-6 md:w-7 md:h-7 text-chart-5" />
                   </div>
                   <h3 className="text-base md:text-lg font-semibold mb-2">
                     스마트블록 크롤링
@@ -301,22 +317,6 @@ export default function LandingPage() {
                   </p>
                   <p className="text-xs md:text-sm text-muted-foreground">
                     실시간 노출 현황 수집
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="hover-lift animate-fade-in-up-delay-3">
-                <CardContent className="p-5 md:p-6 text-center">
-                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-destructive/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
-                    <BarChart3 className="w-6 h-6 md:w-7 md:h-7 text-destructive" />
-                  </div>
-                  <h3 className="text-base md:text-lg font-semibold mb-2">
-                    플레이스 리뷰 분석
-                  </h3>
-                  <p className="text-xs md:text-sm text-muted-foreground">
-                    네이버 플레이스 리뷰를
-                  </p>
-                  <p className="text-xs md:text-sm text-muted-foreground">
-                    AI가 감정·키워드 분석
                   </p>
                 </CardContent>
               </Card>

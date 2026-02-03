@@ -15,8 +15,8 @@ import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const navItems = [
-  { href: "/", label: "통합검색", icon: Search },
-  { href: "/place-review", label: "플레이스 리뷰", icon: MessageSquare },
+  { href: "/", label: "플레이스 리뷰", icon: MessageSquare },
+  { href: "/search", label: "통합검색", icon: Search },
 ];
 
 export function Header() {

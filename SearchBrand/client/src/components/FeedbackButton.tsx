@@ -28,19 +28,21 @@ export function FeedbackButton() {
         {showTooltip && !open && (
           <div className="relative animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 px-4 py-3 max-w-[220px]">
-              <button 
+              <button
                 onClick={handleDismissTooltip}
                 className="absolute -top-2 -right-2 bg-gray-100 hover:bg-gray-200 rounded-full p-1 transition-colors"
               >
                 <X className="h-3 w-3 text-gray-500" />
               </button>
-              <p className="text-sm font-medium text-gray-900">궁금한 건 피드백으로 문의하세요</p>
+              <p className="text-sm font-medium text-gray-900">
+                간단한 피드백 부탁드려요
+              </p>
               <p className="text-xs text-gray-500 mt-1">💬 의견을 보내주세요</p>
             </div>
             <div className="absolute -bottom-2 right-6 w-4 h-4 bg-white border-r border-b border-gray-100 rotate-45" />
           </div>
         )}
-        
+
         <button
           onClick={() => setOpen(true)}
           className="group relative w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center hover:scale-105"

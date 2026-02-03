@@ -3,24 +3,72 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/header";
-import { StatCardsSkeleton, ReviewListSkeleton, AspectBarsSkeleton, InsightCardSkeleton } from "@/components/ui/results-skeleton";
-import { ServiceStatusAlert, useServiceStatus } from "@/components/service-status-alert";
-import { 
-  Loader2, Play, Trash2, BarChart3, MessageSquare, TrendingUp, TrendingDown, Minus, 
-  RefreshCw, Search, Filter, Download, RotateCcw, AlertTriangle, Lightbulb, ChevronLeft, ChevronRight,
-  Calendar, ArrowUpDown, FileText, ThumbsDown, ThumbsUp, Sparkles, ClipboardList
+import {
+  StatCardsSkeleton,
+  ReviewListSkeleton,
+  AspectBarsSkeleton,
+  InsightCardSkeleton,
+} from "@/components/ui/results-skeleton";
+import {
+  ServiceStatusAlert,
+  useServiceStatus,
+} from "@/components/service-status-alert";
+import {
+  Loader2,
+  Play,
+  Trash2,
+  BarChart3,
+  MessageSquare,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  RefreshCw,
+  Search,
+  Filter,
+  Download,
+  RotateCcw,
+  AlertTriangle,
+  Lightbulb,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  ArrowUpDown,
+  FileText,
+  ThumbsDown,
+  ThumbsUp,
+  Sparkles,
+  ClipboardList,
 } from "lucide-react";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  Treemap
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  Treemap,
 } from "recharts";
 
 interface PlaceReviewJob {
@@ -55,7 +103,13 @@ interface ReviewWithAnalysis {
 interface JobStats {
   job: PlaceReviewJob;
   sentimentStats: Array<{ sentiment: string; count: number }>;
-  aspectStats: Array<{ aspect: string; Positive: number; Negative: number; Neutral: number; total: number }>;
+  aspectStats: Array<{
+    aspect: string;
+    Positive: number;
+    Negative: number;
+    Neutral: number;
+    total: number;
+  }>;
   topKeywords: Array<{ keyword: string; count: number }>;
 }
 
@@ -65,16 +119,30 @@ type SortOrder = "date-desc" | "date-asc" | "sentiment";
 
 function SentimentBadge({ sentiment }: { sentiment: string | null }) {
   if (!sentiment) return <Badge variant="outline">-</Badge>;
-  
-  const config: Record<string, { variant: "default" | "destructive" | "secondary"; icon: React.ReactNode }> = {
-    Positive: { variant: "default", icon: <TrendingUp className="w-3 h-3 mr-1" /> },
-    Negative: { variant: "destructive", icon: <TrendingDown className="w-3 h-3 mr-1" /> },
+
+  const config: Record<
+    string,
+    { variant: "default" | "destructive" | "secondary"; icon: React.ReactNode }
+  > = {
+    Positive: {
+      variant: "default",
+      icon: <TrendingUp className="w-3 h-3 mr-1" />,
+    },
+    Negative: {
+      variant: "destructive",
+      icon: <TrendingDown className="w-3 h-3 mr-1" />,
+    },
     Neutral: { variant: "secondary", icon: <Minus className="w-3 h-3 mr-1" /> },
   };
-  
+
   const { variant, icon } = config[sentiment] || config.Neutral;
-  const label = sentiment === "Positive" ? "긍정" : sentiment === "Negative" ? "부정" : "중립";
-  
+  const label =
+    sentiment === "Positive"
+      ? "긍정"
+      : sentiment === "Negative"
+        ? "부정"
+        : "중립";
+
   return (
     <Badge variant={variant} className="flex items-center">
       {icon}
@@ -84,64 +152,95 @@ function SentimentBadge({ sentiment }: { sentiment: string | null }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const config: Record<string, { variant: "default" | "destructive" | "secondary" | "outline"; label: string }> = {
+  const config: Record<
+    string,
+    {
+      variant: "default" | "destructive" | "secondary" | "outline";
+      label: string;
+    }
+  > = {
     queued: { variant: "outline", label: "대기중" },
     processing: { variant: "secondary", label: "처리중" },
     completed: { variant: "default", label: "완료" },
     failed: { variant: "destructive", label: "실패" },
   };
-  
-  const { variant, label } = config[status] || { variant: "outline", label: status };
-  
+
+  const { variant, label } = config[status] || {
+    variant: "outline",
+    label: status,
+  };
+
   return <Badge variant={variant}>{label}</Badge>;
 }
 
-function InsightCard({ stats, reviews }: { stats: JobStats | undefined; reviews: ReviewWithAnalysis[] }) {
+function InsightCard({
+  stats,
+  reviews,
+}: {
+  stats: JobStats | undefined;
+  reviews: ReviewWithAnalysis[];
+}) {
   if (!stats || reviews.length === 0) return null;
 
   const sentimentCounts = {
-    Positive: stats.sentimentStats.find((s) => s.sentiment === "Positive")?.count || 0,
-    Negative: stats.sentimentStats.find((s) => s.sentiment === "Negative")?.count || 0,
-    Neutral: stats.sentimentStats.find((s) => s.sentiment === "Neutral")?.count || 0,
+    Positive:
+      stats.sentimentStats.find((s) => s.sentiment === "Positive")?.count || 0,
+    Negative:
+      stats.sentimentStats.find((s) => s.sentiment === "Negative")?.count || 0,
+    Neutral:
+      stats.sentimentStats.find((s) => s.sentiment === "Neutral")?.count || 0,
   };
-  const total = sentimentCounts.Positive + sentimentCounts.Negative + sentimentCounts.Neutral;
-  const negativeRatio = total > 0 ? (sentimentCounts.Negative / total) * 100 : 0;
+  const total =
+    sentimentCounts.Positive +
+    sentimentCounts.Negative +
+    sentimentCounts.Neutral;
+  const negativeRatio =
+    total > 0 ? (sentimentCounts.Negative / total) * 100 : 0;
 
   const topNegativeAspects = stats.aspectStats
-    .filter(a => a.Negative > 0)
+    .filter((a) => a.Negative > 0)
     .sort((a, b) => b.Negative - a.Negative)
     .slice(0, 3);
 
   const topPositiveAspects = stats.aspectStats
-    .filter(a => a.Positive > 0)
+    .filter((a) => a.Positive > 0)
     .sort((a, b) => b.Positive - a.Positive)
     .slice(0, 3);
 
-  const insights: { type: "warning" | "success" | "info"; title: string; description: string }[] = [];
+  const insights: {
+    type: "warning" | "success" | "info";
+    title: string;
+    description: string;
+  }[] = [];
 
   if (negativeRatio >= 30) {
     insights.push({
       type: "warning",
       title: `부정 리뷰 비율 ${negativeRatio.toFixed(0)}%`,
-      description: topNegativeAspects.length > 0 
-        ? `주요 불만 요소: ${topNegativeAspects.map(a => a.aspect).join(", ")}`
-        : "부정적인 리뷰가 많습니다. 개선이 필요합니다."
+      description:
+        topNegativeAspects.length > 0
+          ? `주요 불만 요소: ${topNegativeAspects.map((a) => a.aspect).join(", ")}`
+          : "부정적인 리뷰가 많습니다. 개선이 필요합니다.",
     });
   } else if (negativeRatio >= 15) {
     insights.push({
       type: "info",
       title: `부정 리뷰 비율 ${negativeRatio.toFixed(0)}%`,
-      description: topNegativeAspects.length > 0 
-        ? `관심 필요: ${topNegativeAspects.map(a => a.aspect).join(", ")}`
-        : "일부 개선이 필요한 부분이 있습니다."
+      description:
+        topNegativeAspects.length > 0
+          ? `관심 필요: ${topNegativeAspects.map((a) => a.aspect).join(", ")}`
+          : "일부 개선이 필요한 부분이 있습니다.",
     });
   }
 
-  if (topPositiveAspects.length > 0 && sentimentCounts.Positive > sentimentCounts.Negative) {
+  if (
+    topPositiveAspects.length > 0 &&
+    sentimentCounts.Positive > sentimentCounts.Negative
+  ) {
     insights.push({
       type: "success",
       title: "강점 요소",
-      description: `고객이 좋아하는 점: ${topPositiveAspects.map(a => a.aspect).join(", ")}`
+      description: `고객이 좋아하는 점: ${topPositiveAspects.map((a) => a.aspect).join(", ")}`,
     });
   }
 
@@ -149,13 +248,17 @@ function InsightCard({ stats, reviews }: { stats: JobStats | undefined; reviews:
     insights.push({
       type: "info",
       title: "분석 완료",
-      description: `총 ${total}개 리뷰 분석됨. 긍정 ${sentimentCounts.Positive}건, 부정 ${sentimentCounts.Negative}건`
+      description: `총 ${total}개 리뷰 분석됨. 긍정 ${sentimentCounts.Positive}건, 부정 ${sentimentCounts.Negative}건`,
     });
   }
 
   const iconConfig = {
     warning: { icon: AlertTriangle, bg: "bg-red-500/10", text: "text-red-500" },
-    success: { icon: TrendingUp, bg: "bg-green-500/10", text: "text-green-500" },
+    success: {
+      icon: TrendingUp,
+      bg: "bg-green-500/10",
+      text: "text-green-500",
+    },
     info: { icon: Lightbulb, bg: "bg-blue-500/10", text: "text-blue-500" },
   };
 
@@ -165,7 +268,10 @@ function InsightCard({ stats, reviews }: { stats: JobStats | undefined; reviews:
         const config = iconConfig[insight.type];
         const Icon = config.icon;
         return (
-          <Card key={idx} className={`border-l-4 ${insight.type === 'warning' ? 'border-l-red-500' : insight.type === 'success' ? 'border-l-green-500' : 'border-l-blue-500'}`}>
+          <Card
+            key={idx}
+            className={`border-l-4 ${insight.type === "warning" ? "border-l-red-500" : insight.type === "success" ? "border-l-green-500" : "border-l-blue-500"}`}
+          >
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
                 <div className={`p-2 rounded-lg ${config.bg} shrink-0`}>
@@ -173,7 +279,9 @@ function InsightCard({ stats, reviews }: { stats: JobStats | undefined; reviews:
                 </div>
                 <div>
                   <p className="font-semibold text-sm">{insight.title}</p>
-                  <p className="text-sm text-muted-foreground">{insight.description}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {insight.description}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -184,13 +292,23 @@ function InsightCard({ stats, reviews }: { stats: JobStats | undefined; reviews:
   );
 }
 
-function ReviewReportSection({ stats, reviews }: { stats: JobStats | undefined; reviews: ReviewWithAnalysis[] }) {
+function ReviewReportSection({
+  stats,
+  reviews,
+}: {
+  stats: JobStats | undefined;
+  reviews: ReviewWithAnalysis[];
+}) {
   const keywordAnalysis = useMemo(() => {
-    const map: Record<string, { positive: number; negative: number; neutral: number; total: number }> = {};
-    
-    reviews.forEach(review => {
-      review.keywords.forEach(kw => {
-        if (!map[kw]) map[kw] = { positive: 0, negative: 0, neutral: 0, total: 0 };
+    const map: Record<
+      string,
+      { positive: number; negative: number; neutral: number; total: number }
+    > = {};
+
+    reviews.forEach((review) => {
+      review.keywords.forEach((kw) => {
+        if (!map[kw])
+          map[kw] = { positive: 0, negative: 0, neutral: 0, total: 0 };
         if (review.sentiment === "Positive") map[kw].positive++;
         else if (review.sentiment === "Negative") map[kw].negative++;
         else map[kw].neutral++;
@@ -201,19 +319,22 @@ function ReviewReportSection({ stats, reviews }: { stats: JobStats | undefined; 
     const keywordsWithRatio = Object.entries(map).map(([keyword, counts]) => ({
       keyword,
       ...counts,
-      negativeRatio: counts.total > 0 ? (counts.negative / counts.total) * 100 : 0,
-      positiveRatio: counts.total > 0 ? (counts.positive / counts.total) * 100 : 0,
+      negativeRatio:
+        counts.total > 0 ? (counts.negative / counts.total) * 100 : 0,
+      positiveRatio:
+        counts.total > 0 ? (counts.positive / counts.total) * 100 : 0,
       score: counts.total * (counts.negative / Math.max(counts.total, 1)),
-      positiveScore: counts.total * (counts.positive / Math.max(counts.total, 1)),
+      positiveScore:
+        counts.total * (counts.positive / Math.max(counts.total, 1)),
     }));
 
     const topNegative = [...keywordsWithRatio]
-      .filter(k => k.negative > 0)
+      .filter((k) => k.negative > 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, 3);
 
     const topPositive = [...keywordsWithRatio]
-      .filter(k => k.positive > 0)
+      .filter((k) => k.positive > 0)
       .sort((a, b) => b.positiveScore - a.positiveScore)
       .slice(0, 3);
 
@@ -223,32 +344,53 @@ function ReviewReportSection({ stats, reviews }: { stats: JobStats | undefined; 
   if (!stats || reviews.length === 0) return null;
 
   const sentimentCounts = {
-    Positive: stats.sentimentStats.find((s) => s.sentiment === "Positive")?.count || 0,
-    Negative: stats.sentimentStats.find((s) => s.sentiment === "Negative")?.count || 0,
-    Neutral: stats.sentimentStats.find((s) => s.sentiment === "Neutral")?.count || 0,
+    Positive:
+      stats.sentimentStats.find((s) => s.sentiment === "Positive")?.count || 0,
+    Negative:
+      stats.sentimentStats.find((s) => s.sentiment === "Negative")?.count || 0,
+    Neutral:
+      stats.sentimentStats.find((s) => s.sentiment === "Neutral")?.count || 0,
   };
-  const total = sentimentCounts.Positive + sentimentCounts.Negative + sentimentCounts.Neutral;
-  
-  const reviewDates = reviews.map(r => new Date(r.reviewDate)).filter(d => !isNaN(d.getTime()));
-  const minDate = reviewDates.length > 0 ? new Date(Math.min(...reviewDates.map(d => d.getTime()))) : null;
-  const maxDate = reviewDates.length > 0 ? new Date(Math.max(...reviewDates.map(d => d.getTime()))) : null;
+  const total =
+    sentimentCounts.Positive +
+    sentimentCounts.Negative +
+    sentimentCounts.Neutral;
+
+  const reviewDates = reviews
+    .map((r) => new Date(r.reviewDate))
+    .filter((d) => !isNaN(d.getTime()));
+  const minDate =
+    reviewDates.length > 0
+      ? new Date(Math.min(...reviewDates.map((d) => d.getTime())))
+      : null;
+  const maxDate =
+    reviewDates.length > 0
+      ? new Date(Math.max(...reviewDates.map((d) => d.getTime())))
+      : null;
 
   const actionItems = useMemo(() => {
     const items: string[] = [];
-    
+
     if (keywordAnalysis.topNegative.length > 0) {
       const topIssue = keywordAnalysis.topNegative[0];
-      items.push(`"${topIssue.keyword}" 관련 불만이 ${topIssue.negative}건 발생 - 개선 우선순위 높음`);
+      items.push(
+        `"${topIssue.keyword}" 관련 불만이 ${topIssue.negative}건 발생 - 개선 우선순위 높음`,
+      );
     }
-    
-    const negativeRatio = total > 0 ? (sentimentCounts.Negative / total) * 100 : 0;
+
+    const negativeRatio =
+      total > 0 ? (sentimentCounts.Negative / total) * 100 : 0;
     if (negativeRatio >= 20) {
-      items.push(`부정 리뷰 비율 ${negativeRatio.toFixed(0)}% - 고객 불만 요인 집중 분석 필요`);
+      items.push(
+        `부정 리뷰 비율 ${negativeRatio.toFixed(0)}% - 고객 불만 요인 집중 분석 필요`,
+      );
     }
-    
+
     if (keywordAnalysis.topPositive.length > 0) {
       const topStrength = keywordAnalysis.topPositive[0];
-      items.push(`"${topStrength.keyword}" 강점 유지 - 마케팅 메시지에 활용 권장`);
+      items.push(
+        `"${topStrength.keyword}" 강점 유지 - 마케팅 메시지에 활용 권장`,
+      );
     }
 
     if (items.length === 0) {
@@ -266,12 +408,15 @@ function ReviewReportSection({ stats, reviews }: { stats: JobStats | undefined; 
             <FileText className="w-5 h-5 text-violet-600 dark:text-violet-400" />
           </div>
           <div>
-            <CardTitle className="text-lg font-bold">리뷰 분석 리포트</CardTitle>
+            <CardTitle className="text-lg font-bold">
+              리뷰 분석 리포트
+            </CardTitle>
             <p className="text-sm text-muted-foreground">
               {stats.job.placeName || stats.job.placeId} · 총 {total}건 분석
               {minDate && maxDate && (
                 <span className="ml-2">
-                  ({minDate.toLocaleDateString("ko-KR")} ~ {maxDate.toLocaleDateString("ko-KR")})
+                  ({minDate.toLocaleDateString("ko-KR")} ~{" "}
+                  {maxDate.toLocaleDateString("ko-KR")})
                 </span>
               )}
             </p>
@@ -286,42 +431,45 @@ function ReviewReportSection({ stats, reviews }: { stats: JobStats | undefined; 
           </h4>
           <div className="grid grid-cols-3 gap-3">
             <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
-              <div className="text-2xl font-bold text-green-600">{sentimentCounts.Positive}</div>
-              <div className="text-xs text-muted-foreground">긍정 ({total > 0 ? Math.round((sentimentCounts.Positive / total) * 100) : 0}%)</div>
+              <div className="text-2xl font-bold text-green-600">
+                {sentimentCounts.Positive}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                긍정 (
+                {total > 0
+                  ? Math.round((sentimentCounts.Positive / total) * 100)
+                  : 0}
+                %)
+              </div>
             </div>
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-center">
-              <div className="text-2xl font-bold text-red-600">{sentimentCounts.Negative}</div>
-              <div className="text-xs text-muted-foreground">부정 ({total > 0 ? Math.round((sentimentCounts.Negative / total) * 100) : 0}%)</div>
+              <div className="text-2xl font-bold text-red-600">
+                {sentimentCounts.Negative}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                부정 (
+                {total > 0
+                  ? Math.round((sentimentCounts.Negative / total) * 100)
+                  : 0}
+                %)
+              </div>
             </div>
             <div className="p-3 rounded-lg bg-gray-500/10 border border-gray-500/20 text-center">
-              <div className="text-2xl font-bold text-gray-600">{sentimentCounts.Neutral}</div>
-              <div className="text-xs text-muted-foreground">중립 ({total > 0 ? Math.round((sentimentCounts.Neutral / total) * 100) : 0}%)</div>
+              <div className="text-2xl font-bold text-gray-600">
+                {sentimentCounts.Neutral}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                중립 (
+                {total > 0
+                  ? Math.round((sentimentCounts.Neutral / total) * 100)
+                  : 0}
+                %)
+              </div>
             </div>
           </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-              <ThumbsDown className="w-4 h-4 text-red-500" />
-              불만 키워드 Top 3
-            </h4>
-            {keywordAnalysis.topNegative.length === 0 ? (
-              <p className="text-sm text-muted-foreground">불만 키워드 없음</p>
-            ) : (
-              <div className="space-y-2">
-                {keywordAnalysis.topNegative.map((kw, idx) => (
-                  <div key={kw.keyword} className="flex items-center gap-2 p-2 rounded-lg bg-red-500/5 border border-red-500/10">
-                    <span className="text-xs font-bold text-red-500 w-5">{idx + 1}</span>
-                    <span className="text-sm font-medium flex-1">{kw.keyword}</span>
-                    <span className="text-xs text-muted-foreground">{kw.negative}건</span>
-                    <span className="text-xs text-red-500 font-medium">{kw.negativeRatio.toFixed(0)}%</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           <div>
             <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
               <ThumbsUp className="w-4 h-4 text-green-500" />
@@ -332,11 +480,53 @@ function ReviewReportSection({ stats, reviews }: { stats: JobStats | undefined; 
             ) : (
               <div className="space-y-2">
                 {keywordAnalysis.topPositive.map((kw, idx) => (
-                  <div key={kw.keyword} className="flex items-center gap-2 p-2 rounded-lg bg-green-500/5 border border-green-500/10">
-                    <span className="text-xs font-bold text-green-500 w-5">{idx + 1}</span>
-                    <span className="text-sm font-medium flex-1">{kw.keyword}</span>
-                    <span className="text-xs text-muted-foreground">{kw.positive}건</span>
-                    <span className="text-xs text-green-500 font-medium">{kw.positiveRatio.toFixed(0)}%</span>
+                  <div
+                    key={kw.keyword}
+                    className="flex items-center gap-2 p-2 rounded-lg bg-green-500/5 border border-green-500/10"
+                  >
+                    <span className="text-xs font-bold text-green-500 w-5">
+                      {idx + 1}
+                    </span>
+                    <span className="text-sm font-medium flex-1">
+                      {kw.keyword}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {kw.positive}건
+                    </span>
+                    <span className="text-xs text-green-500 font-medium">
+                      {kw.positiveRatio.toFixed(0)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <ThumbsDown className="w-4 h-4 text-red-500" />
+              부정 키워드 Top 3
+            </h4>
+            {keywordAnalysis.topNegative.length === 0 ? (
+              <p className="text-sm text-muted-foreground">불만 키워드 없음</p>
+            ) : (
+              <div className="space-y-2">
+                {keywordAnalysis.topNegative.map((kw, idx) => (
+                  <div
+                    key={kw.keyword}
+                    className="flex items-center gap-2 p-2 rounded-lg bg-red-500/5 border border-red-500/10"
+                  >
+                    <span className="text-xs font-bold text-red-500 w-5">
+                      {idx + 1}
+                    </span>
+                    <span className="text-sm font-medium flex-1">
+                      {kw.keyword}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {kw.negative}건
+                    </span>
+                    <span className="text-xs text-red-500 font-medium">
+                      {kw.negativeRatio.toFixed(0)}%
+                    </span>
                   </div>
                 ))}
               </div>
@@ -348,21 +538,39 @@ function ReviewReportSection({ stats, reviews }: { stats: JobStats | undefined; 
           <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-violet-500" />
             전체 요약
-            {stats.job.aiSummary && (
-              <Badge variant="outline" className="text-xs ml-2 text-violet-500 border-violet-500/30">AI</Badge>
-            )}
           </h4>
           <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
             <p className="text-sm text-muted-foreground whitespace-pre-line">
               {stats.job.aiSummary || (
                 <>
-                  {total}개의 리뷰 중 긍정 {sentimentCounts.Positive}건({total > 0 ? Math.round((sentimentCounts.Positive / total) * 100) : 0}%), 
-                  부정 {sentimentCounts.Negative}건({total > 0 ? Math.round((sentimentCounts.Negative / total) * 100) : 0}%)으로 분석되었습니다.
+                  {total}개의 리뷰 중 긍정 {sentimentCounts.Positive}건(
+                  {total > 0
+                    ? Math.round((sentimentCounts.Positive / total) * 100)
+                    : 0}
+                  %), 부정 {sentimentCounts.Negative}건(
+                  {total > 0
+                    ? Math.round((sentimentCounts.Negative / total) * 100)
+                    : 0}
+                  %)으로 분석되었습니다.
                   {keywordAnalysis.topPositive.length > 0 && (
-                    <> 주요 강점은 "{keywordAnalysis.topPositive.map(k => k.keyword).join('", "')}"입니다.</>
+                    <>
+                      {" "}
+                      주요 강점은 "
+                      {keywordAnalysis.topPositive
+                        .map((k) => k.keyword)
+                        .join('", "')}
+                      "입니다.
+                    </>
                   )}
                   {keywordAnalysis.topNegative.length > 0 && (
-                    <> 개선이 필요한 부분은 "{keywordAnalysis.topNegative.map(k => k.keyword).join('", "')}"로 파악됩니다.</>
+                    <>
+                      {" "}
+                      개선이 필요한 부분은 "
+                      {keywordAnalysis.topNegative
+                        .map((k) => k.keyword)
+                        .join('", "')}
+                      "로 파악됩니다.
+                    </>
                   )}
                 </>
               )}
@@ -374,14 +582,19 @@ function ReviewReportSection({ stats, reviews }: { stats: JobStats | undefined; 
           <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <ClipboardList className="w-4 h-4 text-amber-500" />
             개선 제안
-            {stats.job.aiSuggestions && (
-              <Badge variant="outline" className="text-xs ml-2 text-amber-500 border-amber-500/30">AI</Badge>
-            )}
           </h4>
           <div className="space-y-2">
-            {(stats.job.aiSuggestions ? JSON.parse(stats.job.aiSuggestions) as string[] : actionItems).map((item, idx) => (
-              <div key={idx} className="flex items-start gap-2 p-2 rounded-lg bg-amber-500/5 border border-amber-500/10">
-                <span className="text-xs font-bold text-amber-600 mt-0.5">{idx + 1}</span>
+            {(stats.job.aiSuggestions
+              ? (JSON.parse(stats.job.aiSuggestions) as string[])
+              : actionItems
+            ).map((item, idx) => (
+              <div
+                key={idx}
+                className="flex items-start gap-2 p-2 rounded-lg bg-amber-500/5 border border-amber-500/10"
+              >
+                <span className="text-xs font-bold text-amber-600 mt-0.5">
+                  {idx + 1}
+                </span>
                 <span className="text-sm">{item}</span>
               </div>
             ))}
@@ -392,12 +605,21 @@ function ReviewReportSection({ stats, reviews }: { stats: JobStats | undefined; 
   );
 }
 
-function KeywordSentimentChart({ stats, reviews }: { stats: JobStats | undefined; reviews: ReviewWithAnalysis[] }) {
+function KeywordSentimentChart({
+  stats,
+  reviews,
+}: {
+  stats: JobStats | undefined;
+  reviews: ReviewWithAnalysis[];
+}) {
   const keywordSentiments = useMemo(() => {
-    const map: Record<string, { positive: number; negative: number; neutral: number }> = {};
-    
-    reviews.forEach(review => {
-      review.keywords.forEach(kw => {
+    const map: Record<
+      string,
+      { positive: number; negative: number; neutral: number }
+    > = {};
+
+    reviews.forEach((review) => {
+      review.keywords.forEach((kw) => {
         if (!map[kw]) map[kw] = { positive: 0, negative: 0, neutral: 0 };
         if (review.sentiment === "Positive") map[kw].positive++;
         else if (review.sentiment === "Negative") map[kw].negative++;
@@ -409,7 +631,7 @@ function KeywordSentimentChart({ stats, reviews }: { stats: JobStats | undefined
       .map(([keyword, counts]) => ({
         keyword,
         ...counts,
-        total: counts.positive + counts.negative + counts.neutral
+        total: counts.positive + counts.negative + counts.neutral,
       }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 10);
@@ -463,9 +685,15 @@ function KeywordSentimentChart({ stats, reviews }: { stats: JobStats | undefined
           </div>
         ))}
         <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2">
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-500" /> 긍정</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-400" /> 중립</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-500" /> 부정</span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-green-500" /> 긍정
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-gray-400" /> 중립
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-red-500" /> 부정
+          </span>
         </div>
       </CardContent>
     </Card>
@@ -474,11 +702,15 @@ function KeywordSentimentChart({ stats, reviews }: { stats: JobStats | undefined
 
 function SentimentTrendChart({ reviews }: { reviews: ReviewWithAnalysis[] }) {
   const trendData = useMemo(() => {
-    const grouped: Record<string, { positive: number; negative: number; neutral: number }> = {};
-    
-    reviews.forEach(review => {
-      const date = new Date(review.reviewDate).toISOString().split('T')[0];
-      if (!grouped[date]) grouped[date] = { positive: 0, negative: 0, neutral: 0 };
+    const grouped: Record<
+      string,
+      { positive: number; negative: number; neutral: number }
+    > = {};
+
+    reviews.forEach((review) => {
+      const date = new Date(review.reviewDate).toISOString().split("T")[0];
+      if (!grouped[date])
+        grouped[date] = { positive: 0, negative: 0, neutral: 0 };
       if (review.sentiment === "Positive") grouped[date].positive++;
       else if (review.sentiment === "Negative") grouped[date].negative++;
       else grouped[date].neutral++;
@@ -488,11 +720,14 @@ function SentimentTrendChart({ reviews }: { reviews: ReviewWithAnalysis[] }) {
       .sort((a, b) => a[0].localeCompare(b[0]))
       .slice(-14)
       .map(([date, counts]) => ({
-        date: new Date(date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
+        date: new Date(date).toLocaleDateString("ko-KR", {
+          month: "short",
+          day: "numeric",
+        }),
         긍정: counts.positive,
         중립: counts.neutral,
         부정: counts.negative,
-        total: counts.positive + counts.negative + counts.neutral
+        total: counts.positive + counts.negative + counts.neutral,
       }));
   }, [reviews]);
 
@@ -516,51 +751,54 @@ function SentimentTrendChart({ reviews }: { reviews: ReviewWithAnalysis[] }) {
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <AreaChart
+            data={trendData}
+            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis 
-              dataKey="date" 
-              tick={{ fontSize: 11 }} 
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 11 }}
               tickLine={false}
-              axisLine={{ stroke: '#e5e7eb' }}
+              axisLine={{ stroke: "#e5e7eb" }}
             />
-            <YAxis 
-              tick={{ fontSize: 11 }} 
+            <YAxis
+              tick={{ fontSize: 11 }}
               tickLine={false}
-              axisLine={{ stroke: '#e5e7eb' }}
+              axisLine={{ stroke: "#e5e7eb" }}
               allowDecimals={false}
             />
-            <Tooltip 
-              contentStyle={{ 
-                fontSize: 12, 
+            <Tooltip
+              contentStyle={{
+                fontSize: 12,
                 borderRadius: 8,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                border: '1px solid #e5e7eb'
+                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                border: "1px solid #e5e7eb",
               }}
             />
             <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-            <Area 
-              type="monotone" 
-              dataKey="긍정" 
+            <Area
+              type="monotone"
+              dataKey="긍정"
               stackId="1"
-              stroke="#22c55e" 
-              fill="#22c55e" 
+              stroke="#22c55e"
+              fill="#22c55e"
               fillOpacity={0.6}
             />
-            <Area 
-              type="monotone" 
-              dataKey="중립" 
+            <Area
+              type="monotone"
+              dataKey="중립"
               stackId="1"
-              stroke="#9ca3af" 
-              fill="#9ca3af" 
+              stroke="#9ca3af"
+              fill="#9ca3af"
               fillOpacity={0.6}
             />
-            <Area 
-              type="monotone" 
-              dataKey="부정" 
+            <Area
+              type="monotone"
+              dataKey="부정"
               stackId="1"
-              stroke="#ef4444" 
-              fill="#ef4444" 
+              stroke="#ef4444"
+              fill="#ef4444"
               fillOpacity={0.6}
             />
           </AreaChart>
@@ -584,20 +822,41 @@ interface TreemapContentProps {
 }
 
 function CustomTreemapContent(props: TreemapContentProps) {
-  const { x = 0, y = 0, width = 0, height = 0, name, value, index = 0, depth = 0 } = props;
-  
+  const {
+    x = 0,
+    y = 0,
+    width = 0,
+    height = 0,
+    name,
+    value,
+    index = 0,
+    depth = 0,
+  } = props;
+
   if (depth !== 1 || width < 30 || height < 20) return null;
-  
+
   const colors = [
-    '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899',
-    '#f43f5e', '#ef4444', '#f97316', '#f59e0b', '#eab308',
-    '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4'
+    "#6366f1",
+    "#8b5cf6",
+    "#a855f7",
+    "#d946ef",
+    "#ec4899",
+    "#f43f5e",
+    "#ef4444",
+    "#f97316",
+    "#f59e0b",
+    "#eab308",
+    "#84cc16",
+    "#22c55e",
+    "#10b981",
+    "#14b8a6",
+    "#06b6d4",
   ];
-  
+
   const bgColor = colors[index % colors.length];
   const showText = width > 40 && height > 25;
   const showValue = width > 50 && height > 35;
-  
+
   return (
     <g>
       <rect
@@ -609,7 +868,7 @@ function CustomTreemapContent(props: TreemapContentProps) {
         fill={bgColor}
         stroke="#fff"
         strokeWidth={2}
-        style={{ cursor: 'pointer' }}
+        style={{ cursor: "pointer" }}
       />
       {showText && (
         <text
@@ -622,7 +881,7 @@ function CustomTreemapContent(props: TreemapContentProps) {
           fontWeight={300}
           fontFamily="Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif"
         >
-          {name && name.length > 8 ? name.slice(0, 7) + '…' : name}
+          {name && name.length > 8 ? name.slice(0, 7) + "…" : name}
         </text>
       )}
       {showValue && (
@@ -643,12 +902,16 @@ function CustomTreemapContent(props: TreemapContentProps) {
   );
 }
 
-function KeywordTreemap({ keywords }: { keywords: Array<{ keyword: string; count: number }> }) {
+function KeywordTreemap({
+  keywords,
+}: {
+  keywords: Array<{ keyword: string; count: number }>;
+}) {
   const treemapData = useMemo(() => {
     if (!keywords || keywords.length === 0) return [];
-    return keywords.slice(0, 20).map(kw => ({
+    return keywords.slice(0, 20).map((kw) => ({
       name: kw.keyword,
-      value: kw.count
+      value: kw.count,
     }));
   }, [keywords]);
 
@@ -659,7 +922,9 @@ function KeywordTreemap({ keywords }: { keywords: Array<{ keyword: string; count
           <CardTitle className="text-base">키워드 빈도</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-center text-muted-foreground py-4">키워드 데이터가 없습니다</p>
+          <p className="text-center text-muted-foreground py-4">
+            키워드 데이터가 없습니다
+          </p>
         </CardContent>
       </Card>
     );
@@ -669,14 +934,16 @@ function KeywordTreemap({ keywords }: { keywords: Array<{ keyword: string; count
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base">키워드 빈도</CardTitle>
-        <CardDescription>상위 {treemapData.length}개 키워드 (면적 = 빈도)</CardDescription>
+        <CardDescription>
+          상위 {treemapData.length}개 키워드 (면적 = 빈도)
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={280}>
           <Treemap
             data={treemapData}
             dataKey="value"
-            aspectRatio={4/3}
+            aspectRatio={4 / 3}
             stroke="#fff"
             content={<CustomTreemapContent />}
           />
@@ -719,15 +986,18 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
       onSuccess();
     },
     onError: (error: Error) => {
-      toast({ title: "오류", description: error.message, variant: "destructive" });
+      toast({
+        title: "오류",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>새 리뷰 분석</CardTitle>
-        <CardDescription>네이버 플레이스 리뷰를 수집하고 감정 분석을 수행합니다</CardDescription>
+        <CardTitle>리뷰 분석</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
@@ -817,14 +1087,14 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function JobList({ 
-  jobs, 
-  onSelect, 
-  selectedJobId, 
-  onRetry 
-}: { 
-  jobs: PlaceReviewJob[]; 
-  onSelect: (id: string) => void; 
+function JobList({
+  jobs,
+  onSelect,
+  selectedJobId,
+  onRetry,
+}: {
+  jobs: PlaceReviewJob[];
+  onSelect: (id: string) => void;
   selectedJobId: string | null;
   onRetry: (job: PlaceReviewJob) => void;
 }) {
@@ -854,7 +1124,9 @@ function JobList({
         <CardContent className="py-8 text-center text-muted-foreground">
           <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p className="font-medium mb-1">아직 분석 작업이 없습니다</p>
-          <p className="text-sm">위에서 플레이스 ID를 입력해 분석을 시작하세요</p>
+          <p className="text-sm">
+            위에서 플레이스 ID를 입력해 분석을 시작하세요
+          </p>
         </CardContent>
       </Card>
     );
@@ -872,9 +1144,13 @@ function JobList({
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <div className="flex flex-col">
-                  <span className="font-medium">{job.placeName || job.placeId}</span>
+                  <span className="font-medium">
+                    {job.placeName || job.placeId}
+                  </span>
                   {job.placeName && (
-                    <span className="text-xs text-muted-foreground">{job.placeId}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {job.placeId}
+                    </span>
                   )}
                 </div>
                 <StatusBadge status={job.status} />
@@ -914,7 +1190,8 @@ function JobList({
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="text-muted-foreground/70">
-                      {parseInt(job.totalReviews) > 0 && parseInt(job.progress) > 0
+                      {parseInt(job.totalReviews) > 0 &&
+                      parseInt(job.progress) > 0
                         ? `예상: 약 ${Math.ceil((parseInt(job.totalReviews) - parseInt(job.analyzedReviews)) * 0.5)}초`
                         : "예상: 계산 중..."}
                     </span>
@@ -936,7 +1213,9 @@ function JobList({
               <span>{new Date(job.createdAt).toLocaleDateString("ko-KR")}</span>
             </div>
             {job.errorMessage && (
-              <p className="mt-2 text-sm text-destructive">{job.errorMessage}</p>
+              <p className="mt-2 text-sm text-destructive">
+                {job.errorMessage}
+              </p>
             )}
           </CardContent>
         </Card>
@@ -947,7 +1226,8 @@ function JobList({
 
 function JobResults({ jobId }: { jobId: string }) {
   const { toast } = useToast();
-  const [sentimentFilter, setSentimentFilter] = useState<SentimentFilter>("all");
+  const [sentimentFilter, setSentimentFilter] =
+    useState<SentimentFilter>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("date-desc");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -956,16 +1236,23 @@ function JobResults({ jobId }: { jobId: string }) {
   const { data: statsData, isLoading: statsLoading } = useQuery<JobStats>({
     queryKey: ["place-review-stats", jobId],
     queryFn: async () => {
-      const res = await fetch(`/api/place-review/jobs/${jobId}/stats`, { credentials: "include" });
+      const res = await fetch(`/api/place-review/jobs/${jobId}/stats`, {
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("통계 조회 실패");
       return res.json();
     },
   });
 
-  const { data: reviewsData, isLoading: reviewsLoading } = useQuery<{ reviews: ReviewWithAnalysis[], job: { totalReviews: string; analyzedReviews: string } }>({
+  const { data: reviewsData, isLoading: reviewsLoading } = useQuery<{
+    reviews: ReviewWithAnalysis[];
+    job: { totalReviews: string; analyzedReviews: string };
+  }>({
     queryKey: ["place-review-reviews", jobId],
     queryFn: async () => {
-      const res = await fetch(`/api/place-review/jobs/${jobId}/reviews`, { credentials: "include" });
+      const res = await fetch(`/api/place-review/jobs/${jobId}/reviews`, {
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("리뷰 조회 실패");
       return res.json();
     },
@@ -978,36 +1265,47 @@ function JobResults({ jobId }: { jobId: string }) {
 
   const filteredReviews = useMemo(() => {
     let result = [...allReviews];
-    
+
     if (sentimentFilter !== "all") {
-      result = result.filter(r => r.sentiment === sentimentFilter);
+      result = result.filter((r) => r.sentiment === sentimentFilter);
     }
-    
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(r => 
-        r.reviewText.toLowerCase().includes(query) ||
-        r.keywords.some(k => k.toLowerCase().includes(query)) ||
-        r.authorName?.toLowerCase().includes(query)
+      result = result.filter(
+        (r) =>
+          r.reviewText.toLowerCase().includes(query) ||
+          r.keywords.some((k) => k.toLowerCase().includes(query)) ||
+          r.authorName?.toLowerCase().includes(query),
       );
     }
-    
+
     result.sort((a, b) => {
       if (sortOrder === "date-desc") {
-        return new Date(b.reviewDate).getTime() - new Date(a.reviewDate).getTime();
+        return (
+          new Date(b.reviewDate).getTime() - new Date(a.reviewDate).getTime()
+        );
       } else if (sortOrder === "date-asc") {
-        return new Date(a.reviewDate).getTime() - new Date(b.reviewDate).getTime();
+        return (
+          new Date(a.reviewDate).getTime() - new Date(b.reviewDate).getTime()
+        );
       } else {
         const order = { Negative: 0, Neutral: 1, Positive: 2 };
-        return (order[a.sentiment as keyof typeof order] ?? 1) - (order[b.sentiment as keyof typeof order] ?? 1);
+        return (
+          (order[a.sentiment as keyof typeof order] ?? 1) -
+          (order[b.sentiment as keyof typeof order] ?? 1)
+        );
       }
     });
-    
+
     return result;
   }, [allReviews, sentimentFilter, searchQuery, sortOrder]);
 
   const totalPages = Math.ceil(filteredReviews.length / pageSize);
-  const paginatedReviews = filteredReviews.slice((page - 1) * pageSize, page * pageSize);
+  const paginatedReviews = filteredReviews.slice(
+    (page - 1) * pageSize,
+    page * pageSize,
+  );
 
   const handleSentimentCardClick = (sentiment: SentimentFilter) => {
     setSentimentFilter(sentiment === sentimentFilter ? "all" : sentiment);
@@ -1021,24 +1319,33 @@ function JobResults({ jobId }: { jobId: string }) {
     }
 
     const headers = ["날짜", "작성자", "감정", "리뷰 내용", "키워드", "요약"];
-    const rows = filteredReviews.map(r => [
+    const rows = filteredReviews.map((r) => [
       new Date(r.reviewDate).toLocaleDateString("ko-KR"),
       r.authorName || "-",
-      r.sentiment === "Positive" ? "긍정" : r.sentiment === "Negative" ? "부정" : "중립",
+      r.sentiment === "Positive"
+        ? "긍정"
+        : r.sentiment === "Negative"
+          ? "부정"
+          : "중립",
       `"${r.reviewText.replace(/"/g, '""')}"`,
       r.keywords.join(", "),
-      r.summary || "-"
+      r.summary || "-",
     ]);
 
-    const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = `place-reviews-${jobId}-${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    toast({ title: "CSV 다운로드 완료", description: `${filteredReviews.length}건의 리뷰를 내보냈습니다` });
+    toast({
+      title: "CSV 다운로드 완료",
+      description: `${filteredReviews.length}건의 리뷰를 내보냈습니다`,
+    });
   };
 
   if (statsLoading || reviewsLoading) {
@@ -1052,27 +1359,37 @@ function JobResults({ jobId }: { jobId: string }) {
   }
 
   const sentimentCounts = {
-    Positive: stats?.sentimentStats.find((s) => s.sentiment === "Positive")?.count || 0,
-    Negative: stats?.sentimentStats.find((s) => s.sentiment === "Negative")?.count || 0,
-    Neutral: stats?.sentimentStats.find((s) => s.sentiment === "Neutral")?.count || 0,
+    Positive:
+      stats?.sentimentStats.find((s) => s.sentiment === "Positive")?.count || 0,
+    Negative:
+      stats?.sentimentStats.find((s) => s.sentiment === "Negative")?.count || 0,
+    Neutral:
+      stats?.sentimentStats.find((s) => s.sentiment === "Neutral")?.count || 0,
   };
-  const total = sentimentCounts.Positive + sentimentCounts.Negative + sentimentCounts.Neutral;
+  const total =
+    sentimentCounts.Positive +
+    sentimentCounts.Negative +
+    sentimentCounts.Neutral;
 
   return (
     <div className="space-y-6">
       {stats?.job && (
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold">{stats.job.placeName || stats.job.placeId}</h2>
+            <h2 className="text-xl font-bold">
+              {stats.job.placeName || stats.job.placeId}
+            </h2>
             {stats.job.placeName && (
-              <p className="text-sm text-muted-foreground">플레이스 ID: {stats.job.placeId}</p>
+              <p className="text-sm text-muted-foreground">
+                플레이스 ID: {stats.job.placeId}
+              </p>
             )}
           </div>
           <StatusBadge status={stats.job.status} />
         </div>
       )}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card 
+        <Card
           className={`cursor-pointer transition-all hover:shadow-md ${sentimentFilter === "Positive" ? "ring-2 ring-green-500" : ""}`}
           onClick={() => handleSentimentCardClick("Positive")}
         >
@@ -1081,13 +1398,18 @@ function JobResults({ jobId }: { jobId: string }) {
               <span className="text-sm text-muted-foreground">긍정</span>
               <TrendingUp className="w-4 h-4 text-green-500" />
             </div>
-            <div className="text-2xl font-bold text-green-600">{sentimentCounts.Positive}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {sentimentCounts.Positive}
+            </div>
             <div className="text-xs text-muted-foreground">
-              {total > 0 ? Math.round((sentimentCounts.Positive / total) * 100) : 0}%
+              {total > 0
+                ? Math.round((sentimentCounts.Positive / total) * 100)
+                : 0}
+              %
             </div>
           </CardContent>
         </Card>
-        <Card 
+        <Card
           className={`cursor-pointer transition-all hover:shadow-md ${sentimentFilter === "Negative" ? "ring-2 ring-red-500" : ""}`}
           onClick={() => handleSentimentCardClick("Negative")}
         >
@@ -1096,13 +1418,18 @@ function JobResults({ jobId }: { jobId: string }) {
               <span className="text-sm text-muted-foreground">부정</span>
               <TrendingDown className="w-4 h-4 text-red-500" />
             </div>
-            <div className="text-2xl font-bold text-red-600">{sentimentCounts.Negative}</div>
+            <div className="text-2xl font-bold text-red-600">
+              {sentimentCounts.Negative}
+            </div>
             <div className="text-xs text-muted-foreground">
-              {total > 0 ? Math.round((sentimentCounts.Negative / total) * 100) : 0}%
+              {total > 0
+                ? Math.round((sentimentCounts.Negative / total) * 100)
+                : 0}
+              %
             </div>
           </CardContent>
         </Card>
-        <Card 
+        <Card
           className={`cursor-pointer transition-all hover:shadow-md ${sentimentFilter === "Neutral" ? "ring-2 ring-gray-500" : ""}`}
           onClick={() => handleSentimentCardClick("Neutral")}
         >
@@ -1111,9 +1438,14 @@ function JobResults({ jobId }: { jobId: string }) {
               <span className="text-sm text-muted-foreground">중립</span>
               <Minus className="w-4 h-4 text-gray-500" />
             </div>
-            <div className="text-2xl font-bold text-gray-600">{sentimentCounts.Neutral}</div>
+            <div className="text-2xl font-bold text-gray-600">
+              {sentimentCounts.Neutral}
+            </div>
             <div className="text-xs text-muted-foreground">
-              {total > 0 ? Math.round((sentimentCounts.Neutral / total) * 100) : 0}%
+              {total > 0
+                ? Math.round((sentimentCounts.Neutral / total) * 100)
+                : 0}
+              %
             </div>
           </CardContent>
         </Card>
@@ -1137,10 +1469,11 @@ function JobResults({ jobId }: { jobId: string }) {
               추이
             </TabsTrigger>
           </TabsList>
-          <Button variant="outline" size="sm" onClick={exportToCSV}>
+          {/* 260203 주석처리 - 추후 필요 시 주석 삭제 */}
+          {/* <Button variant="outline" size="sm" onClick={exportToCSV}>
             <Download className="w-4 h-4 mr-2" />
             CSV 내보내기
-          </Button>
+          </Button> */}
         </div>
 
         <TabsContent value="reviews" className="mt-0 space-y-4">
@@ -1151,11 +1484,20 @@ function JobResults({ jobId }: { jobId: string }) {
                 <Input
                   placeholder="리뷰 내용, 키워드, 작성자 검색..."
                   value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setPage(1);
+                  }}
                   className="pl-9"
                 />
               </div>
-              <Select value={sentimentFilter} onValueChange={(v) => { setSentimentFilter(v as SentimentFilter); setPage(1); }}>
+              <Select
+                value={sentimentFilter}
+                onValueChange={(v) => {
+                  setSentimentFilter(v as SentimentFilter);
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger className="w-full sm:w-32">
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="감정" />
@@ -1167,14 +1509,17 @@ function JobResults({ jobId }: { jobId: string }) {
                   <SelectItem value="Neutral">중립</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
+              <Select
+                value={sortOrder}
+                onValueChange={(v) => setSortOrder(v as SortOrder)}
+              >
                 <SelectTrigger className="w-full sm:w-36">
                   <ArrowUpDown className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="정렬" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="date-desc">최신순</SelectItem>
-                  <SelectItem value="date-asc">오래된순</SelectItem>
+                  <SelectItem value="date-asc">오st�된순</SelectItem>
                   <SelectItem value="sentiment">부정 우선</SelectItem>
                 </SelectContent>
               </Select>
@@ -1196,26 +1541,41 @@ function JobResults({ jobId }: { jobId: string }) {
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
                         {review.authorName && (
-                          <span className="text-sm font-medium">{review.authorName}</span>
+                          <span className="text-sm font-medium">
+                            {review.authorName}
+                          </span>
                         )}
                         <span className="text-xs text-muted-foreground">
-                          {new Date(review.reviewDate).toLocaleDateString("ko-KR")}
+                          {new Date(review.reviewDate).toLocaleDateString(
+                            "ko-KR",
+                          )}
                         </span>
                       </div>
                       <SentimentBadge sentiment={review.sentiment} />
                     </div>
                     <p className="text-sm mb-3">{review.reviewText}</p>
                     {review.summary && (
-                      <p className="text-xs text-muted-foreground mb-2">요약: {review.summary}</p>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        요약: {review.summary}
+                      </p>
                     )}
                     <div className="flex flex-wrap gap-1">
                       {review.aspects.map((asp, i) => (
                         <Badge key={i} variant="outline" className="text-xs">
-                          {asp.aspect}: {asp.sentiment === "Positive" ? "+" : asp.sentiment === "Negative" ? "-" : "○"}
+                          {asp.aspect}:{" "}
+                          {asp.sentiment === "Positive"
+                            ? "+"
+                            : asp.sentiment === "Negative"
+                              ? "-"
+                              : "○"}
                         </Badge>
                       ))}
                       {review.keywords.map((kw, i) => (
-                        <Badge key={`kw-${i}`} variant="secondary" className="text-xs">
+                        <Badge
+                          key={`kw-${i}`}
+                          variant="secondary"
+                          className="text-xs"
+                        >
                           #{kw}
                         </Badge>
                       ))}
@@ -1231,7 +1591,13 @@ function JobResults({ jobId }: { jobId: string }) {
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span>페이지당</span>
-                  <Select value={pageSize.toString()} onValueChange={(v) => { setPageSize(parseInt(v)); setPage(1); }}>
+                  <Select
+                    value={pageSize.toString()}
+                    onValueChange={(v) => {
+                      setPageSize(parseInt(v));
+                      setPage(1);
+                    }}
+                  >
                     <SelectTrigger className="w-16 h-8">
                       <SelectValue />
                     </SelectTrigger>
@@ -1250,7 +1616,7 @@ function JobResults({ jobId }: { jobId: string }) {
                     size="icon"
                     className="h-8 w-8"
                     disabled={page <= 1}
-                    onClick={() => setPage(p => p - 1)}
+                    onClick={() => setPage((p) => p - 1)}
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
@@ -1266,14 +1632,16 @@ function JobResults({ jobId }: { jobId: string }) {
                       }}
                       className="w-14 h-8 text-center"
                     />
-                    <span className="text-sm text-muted-foreground">/ {totalPages}</span>
+                    <span className="text-sm text-muted-foreground">
+                      / {totalPages}
+                    </span>
                   </div>
                   <Button
                     variant="outline"
                     size="icon"
                     className="h-8 w-8"
                     disabled={page >= totalPages}
-                    onClick={() => setPage(p => p + 1)}
+                    onClick={() => setPage((p) => p + 1)}
                   >
                     <ChevronRight className="w-4 h-4" />
                   </Button>
@@ -1291,32 +1659,42 @@ function JobResults({ jobId }: { jobId: string }) {
               </CardHeader>
               <CardContent>
                 {stats?.aspectStats.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-4">속성 데이터가 없습니다</p>
+                  <p className="text-center text-muted-foreground py-4">
+                    속성 데이터가 없습니다
+                  </p>
                 ) : (
                   <div className="space-y-4">
                     {stats?.aspectStats.map((asp) => (
                       <div key={asp.aspect} className="space-y-1">
                         <div className="flex justify-between text-sm">
                           <span className="font-medium">{asp.aspect}</span>
-                          <span className="text-muted-foreground">{asp.total}건</span>
+                          <span className="text-muted-foreground">
+                            {asp.total}건
+                          </span>
                         </div>
                         <div className="flex h-3 rounded-full overflow-hidden bg-muted">
                           {asp.Positive > 0 && (
                             <div
                               className="bg-green-500"
-                              style={{ width: `${(asp.Positive / asp.total) * 100}%` }}
+                              style={{
+                                width: `${(asp.Positive / asp.total) * 100}%`,
+                              }}
                             />
                           )}
                           {asp.Neutral > 0 && (
                             <div
                               className="bg-gray-400"
-                              style={{ width: `${(asp.Neutral / asp.total) * 100}%` }}
+                              style={{
+                                width: `${(asp.Neutral / asp.total) * 100}%`,
+                              }}
                             />
                           )}
                           {asp.Negative > 0 && (
                             <div
                               className="bg-red-500"
-                              style={{ width: `${(asp.Negative / asp.total) * 100}%` }}
+                              style={{
+                                width: `${(asp.Negative / asp.total) * 100}%`,
+                              }}
                             />
                           )}
                         </div>
@@ -1346,10 +1724,16 @@ export default function PlaceReviewPage() {
   const { toast } = useToast();
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
-  const { data: jobsData, isLoading, refetch } = useQuery<{ jobs: PlaceReviewJob[] }>({
+  const {
+    data: jobsData,
+    isLoading,
+    refetch,
+  } = useQuery<{ jobs: PlaceReviewJob[] }>({
     queryKey: ["place-review-jobs"],
     queryFn: async () => {
-      const res = await fetch("/api/place-review/jobs", { credentials: "include" });
+      const res = await fetch("/api/place-review/jobs", {
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("작업 목록 조회 실패");
       return res.json();
     },
@@ -1391,22 +1775,36 @@ export default function PlaceReviewPage() {
                 <MessageSquare className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold">플레이스 리뷰 분석</h1>
-                <p className="text-sm text-muted-foreground">네이버 플레이스 리뷰를 수집하고 AI로 감정을 분석합니다</p>
+                <h1 className="text-2xl md:text-3xl font-bold">
+                  플레이스 리뷰 분석
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  네이버 플레이스 리뷰를 수집하고 감정을 분석합니다
+                </p>
               </div>
             </div>
-            <Button variant="outline" onClick={() => refetch()}>
+            {/* 260203 주석처리 - 추후 필요 시 주석 삭제 */}
+            {/* <Button variant="outline" onClick={() => refetch()}>
               <RefreshCw className="w-4 h-4 mr-2" />
               새로고침
-            </Button>
+            </Button> */}
           </div>
 
-          <ServiceStatusAlert service="redis" featureName="플레이스 리뷰 분석" />
+          <ServiceStatusAlert
+            service="redis"
+            featureName="플레이스 리뷰 분석"
+          />
 
           <div className="grid gap-8 lg:grid-cols-3">
             <div className="space-y-6">
-              <CreateJobForm onSuccess={() => queryClient.invalidateQueries({ queryKey: ["place-review-jobs"] })} />
-              
+              <CreateJobForm
+                onSuccess={() =>
+                  queryClient.invalidateQueries({
+                    queryKey: ["place-review-jobs"],
+                  })
+                }
+              />
+
               <div>
                 <h2 className="text-lg font-semibold mb-3">분석 작업 목록</h2>
                 {isLoading ? (
@@ -1431,8 +1829,12 @@ export default function PlaceReviewPage() {
                 <Card>
                   <CardContent className="py-16 text-center text-muted-foreground">
                     <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p className="font-medium mb-1">분석 결과가 여기에 표시됩니다</p>
-                    <p className="text-sm">왼쪽에서 분석 작업을 선택하거나 새 분석을 시작하세요</p>
+                    <p className="font-medium mb-1">
+                      분석 결과가 여기에 표시됩니다
+                    </p>
+                    <p className="text-sm">
+                      왼쪽에서 분석 작업을 선택하거나 새 분석을 시작하세요
+                    </p>
                   </CardContent>
                 </Card>
               )}

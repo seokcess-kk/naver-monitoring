@@ -117,7 +117,7 @@ export default function ProfilePage() {
           <Link href="/">
             <Button variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="w-4 h-4" />
-              대시보드로 돌아가기
+              메인으로 돌아가기
             </Button>
           </Link>
         </div>

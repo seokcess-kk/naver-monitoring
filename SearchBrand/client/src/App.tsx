@@ -32,7 +32,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/">
-        {isAuthenticated ? <Dashboard /> : <LandingPage />}
+        {isAuthenticated ? <PlaceReviewPage /> : <LandingPage />}
       </Route>
       <Route path="/profile">
         {isAuthenticated ? <ProfilePage /> : <AuthPage />}
@@ -42,8 +42,8 @@ function Router() {
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/complete-signup" component={CompleteSignupPage} />
       <Route path="/admin" component={AdminPage} />
-      <Route path="/place-review">
-        {isAuthenticated ? <PlaceReviewPage /> : <AuthPage />}
+      <Route path="/search">
+        {isAuthenticated ? <Dashboard /> : <AuthPage />}
       </Route>
       <Route component={NotFound} />
     </Switch>
