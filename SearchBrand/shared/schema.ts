@@ -324,6 +324,8 @@ export const placeReviewJobs = pgTable("place_review_jobs", {
   totalReviews: varchar("total_reviews").default("0"),
   analyzedReviews: varchar("analyzed_reviews").default("0"),
   errorMessage: text("error_message"),
+  aiSummary: text("ai_summary"),
+  aiSuggestions: text("ai_suggestions"),
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
 }, (table) => [

@@ -34,6 +34,8 @@ interface PlaceReviewJob {
   totalReviews: string;
   analyzedReviews: string;
   errorMessage: string | null;
+  aiSummary: string | null;
+  aiSuggestions: string | null;
   createdAt: string;
   completedAt: string | null;
 }
@@ -346,16 +348,23 @@ function ReviewReportSection({ stats, reviews }: { stats: JobStats | undefined; 
           <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-violet-500" />
             전체 요약
+            {stats.job.aiSummary && (
+              <Badge variant="outline" className="text-xs ml-2 text-violet-500 border-violet-500/30">AI</Badge>
+            )}
           </h4>
           <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
-            <p className="text-sm text-muted-foreground">
-              {total}개의 리뷰 중 긍정 {sentimentCounts.Positive}건({total > 0 ? Math.round((sentimentCounts.Positive / total) * 100) : 0}%), 
-              부정 {sentimentCounts.Negative}건({total > 0 ? Math.round((sentimentCounts.Negative / total) * 100) : 0}%)으로 분석되었습니다.
-              {keywordAnalysis.topPositive.length > 0 && (
-                <> 주요 강점은 "{keywordAnalysis.topPositive.map(k => k.keyword).join('", "')}"입니다.</>
-              )}
-              {keywordAnalysis.topNegative.length > 0 && (
-                <> 개선이 필요한 부분은 "{keywordAnalysis.topNegative.map(k => k.keyword).join('", "')}"로 파악됩니다.</>
+            <p className="text-sm text-muted-foreground whitespace-pre-line">
+              {stats.job.aiSummary || (
+                <>
+                  {total}개의 리뷰 중 긍정 {sentimentCounts.Positive}건({total > 0 ? Math.round((sentimentCounts.Positive / total) * 100) : 0}%), 
+                  부정 {sentimentCounts.Negative}건({total > 0 ? Math.round((sentimentCounts.Negative / total) * 100) : 0}%)으로 분석되었습니다.
+                  {keywordAnalysis.topPositive.length > 0 && (
+                    <> 주요 강점은 "{keywordAnalysis.topPositive.map(k => k.keyword).join('", "')}"입니다.</>
+                  )}
+                  {keywordAnalysis.topNegative.length > 0 && (
+                    <> 개선이 필요한 부분은 "{keywordAnalysis.topNegative.map(k => k.keyword).join('", "')}"로 파악됩니다.</>
+                  )}
+                </>
               )}
             </p>
           </div>
@@ -365,9 +374,12 @@ function ReviewReportSection({ stats, reviews }: { stats: JobStats | undefined; 
           <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <ClipboardList className="w-4 h-4 text-amber-500" />
             개선 제안
+            {stats.job.aiSuggestions && (
+              <Badge variant="outline" className="text-xs ml-2 text-amber-500 border-amber-500/30">AI</Badge>
+            )}
           </h4>
           <div className="space-y-2">
-            {actionItems.map((item, idx) => (
+            {(stats.job.aiSuggestions ? JSON.parse(stats.job.aiSuggestions) as string[] : actionItems).map((item, idx) => (
               <div key={idx} className="flex items-start gap-2 p-2 rounded-lg bg-amber-500/5 border border-amber-500/10">
                 <span className="text-xs font-bold text-amber-600 mt-0.5">{idx + 1}</span>
                 <span className="text-sm">{item}</span>

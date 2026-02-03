@@ -1,9 +1,10 @@
 import { Queue, Worker, Job, ConnectionOptions } from "bullmq";
 import { db } from "../db";
 import { placeReviewJobs, placeReviews, placeReviewAnalyses } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { scrapePlaceReviews } from "../services/place-review-scraper";
 import { analyzeReview } from "../services/place-review-analyzer";
+import { generateReviewSummary } from "../services/review-summary-generator";
 import { checkRedisConnection, isRedisAvailable } from "./redis";
 
 const QUEUE_NAME = "place-review-analysis";
@@ -158,15 +159,115 @@ async function processPlaceReviewJob(job: Job<PlaceReviewJobData>): Promise<void
 
     await db.update(placeReviewJobs)
       .set({
-        status: "completed",
-        progress: "100",
-        analyzedReviews: String(analyzedCount),
-        statusMessage: `분석 완료: ${analyzedCount}/${reviews.length}개 리뷰`,
-        completedAt: new Date(),
+        progress: "95",
+        statusMessage: "AI 요약 생성 중...",
       })
       .where(eq(placeReviewJobs.id, jobId));
 
-    console.log(`[PlaceReviewWorker] Job ${jobId} completed. Analyzed ${analyzedCount}/${reviews.length} reviews`);
+    try {
+      const sentimentStats = await db.select({
+        sentiment: placeReviewAnalyses.sentiment,
+        count: sql<number>`count(*)::int`,
+      })
+        .from(placeReviewAnalyses)
+        .innerJoin(placeReviews, eq(placeReviewAnalyses.reviewId, placeReviews.id))
+        .where(eq(placeReviews.jobId, jobId))
+        .groupBy(placeReviewAnalyses.sentiment);
+
+      const allAnalyses = await db.select({
+        keywords: placeReviewAnalyses.keywords,
+        sentiment: placeReviewAnalyses.sentiment,
+      })
+        .from(placeReviewAnalyses)
+        .innerJoin(placeReviews, eq(placeReviewAnalyses.reviewId, placeReviews.id))
+        .where(eq(placeReviews.jobId, jobId));
+
+      const reviewDates = await db.select({
+        minDate: sql<Date>`min(review_date)`,
+        maxDate: sql<Date>`max(review_date)`,
+      })
+        .from(placeReviews)
+        .where(eq(placeReviews.jobId, jobId));
+
+      const positive = sentimentStats.find(s => s.sentiment === "Positive")?.count || 0;
+      const negative = sentimentStats.find(s => s.sentiment === "Negative")?.count || 0;
+      const neutral = sentimentStats.find(s => s.sentiment === "Neutral")?.count || 0;
+      const total = positive + negative + neutral;
+
+      const keywordMap: Record<string, { positive: number; negative: number; neutral: number; total: number }> = {};
+      allAnalyses.forEach(a => {
+        const keywords = JSON.parse(a.keywords || "[]") as string[];
+        keywords.forEach(kw => {
+          if (!keywordMap[kw]) keywordMap[kw] = { positive: 0, negative: 0, neutral: 0, total: 0 };
+          if (a.sentiment === "Positive") keywordMap[kw].positive++;
+          else if (a.sentiment === "Negative") keywordMap[kw].negative++;
+          else keywordMap[kw].neutral++;
+          keywordMap[kw].total++;
+        });
+      });
+
+      const keywordsWithRatio = Object.entries(keywordMap).map(([keyword, counts]) => ({
+        keyword,
+        ...counts,
+        negativeRatio: counts.total > 0 ? Math.round((counts.negative / counts.total) * 100) : 0,
+      }));
+
+      const topNegative = keywordsWithRatio
+        .filter(k => k.negative > 0)
+        .sort((a, b) => (b.total * b.negative / b.total) - (a.total * a.negative / a.total))
+        .slice(0, 3)
+        .map(k => ({ keyword: k.keyword, negativeRatio: k.negativeRatio }));
+
+      const topPositive = keywordsWithRatio
+        .filter(k => k.positive > 0)
+        .sort((a, b) => (b.total * b.positive / b.total) - (a.total * a.positive / a.total))
+        .slice(0, 3)
+        .map(k => k.keyword);
+
+      const minDate = reviewDates[0]?.minDate;
+      const maxDate = reviewDates[0]?.maxDate;
+      const period = minDate && maxDate
+        ? `${new Date(minDate).toLocaleDateString("ko-KR")} ~ ${new Date(maxDate).toLocaleDateString("ko-KR")}`
+        : "분석 기간";
+
+      const summaryResult = await generateReviewSummary({
+        period,
+        totalReviews: total,
+        sentimentSummary: {
+          positive: total > 0 ? Math.round((positive / total) * 100) : 0,
+          neutral: total > 0 ? Math.round((neutral / total) * 100) : 0,
+          negative: total > 0 ? Math.round((negative / total) * 100) : 0,
+        },
+        topNegativeKeywords: topNegative,
+        topPositiveKeywords: topPositive,
+      });
+
+      await db.update(placeReviewJobs)
+        .set({
+          status: "completed",
+          progress: "100",
+          analyzedReviews: String(analyzedCount),
+          statusMessage: `분석 완료: ${analyzedCount}/${reviews.length}개 리뷰`,
+          aiSummary: summaryResult.summary,
+          aiSuggestions: JSON.stringify(summaryResult.suggestions),
+          completedAt: new Date(),
+        })
+        .where(eq(placeReviewJobs.id, jobId));
+
+      console.log(`[PlaceReviewWorker] Job ${jobId} completed with AI summary. Analyzed ${analyzedCount}/${reviews.length} reviews`);
+    } catch (summaryError) {
+      console.error(`[PlaceReviewWorker] AI summary generation failed for job ${jobId}:`, summaryError);
+      await db.update(placeReviewJobs)
+        .set({
+          status: "completed",
+          progress: "100",
+          analyzedReviews: String(analyzedCount),
+          statusMessage: `분석 완료: ${analyzedCount}/${reviews.length}개 리뷰 (AI 요약 실패)`,
+          completedAt: new Date(),
+        })
+        .where(eq(placeReviewJobs.id, jobId));
+      console.log(`[PlaceReviewWorker] Job ${jobId} completed without AI summary. Analyzed ${analyzedCount}/${reviews.length} reviews`);
+    }
   } catch (error) {
     console.error(`[PlaceReviewWorker] Job ${jobId} failed:`, error);
     const errorMsg = error instanceof Error ? error.message : "Unknown error";
