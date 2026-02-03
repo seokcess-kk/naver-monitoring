@@ -16,7 +16,7 @@ import { ServiceStatusAlert, useServiceStatus } from "@/components/service-statu
 import { 
   Loader2, Play, Trash2, BarChart3, MessageSquare, TrendingUp, TrendingDown, Minus, 
   RefreshCw, Search, Filter, Download, RotateCcw, AlertTriangle, Lightbulb, ChevronLeft, ChevronRight,
-  Calendar, ArrowUpDown
+  Calendar, ArrowUpDown, FileText, ThumbsDown, ThumbsUp, Sparkles, ClipboardList
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -179,6 +179,204 @@ function InsightCard({ stats, reviews }: { stats: JobStats | undefined; reviews:
         );
       })}
     </div>
+  );
+}
+
+function ReviewReportSection({ stats, reviews }: { stats: JobStats | undefined; reviews: ReviewWithAnalysis[] }) {
+  const keywordAnalysis = useMemo(() => {
+    const map: Record<string, { positive: number; negative: number; neutral: number; total: number }> = {};
+    
+    reviews.forEach(review => {
+      review.keywords.forEach(kw => {
+        if (!map[kw]) map[kw] = { positive: 0, negative: 0, neutral: 0, total: 0 };
+        if (review.sentiment === "Positive") map[kw].positive++;
+        else if (review.sentiment === "Negative") map[kw].negative++;
+        else map[kw].neutral++;
+        map[kw].total++;
+      });
+    });
+
+    const keywordsWithRatio = Object.entries(map).map(([keyword, counts]) => ({
+      keyword,
+      ...counts,
+      negativeRatio: counts.total > 0 ? (counts.negative / counts.total) * 100 : 0,
+      positiveRatio: counts.total > 0 ? (counts.positive / counts.total) * 100 : 0,
+      score: counts.total * (counts.negative / Math.max(counts.total, 1)),
+      positiveScore: counts.total * (counts.positive / Math.max(counts.total, 1)),
+    }));
+
+    const topNegative = [...keywordsWithRatio]
+      .filter(k => k.negative > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+
+    const topPositive = [...keywordsWithRatio]
+      .filter(k => k.positive > 0)
+      .sort((a, b) => b.positiveScore - a.positiveScore)
+      .slice(0, 3);
+
+    return { topNegative, topPositive };
+  }, [reviews]);
+
+  if (!stats || reviews.length === 0) return null;
+
+  const sentimentCounts = {
+    Positive: stats.sentimentStats.find((s) => s.sentiment === "Positive")?.count || 0,
+    Negative: stats.sentimentStats.find((s) => s.sentiment === "Negative")?.count || 0,
+    Neutral: stats.sentimentStats.find((s) => s.sentiment === "Neutral")?.count || 0,
+  };
+  const total = sentimentCounts.Positive + sentimentCounts.Negative + sentimentCounts.Neutral;
+  
+  const reviewDates = reviews.map(r => new Date(r.reviewDate)).filter(d => !isNaN(d.getTime()));
+  const minDate = reviewDates.length > 0 ? new Date(Math.min(...reviewDates.map(d => d.getTime()))) : null;
+  const maxDate = reviewDates.length > 0 ? new Date(Math.max(...reviewDates.map(d => d.getTime()))) : null;
+
+  const actionItems = useMemo(() => {
+    const items: string[] = [];
+    
+    if (keywordAnalysis.topNegative.length > 0) {
+      const topIssue = keywordAnalysis.topNegative[0];
+      items.push(`"${topIssue.keyword}" 관련 불만이 ${topIssue.negative}건 발생 - 개선 우선순위 높음`);
+    }
+    
+    const negativeRatio = total > 0 ? (sentimentCounts.Negative / total) * 100 : 0;
+    if (negativeRatio >= 20) {
+      items.push(`부정 리뷰 비율 ${negativeRatio.toFixed(0)}% - 고객 불만 요인 집중 분석 필요`);
+    }
+    
+    if (keywordAnalysis.topPositive.length > 0) {
+      const topStrength = keywordAnalysis.topPositive[0];
+      items.push(`"${topStrength.keyword}" 강점 유지 - 마케팅 메시지에 활용 권장`);
+    }
+
+    if (items.length === 0) {
+      items.push("현재 리뷰 데이터 기반 특별한 이슈 없음");
+    }
+
+    return items.slice(0, 3);
+  }, [keywordAnalysis, sentimentCounts, total]);
+
+  return (
+    <Card className="border-border/50 overflow-hidden">
+      <CardHeader className="pb-4 bg-gradient-to-r from-violet-500/5 to-purple-500/5 border-b border-border/30">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center">
+            <FileText className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+          </div>
+          <div>
+            <CardTitle className="text-lg font-bold">리뷰 분석 리포트</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {stats.job.placeName || stats.job.placeId} · 총 {total}건 분석
+              {minDate && maxDate && (
+                <span className="ml-2">
+                  ({minDate.toLocaleDateString("ko-KR")} ~ {maxDate.toLocaleDateString("ko-KR")})
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-5 space-y-6">
+        <div>
+          <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-muted-foreground" />
+            전체 감정 요약
+          </h4>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+              <div className="text-2xl font-bold text-green-600">{sentimentCounts.Positive}</div>
+              <div className="text-xs text-muted-foreground">긍정 ({total > 0 ? Math.round((sentimentCounts.Positive / total) * 100) : 0}%)</div>
+            </div>
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-center">
+              <div className="text-2xl font-bold text-red-600">{sentimentCounts.Negative}</div>
+              <div className="text-xs text-muted-foreground">부정 ({total > 0 ? Math.round((sentimentCounts.Negative / total) * 100) : 0}%)</div>
+            </div>
+            <div className="p-3 rounded-lg bg-gray-500/10 border border-gray-500/20 text-center">
+              <div className="text-2xl font-bold text-gray-600">{sentimentCounts.Neutral}</div>
+              <div className="text-xs text-muted-foreground">중립 ({total > 0 ? Math.round((sentimentCounts.Neutral / total) * 100) : 0}%)</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <ThumbsDown className="w-4 h-4 text-red-500" />
+              불만 키워드 Top 3
+            </h4>
+            {keywordAnalysis.topNegative.length === 0 ? (
+              <p className="text-sm text-muted-foreground">불만 키워드 없음</p>
+            ) : (
+              <div className="space-y-2">
+                {keywordAnalysis.topNegative.map((kw, idx) => (
+                  <div key={kw.keyword} className="flex items-center gap-2 p-2 rounded-lg bg-red-500/5 border border-red-500/10">
+                    <span className="text-xs font-bold text-red-500 w-5">{idx + 1}</span>
+                    <span className="text-sm font-medium flex-1">{kw.keyword}</span>
+                    <span className="text-xs text-muted-foreground">{kw.negative}건</span>
+                    <span className="text-xs text-red-500 font-medium">{kw.negativeRatio.toFixed(0)}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <ThumbsUp className="w-4 h-4 text-green-500" />
+              긍정 키워드 Top 3
+            </h4>
+            {keywordAnalysis.topPositive.length === 0 ? (
+              <p className="text-sm text-muted-foreground">긍정 키워드 없음</p>
+            ) : (
+              <div className="space-y-2">
+                {keywordAnalysis.topPositive.map((kw, idx) => (
+                  <div key={kw.keyword} className="flex items-center gap-2 p-2 rounded-lg bg-green-500/5 border border-green-500/10">
+                    <span className="text-xs font-bold text-green-500 w-5">{idx + 1}</span>
+                    <span className="text-sm font-medium flex-1">{kw.keyword}</span>
+                    <span className="text-xs text-muted-foreground">{kw.positive}건</span>
+                    <span className="text-xs text-green-500 font-medium">{kw.positiveRatio.toFixed(0)}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-violet-500" />
+            전체 요약
+          </h4>
+          <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+            <p className="text-sm text-muted-foreground">
+              {total}개의 리뷰 중 긍정 {sentimentCounts.Positive}건({total > 0 ? Math.round((sentimentCounts.Positive / total) * 100) : 0}%), 
+              부정 {sentimentCounts.Negative}건({total > 0 ? Math.round((sentimentCounts.Negative / total) * 100) : 0}%)으로 분석되었습니다.
+              {keywordAnalysis.topPositive.length > 0 && (
+                <> 주요 강점은 "{keywordAnalysis.topPositive.map(k => k.keyword).join('", "')}"입니다.</>
+              )}
+              {keywordAnalysis.topNegative.length > 0 && (
+                <> 개선이 필요한 부분은 "{keywordAnalysis.topNegative.map(k => k.keyword).join('", "')}"로 파악됩니다.</>
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-amber-500" />
+            개선 제안
+          </h4>
+          <div className="space-y-2">
+            {actionItems.map((item, idx) => (
+              <div key={idx} className="flex items-start gap-2 p-2 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                <span className="text-xs font-bold text-amber-600 mt-0.5">{idx + 1}</span>
+                <span className="text-sm">{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -909,7 +1107,7 @@ function JobResults({ jobId }: { jobId: string }) {
         </Card>
       </div>
 
-      <InsightCard stats={stats} reviews={allReviews} />
+      <ReviewReportSection stats={stats} reviews={allReviews} />
 
       <Tabs defaultValue="reviews">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
