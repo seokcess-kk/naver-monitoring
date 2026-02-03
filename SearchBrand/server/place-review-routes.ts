@@ -4,6 +4,11 @@ import { db } from "./db";
 import { placeReviewJobs, placeReviews, placeReviewAnalyses } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { addPlaceReviewJob, startPlaceReviewWorker } from "./queue/place-review-queue";
+import {
+  generateExecutiveSummary,
+  calculateSentimentKeywords,
+  calculateMonthlyTrend,
+} from "./services/report-generator";
 
 const router = Router();
 
@@ -248,6 +253,80 @@ router.get("/jobs/:jobId/stats", requireAuth, async (req: Request, res: Response
   } catch (error) {
     console.error("[PlaceReview] Get stats error:", error);
     res.status(500).json({ error: "통계 조회 실패" });
+  }
+});
+
+router.get("/jobs/:jobId/report", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.session.userId!;
+    const { jobId } = req.params;
+
+    const [job] = await db.select()
+      .from(placeReviewJobs)
+      .where(and(eq(placeReviewJobs.id, jobId), eq(placeReviewJobs.userId, userId)));
+
+    if (!job) {
+      return res.status(404).json({ error: "작업을 찾을 수 없습니다" });
+    }
+
+    if (job.status !== "completed") {
+      return res.status(400).json({ error: "완료된 작업만 리포트를 생성할 수 있습니다" });
+    }
+
+    const reviews = await db.select({
+      reviewText: placeReviews.reviewText,
+      reviewDate: placeReviews.reviewDate,
+      sentiment: placeReviewAnalyses.sentiment,
+      keywords: placeReviewAnalyses.keywords,
+      summary: placeReviewAnalyses.summary,
+    })
+      .from(placeReviews)
+      .leftJoin(placeReviewAnalyses, eq(placeReviews.id, placeReviewAnalyses.reviewId))
+      .where(eq(placeReviews.jobId, jobId))
+      .orderBy(desc(placeReviews.reviewDate));
+
+    const parsedReviews = reviews.map((review) => ({
+      ...review,
+      keywords: review.keywords ? JSON.parse(review.keywords) : [],
+    }));
+
+    const positiveCount = parsedReviews.filter((r) => r.sentiment === "Positive").length;
+    const negativeCount = parsedReviews.filter((r) => r.sentiment === "Negative").length;
+    const neutralCount = parsedReviews.filter((r) => r.sentiment === "Neutral").length;
+    const total = parsedReviews.length;
+
+    const executiveSummary = await generateExecutiveSummary(
+      parsedReviews,
+      job.placeName || job.placeId
+    );
+
+    const sentimentKeywords = calculateSentimentKeywords(parsedReviews);
+    const monthlyTrend = calculateMonthlyTrend(parsedReviews);
+
+    res.json({
+      job: {
+        id: job.id,
+        placeName: job.placeName,
+        placeId: job.placeId,
+        totalReviews: job.totalReviews,
+        completedAt: job.completedAt,
+      },
+      executiveSummary,
+      sentimentRatio: {
+        positive: positiveCount,
+        negative: negativeCount,
+        neutral: neutralCount,
+        total,
+        positivePercent: total > 0 ? Math.round((positiveCount / total) * 100) : 0,
+        negativePercent: total > 0 ? Math.round((negativeCount / total) * 100) : 0,
+        neutralPercent: total > 0 ? Math.round((neutralCount / total) * 100) : 0,
+      },
+      sentimentKeywords,
+      monthlyTrend,
+    });
+  } catch (error) {
+    console.error("[PlaceReview] Get report error:", error);
+    res.status(500).json({ error: "리포트 생성 실패" });
   }
 });
 
