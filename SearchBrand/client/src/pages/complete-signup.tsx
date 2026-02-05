@@ -194,7 +194,7 @@ export default function CompleteSignupPage() {
               <span className="font-medium">{tokenData?.email}</span> 계정의 비밀번호를 설정해주세요.
             </CardDescription>
           </CardHeader>
-          <form onSubmit={handleSubmit}>
+          <form id="auth-form-complete" onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

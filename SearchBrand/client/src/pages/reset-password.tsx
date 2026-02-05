@@ -139,7 +139,7 @@ export default function ResetPasswordPage() {
             <CardTitle>비밀번호 재설정</CardTitle>
             <CardDescription>새 비밀번호를 입력해주세요</CardDescription>
           </CardHeader>
-          <form onSubmit={handleSubmit}>
+          <form id="auth-form-reset" onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="password">새 비밀번호</Label>

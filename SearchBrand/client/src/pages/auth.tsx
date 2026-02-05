@@ -412,7 +412,7 @@ export default function AuthPage() {
                 가입하신 이메일 주소를 입력해주세요
               </CardDescription>
             </CardHeader>
-            <form onSubmit={handleForgotPassword}>
+            <form id="auth-form-forgot" onSubmit={handleForgotPassword}>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="forgot-email">이메일</Label>
@@ -471,7 +471,7 @@ export default function AuthPage() {
               </CardHeader>
 
               <TabsContent value="login">
-                <form onSubmit={handleLogin}>
+                <form id="auth-form-login" onSubmit={handleLogin}>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="login-email">이메일</Label>
@@ -527,7 +527,7 @@ export default function AuthPage() {
               </TabsContent>
 
               <TabsContent value="register">
-                <form onSubmit={handleStartRegistration}>
+                <form id="auth-form-register" onSubmit={handleStartRegistration}>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="register-email">이메일</Label>

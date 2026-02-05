@@ -69,7 +69,7 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
             <p className="text-sm text-muted-foreground mt-1">소중한 의견 감사합니다</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form id="feedback-form" onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-3">
               <Label>카테고리</Label>
               <div className="flex gap-3">

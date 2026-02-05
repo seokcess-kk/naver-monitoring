@@ -89,6 +89,7 @@ export function SearchPanel({
         </div>
 
         <form
+          id="search-form"
           onSubmit={handleSubmit}
           className="flex flex-col md:flex-row gap-3 md:gap-4 items-end"
         >

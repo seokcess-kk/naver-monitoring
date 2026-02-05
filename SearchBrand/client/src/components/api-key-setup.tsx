@@ -180,7 +180,7 @@ export function ApiKeySetup({
                 </div>
               </div>
             )}
-            <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
+            <form id="apikey-form" onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
               <div className="grid sm:grid-cols-2 gap-3 md:gap-4 p-3 md:p-5 bg-muted/30 rounded-xl border border-border/30">
                 <div className="space-y-1.5 md:space-y-2">
                   <Label
