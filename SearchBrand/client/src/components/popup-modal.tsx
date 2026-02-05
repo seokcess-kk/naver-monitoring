@@ -88,6 +88,10 @@ function dismissPopupPermanently(popupId: string) {
 }
 
 function getPageKey(pathname: string, isAuthenticated: boolean): string {
+  if (pathname.includes("/auth") || pathname.includes("/login") || 
+      pathname.includes("/reset-password") || pathname.includes("/complete-signup")) {
+    return "auth";
+  }
   if (pathname === "/" || pathname === "") {
     return isAuthenticated ? "place-review" : "landing";
   }
@@ -103,7 +107,7 @@ function getPageKey(pathname: string, isAuthenticated: boolean): string {
   if (pathname.includes("/admin")) {
     return "admin";
   }
-  return "landing";
+  return "none";
 }
 
 export function PopupModal() {
