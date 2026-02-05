@@ -111,6 +111,7 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-2">
             <Button
+              id="landing-header-features"
               variant="ghost"
               size="sm"
               asChild
@@ -119,6 +120,7 @@ export default function LandingPage() {
               <a href="#features">기능</a>
             </Button>
             <Button
+              id="landing-header-howto"
               variant="ghost"
               size="sm"
               asChild
@@ -127,6 +129,7 @@ export default function LandingPage() {
               <a href="#how-it-works">사용법</a>
             </Button>
             <Button
+              id="landing-header-faq"
               variant="ghost"
               size="sm"
               asChild
@@ -134,7 +137,7 @@ export default function LandingPage() {
             >
               <a href="#faq">FAQ</a>
             </Button>
-            <Button asChild size="sm" data-testid="button-login">
+            <Button id="landing-header-login" asChild size="sm" data-testid="button-login">
               <a href="/auth">로그인</a>
             </Button>
           </div>
@@ -163,6 +166,7 @@ export default function LandingPage() {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                   <Button
+                    id="landing-cta-start"
                     size="lg"
                     className="w-full sm:w-auto group"
                     asChild
@@ -174,6 +178,7 @@ export default function LandingPage() {
                     </a>
                   </Button>
                   <Button
+                    id="landing-cta-learn"
                     size="lg"
                     variant="outline"
                     className="w-full sm:w-auto"
@@ -475,7 +480,7 @@ export default function LandingPage() {
                       onOpenChange={(open) => setOpenFaq(open ? index : null)}
                     >
                       <Card className="overflow-hidden">
-                        <CollapsibleTrigger className="w-full">
+                        <CollapsibleTrigger id={`landing-faq-${index}`} className="w-full">
                           <CardContent className="p-4 flex items-center justify-between text-left">
                             <span className="font-medium text-sm md:text-base">
                               {faq.question}
@@ -511,7 +516,7 @@ export default function LandingPage() {
                 <br className="hidden sm:block" />
                 카드 등록 없이 바로 사용할 수 있습니다.
               </p>
-              <Button size="lg" className="group" asChild>
+              <Button id="landing-cta-final" size="lg" className="group" asChild>
                 <a href="/auth">
                   무료로 시작하기
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
