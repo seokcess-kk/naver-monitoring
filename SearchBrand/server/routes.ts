@@ -82,6 +82,21 @@ export async function registerRoutes(
     console.log("[PlaceReview] Worker not started (Redis may not be running):", error);
   });
 
+  // Threads 캠페인 리다이렉트 라우트
+  const THREADS_UTM_BASE = "/?utm_source=threads&utm_medium=social&utm_campaign=260205_traffic&utm_term=all";
+  
+  app.get("/threads/insight", (_req, res) => {
+    res.redirect(302, `${THREADS_UTM_BASE}&utm_content=insight`);
+  });
+  
+  app.get("/threads/question", (_req, res) => {
+    res.redirect(302, `${THREADS_UTM_BASE}&utm_content=question`);
+  });
+  
+  app.get("/threads/light", (_req, res) => {
+    res.redirect(302, `${THREADS_UTM_BASE}&utm_content=light`);
+  });
+
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
