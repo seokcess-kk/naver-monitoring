@@ -292,6 +292,7 @@ export default function AuthPage() {
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
               <Button
+                id="auth-btn-resend"
                 variant="outline"
                 className="w-full"
                 onClick={handleResend}
@@ -300,6 +301,7 @@ export default function AuthPage() {
                 {resendMutation.isPending ? "발송 중..." : "인증 이메일 재발송"}
               </Button>
               <Button
+                id="auth-btn-change-email"
                 variant="ghost"
                 className="w-full"
                 onClick={() => {
@@ -313,7 +315,7 @@ export default function AuthPage() {
           </Card>
 
           <p className="text-center text-sm text-muted-foreground mt-6">
-            <a href="/" className="hover:text-primary">
+            <a id="auth-link-home-sent" href="/" className="hover:text-primary">
               ← 홈으로 돌아가기
             </a>
           </p>
@@ -430,6 +432,7 @@ export default function AuthPage() {
               </CardContent>
               <CardFooter className="flex flex-col gap-4">
                 <Button
+                  id="auth-btn-reset-password"
                   type="submit"
                   className="w-full"
                   disabled={forgotPasswordMutation.isPending}
@@ -439,6 +442,7 @@ export default function AuthPage() {
                     : "재설정 메일 발송"}
                 </Button>
                 <Button
+                  id="auth-link-back-login"
                   type="button"
                   variant="ghost"
                   className="w-full"
@@ -461,8 +465,8 @@ export default function AuthPage() {
             >
               <CardHeader>
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="login">로그인</TabsTrigger>
-                  <TabsTrigger value="register">회원가입</TabsTrigger>
+                  <TabsTrigger id="auth-tab-login" value="login">로그인</TabsTrigger>
+                  <TabsTrigger id="auth-tab-register" value="register">회원가입</TabsTrigger>
                 </TabsList>
               </CardHeader>
 
@@ -474,7 +478,7 @@ export default function AuthPage() {
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          id="login-email"
+                          id="auth-input-login-email"
                           type="email"
                           placeholder="이메일 주소"
                           value={email}
@@ -489,7 +493,7 @@ export default function AuthPage() {
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          id="login-password"
+                          id="auth-input-login-password"
                           type="password"
                           placeholder="비밀번호"
                           value={password}
@@ -502,6 +506,7 @@ export default function AuthPage() {
                   </CardContent>
                   <CardFooter className="flex flex-col gap-4">
                     <Button
+                      id="auth-btn-login"
                       type="submit"
                       className="w-full"
                       disabled={loginMutation.isPending}
@@ -509,6 +514,7 @@ export default function AuthPage() {
                       {loginMutation.isPending ? "로그인 중..." : "로그인"}
                     </Button>
                     <Button
+                      id="auth-link-forgot"
                       type="button"
                       variant="ghost"
                       className="text-sm text-muted-foreground"
@@ -528,7 +534,7 @@ export default function AuthPage() {
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          id="register-email"
+                          id="auth-input-register-email"
                           type="email"
                           placeholder="이메일 주소"
                           value={email}
@@ -546,7 +552,7 @@ export default function AuthPage() {
                   </CardContent>
                   <CardFooter>
                     <Button
-                      id="auth_email"
+                      id="auth-btn-register"
                       type="submit"
                       className="w-full"
                       disabled={startRegistrationMutation.isPending}
@@ -563,7 +569,7 @@ export default function AuthPage() {
         )}
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          <a href="/" className="hover:text-primary">
+          <a id="auth-link-home" href="/" className="hover:text-primary">
             ← 홈으로 돌아가기
           </a>
         </p>

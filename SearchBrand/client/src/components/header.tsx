@@ -35,7 +35,7 @@ export function Header() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4 max-w-7xl">
         <div className="flex items-center gap-6">
           <Link href="/">
-            <div className="flex items-center cursor-pointer hover:opacity-80 transition-opacity">
+            <div id="header-logo" className="flex items-center cursor-pointer hover:opacity-80 transition-opacity">
               <svg className="w-10 h-10" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="224" cy="224" r="120" stroke="#1D4ED8" strokeWidth="24" />
                 <circle cx="224" cy="224" r="72" stroke="#22D3EE" strokeWidth="16" />
@@ -60,6 +60,7 @@ export function Header() {
               return (
                 <Link key={item.href} href={item.href}>
                   <Button
+                    id={item.href === "/" ? "nav-place-review" : "nav-search"}
                     variant={isActive ? "default" : "ghost"}
                     size="sm"
                     className={cn(
@@ -81,7 +82,7 @@ export function Header() {
         <div className="flex items-center gap-2">
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
+              <Button id="header-mobile-menu" variant="ghost" size="icon" className="md:hidden">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
@@ -130,6 +131,7 @@ export function Header() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
+                id="header-profile-trigger"
                 variant="ghost"
                 className="relative h-9 w-9 rounded-full ring-2 ring-border/50 hover:ring-primary/30 transition-all"
                 data-testid="button-user-menu"
@@ -165,20 +167,20 @@ export function Header() {
               </div>
               <DropdownMenuSeparator />
               <Link href="/profile">
-                <DropdownMenuItem data-testid="menu-item-profile">
+                <DropdownMenuItem id="header-profile-settings" data-testid="menu-item-profile">
                   <User className="mr-2 h-4 w-4" />
                   프로필
                 </DropdownMenuItem>
               </Link>
               <Link href="/profile">
-                <DropdownMenuItem data-testid="menu-item-settings">
+                <DropdownMenuItem id="header-profile-config" data-testid="menu-item-settings">
                   <Settings className="mr-2 h-4 w-4" />
                   설정
                 </DropdownMenuItem>
               </Link>
               {(user?.role === "admin" || user?.role === "superadmin") && (
                 <Link href="/admin">
-                  <DropdownMenuItem data-testid="menu-item-admin">
+                  <DropdownMenuItem id="header-profile-admin" data-testid="menu-item-admin">
                     <Shield className="mr-2 h-4 w-4" />
                     관리자
                   </DropdownMenuItem>
@@ -186,6 +188,7 @@ export function Header() {
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
+                id="header-profile-logout"
                 onClick={() => logout()}
                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
                 data-testid="button-logout"
