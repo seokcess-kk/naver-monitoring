@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 
 interface Popup {
   id: string;
@@ -86,9 +87,9 @@ function dismissPopupPermanently(popupId: string) {
   saveDismissedPopups(dismissed);
 }
 
-function getPageKey(pathname: string): string {
+function getPageKey(pathname: string, isAuthenticated: boolean): string {
   if (pathname === "/" || pathname === "") {
-    return "landing";
+    return isAuthenticated ? "place-review" : "landing";
   }
   if (pathname.includes("/dashboard") || pathname.includes("/search")) {
     return "dashboard";
@@ -107,6 +108,7 @@ function getPageKey(pathname: string): string {
 
 export function PopupModal() {
   const [location] = useLocation();
+  const { isAuthenticated } = useAuth();
   const [currentPopupIndex, setCurrentPopupIndex] = useState(0);
   const [visiblePopups, setVisiblePopups] = useState<Popup[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -128,7 +130,7 @@ export function PopupModal() {
       return;
     }
     
-    const pageKey = getPageKey(location);
+    const pageKey = getPageKey(location, isAuthenticated);
     
     const filtered = activePopups.filter((popup) => {
       if (isPopupDismissed(popup.id)) {
@@ -146,7 +148,7 @@ export function PopupModal() {
     setVisiblePopups(filtered);
     setCurrentPopupIndex(0);
     setIsOpen(filtered.length > 0);
-  }, [activePopups, location]);
+  }, [activePopups, location, isAuthenticated]);
   
   const currentPopup = visiblePopups[currentPopupIndex];
   
