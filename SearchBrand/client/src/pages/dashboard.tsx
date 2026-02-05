@@ -465,6 +465,7 @@ export default function Dashboard() {
               <Card className="p-3 flex items-center gap-2 flex-wrap">
                 <Highlighter className="w-4 h-4 text-muted-foreground shrink-0" />
                 <Input
+                  id="search-input-highlight"
                   placeholder="브랜드/URL 하이라이트 (2글자 이상)"
                   value={highlightTerm}
                   onChange={(e) => setHighlightTerm(e.target.value)}
@@ -472,6 +473,7 @@ export default function Dashboard() {
                 />
                 {highlightTerm && (
                   <Button
+                    id="search-btn-clear-highlight"
                     variant="ghost"
                     size="sm"
                     className="h-9 px-2"

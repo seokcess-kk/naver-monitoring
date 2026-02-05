@@ -1003,7 +1003,7 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
         <div className="space-y-2">
           <Label htmlFor="placeId">플레이스 ID</Label>
           <Input
-            id="placeId"
+            id="review-input-url"
             placeholder="예: 1414590796"
             value={placeId}
             onChange={(e) => setPlaceId(e.target.value)}
@@ -1016,7 +1016,7 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
         <div className="space-y-2">
           <Label>수집 모드</Label>
           <Select value={mode} onValueChange={(v) => setMode(v as ScrapeMode)}>
-            <SelectTrigger>
+            <SelectTrigger id="review-select-mode">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1031,7 +1031,7 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
           <div className="space-y-2">
             <Label htmlFor="limitQty">수집할 리뷰 수</Label>
             <Input
-              id="limitQty"
+              id="review-input-qty"
               type="number"
               min="1"
               max="500"
@@ -1066,6 +1066,7 @@ function CreateJobForm({ onSuccess }: { onSuccess: () => void }) {
         )}
 
         <Button
+          id="review-btn-start"
           onClick={() => createMutation.mutate()}
           disabled={!placeId || createMutation.isPending}
           className="w-full"
@@ -1158,6 +1159,7 @@ function JobList({
               <div className="flex items-center gap-1">
                 {job.status === "failed" && (
                   <Button
+                    id={`review-btn-retry-${job.id}`}
                     variant="ghost"
                     size="icon"
                     onClick={(e) => {
@@ -1170,6 +1172,7 @@ function JobList({
                   </Button>
                 )}
                 <Button
+                  id={`review-btn-delete-${job.id}`}
                   variant="ghost"
                   size="icon"
                   onClick={(e) => {
@@ -1456,15 +1459,15 @@ function JobResults({ jobId }: { jobId: string }) {
       <Tabs defaultValue="reviews">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <TabsList>
-            <TabsTrigger value="reviews">
+            <TabsTrigger id="review-tab-reviews" value="reviews">
               <MessageSquare className="w-4 h-4 mr-2" />
               리뷰 ({reviewJobInfo?.totalReviews || allReviews.length})
             </TabsTrigger>
-            <TabsTrigger value="aspects">
+            <TabsTrigger id="review-tab-aspects" value="aspects">
               <BarChart3 className="w-4 h-4 mr-2" />
               속성 분석
             </TabsTrigger>
-            <TabsTrigger value="trends">
+            <TabsTrigger id="review-tab-trends" value="trends">
               <TrendingUp className="w-4 h-4 mr-2" />
               추이
             </TabsTrigger>
@@ -1482,6 +1485,7 @@ function JobResults({ jobId }: { jobId: string }) {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
+                  id="review-input-search"
                   placeholder="리뷰 내용, 키워드, 작성자 검색..."
                   value={searchQuery}
                   onChange={(e) => {
@@ -1498,7 +1502,7 @@ function JobResults({ jobId }: { jobId: string }) {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="w-full sm:w-32">
+                <SelectTrigger id="review-filter-sentiment" className="w-full sm:w-32">
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="감정" />
                 </SelectTrigger>
@@ -1513,7 +1517,7 @@ function JobResults({ jobId }: { jobId: string }) {
                 value={sortOrder}
                 onValueChange={(v) => setSortOrder(v as SortOrder)}
               >
-                <SelectTrigger className="w-full sm:w-36">
+                <SelectTrigger id="review-select-sort" className="w-full sm:w-36">
                   <ArrowUpDown className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="정렬" />
                 </SelectTrigger>
@@ -1612,6 +1616,7 @@ function JobResults({ jobId }: { jobId: string }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
+                    id="review-btn-page-prev"
                     variant="outline"
                     size="icon"
                     className="h-8 w-8"
@@ -1622,6 +1627,7 @@ function JobResults({ jobId }: { jobId: string }) {
                   </Button>
                   <div className="flex items-center gap-1">
                     <Input
+                      id="review-input-page"
                       type="number"
                       min={1}
                       max={totalPages}
@@ -1637,6 +1643,7 @@ function JobResults({ jobId }: { jobId: string }) {
                     </span>
                   </div>
                   <Button
+                    id="review-btn-page-next"
                     variant="outline"
                     size="icon"
                     className="h-8 w-8"

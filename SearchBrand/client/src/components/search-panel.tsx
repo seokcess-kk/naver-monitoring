@@ -99,6 +99,7 @@ export function SearchPanel({
             <div className="relative">
               <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground/60" />
               <Input
+                id="search-input-keyword"
                 ref={keywordInputRef}
                 type="search"
                 placeholder="예: 강남 맛집, 다이어트한의원"
@@ -131,6 +132,7 @@ export function SearchPanel({
                 onValueChange={(v) => setSortType(v as "sim" | "date")}
               >
                 <SelectTrigger
+                  id="search-select-sort"
                   className="h-10 md:h-12 bg-muted/30 border-border/50 text-sm"
                   data-testid="select-sort-type"
                 >
@@ -144,6 +146,7 @@ export function SearchPanel({
             </div>
 
             <Button
+              id="search-btn-submit"
               type="submit"
               size="lg"
               disabled={isSearching}
