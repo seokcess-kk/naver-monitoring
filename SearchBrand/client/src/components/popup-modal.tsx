@@ -13,7 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface Popup {
   id: string;
-  title: string;
+  title?: string;
   content: string;
   imageUrl: string | null;
   targetPage: string;
@@ -181,16 +181,12 @@ export function PopupModal() {
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-md sm:max-w-lg">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-semibold">
-              {currentPopup.title}
-            </DialogTitle>
-            {visiblePopups.length > 1 && (
-              <span className="text-sm text-muted-foreground mr-8">
-                {currentPopupIndex + 1} / {visiblePopups.length}
-              </span>
-            )}
-          </div>
+          <DialogTitle className="sr-only">팝업 알림</DialogTitle>
+          {visiblePopups.length > 1 && (
+            <div className="text-sm text-muted-foreground text-right mr-8">
+              {currentPopupIndex + 1} / {visiblePopups.length}
+            </div>
+          )}
         </DialogHeader>
         
         <div className="space-y-4">
@@ -198,7 +194,7 @@ export function PopupModal() {
             <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-muted">
               <img
                 src={currentPopup.imageUrl}
-                alt={currentPopup.title}
+                alt="팝업 이미지"
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = "none";

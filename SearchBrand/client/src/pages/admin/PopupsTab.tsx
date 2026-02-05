@@ -32,7 +32,6 @@ const TARGET_PAGE_OPTIONS = [
 ];
 
 const getEmptyPopup = () => ({
-  title: "",
   content: "",
   imageUrl: "",
   startDate: new Date().toISOString().slice(0, 16),
@@ -141,7 +140,6 @@ export function PopupsTab() {
   const handleEdit = (popup: Popup) => {
     setEditingPopup(popup);
     setFormData({
-      title: popup.title,
       content: popup.content,
       imageUrl: popup.imageUrl || "",
       startDate: new Date(popup.startDate).toISOString().slice(0, 16),
@@ -233,7 +231,6 @@ export function PopupsTab() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>상태</TableHead>
-                    <TableHead>제목</TableHead>
                     <TableHead>노출 페이지</TableHead>
                     <TableHead>기간</TableHead>
                     <TableHead>우선순위</TableHead>
@@ -260,9 +257,6 @@ export function PopupsTab() {
                             <Badge variant="outline">비활성</Badge>
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell className="font-medium max-w-[200px] truncate">
-                        {popup.title}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
@@ -340,15 +334,6 @@ export function PopupsTab() {
             <DialogTitle>{editingPopup ? "팝업 수정" : "새 팝업 생성"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">제목 *</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="팝업 제목을 입력하세요"
-              />
-            </div>
             <div className="space-y-2">
               <Label htmlFor="content">내용 (HTML 지원) *</Label>
               <Textarea
@@ -446,7 +431,7 @@ export function PopupsTab() {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>취소</Button>
             <Button 
               onClick={handleSubmit}
-              disabled={!formData.title || !formData.content || createMutation.isPending || updateMutation.isPending}
+              disabled={!formData.content || createMutation.isPending || updateMutation.isPending}
             >
               {editingPopup ? "수정" : "생성"}
             </Button>

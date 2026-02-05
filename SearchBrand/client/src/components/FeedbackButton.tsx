@@ -35,9 +35,11 @@ export function FeedbackButton() {
                 <X className="h-3 w-3 text-gray-500" />
               </button>
               <p className="text-sm font-medium text-gray-900">
-                간단한 피드백 부탁드려요
+                소중한 피드백 감사합니다.
               </p>
-              <p className="text-xs text-gray-500 mt-1">💬 의견을 보내주세요</p>
+              <p className="text-xs text-gray-500 mt-1">
+                💬 서비스 개선에 큰 힘이 됩니다
+              </p>
             </div>
             <div className="absolute -bottom-2 right-6 w-4 h-4 bg-white border-r border-b border-gray-100 rotate-45" />
           </div>
