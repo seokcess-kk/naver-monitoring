@@ -1775,7 +1775,12 @@ router.get("/popups/:id", requireAdmin, async (req: AdminRequest, res: Response)
 // 팝업 생성 (관리자)
 router.post("/popups", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
-    const parsed = insertPopupSchema.safeParse(req.body);
+    const body = {
+      ...req.body,
+      startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
+      endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
+    };
+    const parsed = insertPopupSchema.safeParse(body);
     if (!parsed.success) {
       return res.status(400).json({ error: "유효하지 않은 입력값", details: parsed.error.errors });
     }
@@ -1801,7 +1806,12 @@ router.post("/popups", requireAdmin, async (req: AdminRequest, res: Response) =>
 router.patch("/popups/:id", requireAdmin, async (req: AdminRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const parsed = updatePopupSchema.safeParse(req.body);
+    const body = {
+      ...req.body,
+      startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
+      endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
+    };
+    const parsed = updatePopupSchema.safeParse(body);
     if (!parsed.success) {
       return res.status(400).json({ error: "유효하지 않은 입력값", details: parsed.error.errors });
     }
