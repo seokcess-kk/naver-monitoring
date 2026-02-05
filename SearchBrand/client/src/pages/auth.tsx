@@ -546,6 +546,7 @@ export default function AuthPage() {
                   </CardContent>
                   <CardFooter>
                     <Button
+                      id="auth_email"
                       type="submit"
                       className="w-full"
                       disabled={startRegistrationMutation.isPending}
