@@ -207,8 +207,8 @@ export function PopupModal() {
             </div>
           )}
           
-          <DialogDescription className="text-base text-foreground whitespace-pre-wrap">
-            {currentPopup.content}
+          <DialogDescription className="text-base text-foreground" asChild>
+            <div dangerouslySetInnerHTML={{ __html: currentPopup.content }} />
           </DialogDescription>
         </div>
         
