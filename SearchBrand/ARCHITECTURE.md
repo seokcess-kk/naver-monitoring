@@ -1,8 +1,8 @@
-# SEARCH SCOPE - Architecture
+# SearchBrand - Architecture
 
 ## Overview
 
-**SEARCH SCOPE** - "See the Share. Shape the Strategy."
+**SearchBrand** - "See the Share. Shape the Strategy."
 
 네이버 검색 통합 모니터링 및 플레이스 리뷰 분석 서비스입니다. 회원별로 네이버 API 키를 등록하고, 키워드를 검색하여 블로그, 카페, 지식iN, 뉴스 4개 채널의 검색 결과와 스마트블록 노출 현황을 실시간으로 확인할 수 있습니다. 시장 키워드 점유율을 파악하고 전략을 설계하세요.
 

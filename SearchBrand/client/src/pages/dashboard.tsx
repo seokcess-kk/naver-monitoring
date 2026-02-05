@@ -25,10 +25,10 @@ import {
   Highlighter,
 } from "lucide-react";
 
-const RECENT_SEARCHES_KEY = "search-scope-recent-searches";
+const RECENT_SEARCHES_KEY = "searchbrand-recent-searches";
 const MAX_RECENT_SEARCHES = 5;
-const SEARCH_RESULTS_KEY = "search-scope-search-results";
-const SEARCH_STATE_KEY = "search-scope-search-state";
+const SEARCH_RESULTS_KEY = "searchbrand-search-results";
+const SEARCH_STATE_KEY = "searchbrand-search-state";
 
 interface TrendDataPoint {
   period: string;

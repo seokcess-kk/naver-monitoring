@@ -1,4 +1,4 @@
-# Design Guidelines: SEARCH SCOPE
+# Design Guidelines: SearchBrand
 
 **Slogan:** "See the Share. Shape the Strategy."
 

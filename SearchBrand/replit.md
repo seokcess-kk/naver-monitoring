@@ -1,4 +1,4 @@
-# SEARCH SCOPE
+# SearchBrand
 
 **Slogan:** "See the Share. Shape the Strategy."
 
