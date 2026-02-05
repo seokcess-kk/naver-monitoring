@@ -115,7 +115,7 @@ export default function ProfilePage() {
       <main className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-6">
           <Link href="/">
-            <Button variant="ghost" size="sm" className="gap-2">
+            <Button id="profile-btn-back" variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="w-4 h-4" />
               메인으로 돌아가기
             </Button>
@@ -258,7 +258,7 @@ export default function ProfilePage() {
 
               <Dialog open={withdrawDialogOpen} onOpenChange={setWithdrawDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="destructive" className="w-full">
+                  <Button id="profile-btn-withdraw" variant="destructive" className="w-full">
                     <UserX className="w-4 h-4 mr-2" />
                     회원 탈퇴
                   </Button>
@@ -274,7 +274,7 @@ export default function ProfilePage() {
                     <div className="space-y-2">
                       <Label htmlFor="password">비밀번호</Label>
                       <Input
-                        id="password"
+                        id="profile-input-password"
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -283,10 +283,11 @@ export default function ProfilePage() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setWithdrawDialogOpen(false)}>
+                    <Button id="profile-btn-withdraw-cancel" variant="outline" onClick={() => setWithdrawDialogOpen(false)}>
                       취소
                     </Button>
                     <Button 
+                      id="profile-btn-withdraw-confirm"
                       variant="destructive" 
                       onClick={handleWithdraw}
                       disabled={withdrawMutation.isPending}
