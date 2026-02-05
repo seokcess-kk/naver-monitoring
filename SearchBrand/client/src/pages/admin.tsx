@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { Shield, ArrowLeft, RefreshCw, Clock } from "lucide-react";
+import { Shield, Home, RefreshCw, Clock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import {
   StatsCards,
@@ -68,7 +68,7 @@ export default function AdminPage() {
             <h2 className="text-xl font-semibold mb-2">접근 권한 없음</h2>
             <p className="text-muted-foreground mb-4">관리자 권한이 필요한 페이지입니다.</p>
             <Button variant="outline" onClick={() => window.location.href = "/"}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
+              <Home className="w-4 h-4 mr-2" />
               홈으로 돌아가기
             </Button>
           </CardContent>
@@ -86,8 +86,8 @@ export default function AdminPage() {
       <header className="border-b bg-card shrink-0">
         <div className="px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.location.href = "/"}>
-              <ArrowLeft className="w-4 h-4" />
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.location.href = "/"} title="홈으로">
+              <Home className="w-4 h-4" />
             </Button>
             <h1 className="text-base font-semibold">Admin Console</h1>
             <Badge variant="secondary" className="text-xs font-normal hidden sm:inline-flex">
