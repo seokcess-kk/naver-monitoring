@@ -87,11 +87,24 @@ function dismissPopupPermanently(popupId: string) {
   saveDismissedPopups(dismissed);
 }
 
+// 인증이 필요한 경로 목록
+const PROTECTED_ROUTES = ["/dashboard", "/search", "/place-review", "/profile", "/admin"];
+
 function getPageKey(pathname: string, isAuthenticated: boolean): string {
+  // 명시적 인증 페이지
   if (pathname.includes("/auth") || pathname.includes("/login") || 
       pathname.includes("/reset-password") || pathname.includes("/complete-signup")) {
     return "auth";
   }
+  
+  // 비로그인 상태에서 인증 필요 경로 접근 시 → auth로 분류
+  if (!isAuthenticated) {
+    const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.includes(route));
+    if (isProtectedRoute) {
+      return "auth";
+    }
+  }
+  
   if (pathname === "/" || pathname === "") {
     return isAuthenticated ? "place-review" : "landing";
   }
