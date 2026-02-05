@@ -143,7 +143,6 @@ export function PopupModal() {
     });
     
     filtered.sort((a, b) => b.priority - a.priority);
-    
     setVisiblePopups(filtered);
     setCurrentPopupIndex(0);
     setIsOpen(filtered.length > 0);
