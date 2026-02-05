@@ -1,11 +1,13 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
 import { registerAuthRoutes, isAuthenticated } from "./auth-routes";
+import { and, eq, gte, lte, desc } from "drizzle-orm";
 import { findUserById } from "./auth-service";
 import { searchAllChannels, searchSingleChannel, QuotaExceededError } from "./naver-api";
 import { crawlNaverSearch } from "./crawler";
-import { insertApiKeySchema, updateApiKeySchema } from "@shared/schema";
+import { insertApiKeySchema, updateApiKeySchema, popups } from "@shared/schema";
 import { z } from "zod";
 import { rateLimit } from "express-rate-limit";
 import { getKeywordVolume, isConfigured as isNaverAdConfigured, type KeywordVolumeResult } from "./naver-ad-api";
@@ -358,6 +360,59 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Search stats error:", error);
       res.status(500).json({ message: "검색 통계 조회에 실패했습니다." });
+    }
+  });
+
+  // 활성화된 팝업 조회 API (사용자용)
+  app.get("/api/popups/active", async (req: any, res) => {
+    try {
+      const { targetPage } = req.query;
+      const now = new Date();
+
+      const conditions = [
+        eq(popups.isActive, true),
+        lte(popups.startDate, now),
+        gte(popups.endDate, now),
+      ];
+
+      if (targetPage && targetPage !== "all") {
+        conditions.push(
+          eq(popups.targetPage, targetPage as string)
+        );
+      }
+
+      const activePopups = await db
+        .select()
+        .from(popups)
+        .where(and(...conditions))
+        .orderBy(desc(popups.priority), desc(popups.createdAt));
+
+      // targetPage가 특정 값인 경우 "all" 타겟 팝업도 포함
+      if (targetPage && targetPage !== "all") {
+        const allTargetPopups = await db
+          .select()
+          .from(popups)
+          .where(and(
+            eq(popups.isActive, true),
+            lte(popups.startDate, now),
+            gte(popups.endDate, now),
+            eq(popups.targetPage, "all")
+          ))
+          .orderBy(desc(popups.priority), desc(popups.createdAt));
+
+        // 두 결과 합치고 priority 순으로 정렬
+        const combined = [...activePopups, ...allTargetPopups].sort((a, b) => {
+          if (b.priority !== a.priority) return b.priority - a.priority;
+          return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
+        });
+
+        return res.json(combined);
+      }
+
+      res.json(activePopups);
+    } catch (error) {
+      console.error("Active popups error:", error);
+      res.status(500).json({ message: "팝업 조회에 실패했습니다." });
     }
   });
 
