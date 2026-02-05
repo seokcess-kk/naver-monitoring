@@ -130,27 +130,31 @@ export function PopupModal() {
   const [visiblePopups, setVisiblePopups] = useState<Popup[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   
+  const pageKey = getPageKey(location, isAuthenticated);
+  
   const { data: activePopups } = useQuery<Popup[]>({
-    queryKey: ["/api/popups/active"],
+    queryKey: ["/api/popups/active", pageKey],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/popups/active");
+      const url = pageKey && pageKey !== "auth" && pageKey !== "none"
+        ? `/api/popups/active?targetPage=${encodeURIComponent(pageKey)}`
+        : "/api/popups/active";
+      const res = await apiRequest("GET", url);
       return res.json();
     },
+    enabled: pageKey !== "auth" && pageKey !== "none",
     refetchOnWindowFocus: false,
     staleTime: 1000 * 60 * 5,
   });
   
   useEffect(() => {
-    if (!activePopups?.length) {
+    // 인증 페이지에서는 모든 팝업 차단
+    if (pageKey === "auth" || pageKey === "none") {
       setVisiblePopups([]);
       setIsOpen(false);
       return;
     }
     
-    const pageKey = getPageKey(location, isAuthenticated);
-    
-    // 인증 페이지에서는 모든 팝업 차단
-    if (pageKey === "auth" || pageKey === "none") {
+    if (!activePopups?.length) {
       setVisiblePopups([]);
       setIsOpen(false);
       return;
@@ -172,7 +176,7 @@ export function PopupModal() {
     setVisiblePopups(filtered);
     setCurrentPopupIndex(0);
     setIsOpen(filtered.length > 0);
-  }, [activePopups, location, isAuthenticated]);
+  }, [activePopups, pageKey]);
   
   const currentPopup = visiblePopups[currentPopupIndex];
   
