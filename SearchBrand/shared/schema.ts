@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, index, boolean, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -461,3 +461,42 @@ export type UpdateFeedback = z.infer<typeof updateFeedbackSchema>;
 export type Feedback = typeof feedback.$inferSelect;
 export type FeedbackCategory = "feature" | "inquiry" | "bug";
 export type FeedbackStatus = "pending" | "in_progress" | "resolved";
+
+// 팝업 관리 테이블
+export const popups = pgTable("popups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title", { length: 200 }).notNull(),
+  content: text("content").notNull(),
+  imageUrl: text("image_url"),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  targetPage: varchar("target_page", { length: 50 }).default("all").notNull(), // 'all' | 'landing' | 'dashboard' | 'place-review'
+  priority: integer("priority").default(0).notNull(),
+  showDontShowToday: boolean("show_dont_show_today").default(true).notNull(),
+  showNeverShow: boolean("show_never_show").default(false).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_popups_is_active").on(table.isActive),
+  index("idx_popups_start_date").on(table.startDate),
+  index("idx_popups_end_date").on(table.endDate),
+  index("idx_popups_target_page").on(table.targetPage),
+]);
+
+export const insertPopupSchema = createInsertSchema(popups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updatePopupSchema = createInsertSchema(popups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).partial();
+
+export type InsertPopup = z.infer<typeof insertPopupSchema>;
+export type UpdatePopup = z.infer<typeof updatePopupSchema>;
+export type Popup = typeof popups.$inferSelect;
+export type PopupTargetPage = "all" | "landing" | "dashboard" | "place-review";
