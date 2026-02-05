@@ -14,6 +14,7 @@ import AdminPage from "@/pages/admin";
 import PlaceReviewPage from "@/pages/place-review";
 import NotFound from "@/pages/not-found";
 import { FeedbackButton } from "@/components/FeedbackButton";
+import { PopupModal } from "@/components/popup-modal";
 
 function Router() {
   const { user, isLoading, isAuthenticated } = useAuth();
@@ -56,6 +57,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        <PopupModal />
         <FeedbackButton />
       </TooltipProvider>
     </QueryClientProvider>
