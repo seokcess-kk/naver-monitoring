@@ -136,6 +136,13 @@ export function PopupModal() {
     
     const pageKey = getPageKey(location, isAuthenticated);
     
+    // 인증 페이지에서는 모든 팝업 차단
+    if (pageKey === "auth" || pageKey === "none") {
+      setVisiblePopups([]);
+      setIsOpen(false);
+      return;
+    }
+    
     const filtered = activePopups.filter((popup) => {
       if (isPopupDismissed(popup.id)) {
         return false;
