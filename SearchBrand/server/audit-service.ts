@@ -15,7 +15,10 @@ export type AuditAction =
   | "user_solution_revoke"
   | "search_log_delete"
   | "update_place_name"
-  | "sync_place_names";
+  | "sync_place_names"
+  | "popup.create"
+  | "popup.update"
+  | "popup.delete";
 
 export type AuditTargetType = 
   | "user"
@@ -24,7 +27,8 @@ export type AuditTargetType =
   | "user_solution"
   | "search_log"
   | "place_review_job"
-  | "place_review_jobs";
+  | "place_review_jobs"
+  | "popup";
 
 interface LogAuditParams {
   adminId: string;

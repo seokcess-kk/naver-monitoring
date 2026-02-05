@@ -11,8 +11,11 @@ import {
   placeReviews,
   apiUsageLogs,
   feedback,
+  popups,
   insertSystemApiKeySchema,
   updateSystemApiKeySchema,
+  insertPopupSchema,
+  updatePopupSchema,
   type UserRole,
   type UserStatus,
 } from "@shared/schema";
@@ -1712,6 +1715,147 @@ router.get("/feedback", requireAdmin, async (req: AdminRequest, res: Response) =
   } catch (error) {
     console.error("[Admin] Failed to fetch feedback:", error);
     res.status(500).json({ error: "피드백 조회 실패" });
+  }
+});
+
+// ==================== 팝업 관리 API ====================
+
+// 팝업 목록 조회 (관리자)
+router.get("/popups", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
+    const { isActive } = req.query;
+
+    const conditions: any[] = [];
+    if (isActive !== undefined) {
+      conditions.push(eq(popups.isActive, isActive === "true"));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [popupList, totalResult] = await Promise.all([
+      db.select()
+        .from(popups)
+        .where(whereClause)
+        .orderBy(desc(popups.priority), desc(popups.createdAt))
+        .limit(limit)
+        .offset(offset),
+      db.select({ count: count() }).from(popups).where(whereClause),
+    ]);
+
+    res.json({
+      popups: popupList,
+      total: totalResult[0]?.count || 0,
+      limit,
+      offset,
+    });
+  } catch (error) {
+    console.error("[Admin] Failed to fetch popups:", error);
+    res.status(500).json({ error: "팝업 목록 조회 실패" });
+  }
+});
+
+// 팝업 상세 조회 (관리자)
+router.get("/popups/:id", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const [popup] = await db.select().from(popups).where(eq(popups.id, id));
+
+    if (!popup) {
+      return res.status(404).json({ error: "팝업을 찾을 수 없습니다" });
+    }
+
+    res.json(popup);
+  } catch (error) {
+    console.error("[Admin] Failed to fetch popup:", error);
+    res.status(500).json({ error: "팝업 조회 실패" });
+  }
+});
+
+// 팝업 생성 (관리자)
+router.post("/popups", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const parsed = insertPopupSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "유효하지 않은 입력값", details: parsed.error.errors });
+    }
+
+    const [newPopup] = await db.insert(popups).values(parsed.data).returning();
+
+    await logAudit({
+      adminId: req.user!.id,
+      action: "popup.create",
+      targetType: "popup",
+      targetId: newPopup.id,
+      details: { title: newPopup.title },
+    });
+
+    res.status(201).json(newPopup);
+  } catch (error) {
+    console.error("[Admin] Failed to create popup:", error);
+    res.status(500).json({ error: "팝업 생성 실패" });
+  }
+});
+
+// 팝업 수정 (관리자)
+router.patch("/popups/:id", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const parsed = updatePopupSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "유효하지 않은 입력값", details: parsed.error.errors });
+    }
+
+    const [existingPopup] = await db.select().from(popups).where(eq(popups.id, id));
+    if (!existingPopup) {
+      return res.status(404).json({ error: "팝업을 찾을 수 없습니다" });
+    }
+
+    const [updatedPopup] = await db
+      .update(popups)
+      .set({ ...parsed.data, updatedAt: new Date() })
+      .where(eq(popups.id, id))
+      .returning();
+
+    await logAudit({
+      adminId: req.user!.id,
+      action: "popup.update",
+      targetType: "popup",
+      targetId: id,
+      details: { changes: Object.keys(parsed.data) },
+    });
+
+    res.json(updatedPopup);
+  } catch (error) {
+    console.error("[Admin] Failed to update popup:", error);
+    res.status(500).json({ error: "팝업 수정 실패" });
+  }
+});
+
+// 팝업 삭제 (관리자)
+router.delete("/popups/:id", requireAdmin, async (req: AdminRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const [existingPopup] = await db.select().from(popups).where(eq(popups.id, id));
+    if (!existingPopup) {
+      return res.status(404).json({ error: "팝업을 찾을 수 없습니다" });
+    }
+
+    await db.delete(popups).where(eq(popups.id, id));
+
+    await logAudit({
+      adminId: req.user!.id,
+      action: "popup.delete",
+      targetType: "popup",
+      targetId: id,
+      details: { title: existingPopup.title },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("[Admin] Failed to delete popup:", error);
+    res.status(500).json({ error: "팝업 삭제 실패" });
   }
 });
 
