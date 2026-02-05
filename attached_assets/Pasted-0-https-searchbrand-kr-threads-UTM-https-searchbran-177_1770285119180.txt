@@ -1,0 +1,121 @@
+0) 먼저 정할 것
+
+원하는 리다이렉트 예시:
+
+짧은 링크(노출): https://searchbrand.kr/threads
+
+실제 이동(UTM): https://searchbrand.kr/?utm_source=threads&utm_medium=social&utm_campaign=beta
+
+리다이렉트는 보통 302(캠페인 테스트용) 추천.
+(나중에 바꿀 수 있고 캐시 덜 탐)
+
+1) Node.js + Express인 경우 (가장 흔함)
+
+index.js / server.js에 아래 추가:
+
+import express from "express";
+const app = express();
+
+// ✅ Threads 전용 리다이렉트
+app.get("/threads", (req, res) => {
+  res.redirect(
+    302,
+    "https://searchbrand.kr/?utm_source=threads&utm_medium=social&utm_campaign=beta"
+  );
+});
+
+// 기존 라우트들...
+app.get("/", (req, res) => {
+  res.send("OK");
+});
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log("Server running on", port));
+
+
+포인트
+
+app.get("/threads", ...)가 상단에 있을수록 안전
+
+SPA(리액트) 서빙 전에 먼저 잡히게
+
+2) Next.js인 경우
+A) 가장 깔끔한 방법: next.config.js에 redirects 추가
+
+next.config.js:
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  async redirects() {
+    return [
+      {
+        source: "/threads",
+        destination:
+          "https://searchbrand.kr/?utm_source=threads&utm_medium=social&utm_campaign=beta",
+        permanent: false, // false = 307 (임시). 302 원하면 서버에서 처리도 가능
+      },
+    ];
+  },
+};
+
+module.exports = nextConfig;
+
+
+Next는 permanent:false가 기본적으로 307을 쓰는 편이라,
+302를 꼭 고집할 이유는 거의 없고 캠페인엔 307도 무방해.
+
+B) 302를 꼭 원하면: API route에서 리다이렉트
+
+pages/threads.js (Pages Router) 또는 app/threads/page.tsx에서 서버 리다이렉트 처리 가능.
+
+3) Python Flask인 경우
+
+main.py에 추가:
+
+from flask import Flask, redirect
+
+app = Flask(__name__)
+
+@app.route("/threads")
+def threads():
+    return redirect("https://searchbrand.kr/?utm_source=threads&utm_medium=social&utm_campaign=beta", code=302)
+
+@app.route("/")
+def home():
+    return "OK"
+
+4) 정적 사이트(React/Vite)라 서버 라우트가 없는 경우
+
+정적 호스팅이면 서버에서 리다이렉트 못 하니까 2가지 중 하나로:
+
+방법 A: Replit에서 “서버를 하나” 붙인다
+
+가장 쉬운 방식은 Express를 얇게 붙여서 정적 파일을 서빙하면서 /threads만 리다이렉트.
+
+방법 B: Cloudflare Redirect Rules 사용
+
+도메인이 Cloudflare면 서버 없이도 /threads → UTM 리다이렉트 가능.
+
+Replit에서 작업 순서(실전 체크리스트)
+
+Replit에서 프로젝트가 Node/Next/Flask 중 뭔지 확인
+
+package.json 있으면 Node/Next
+
+requirements.txt 있으면 Flask 등 Python
+
+위 코드로 /threads 라우트 추가
+
+Replit에서 Run → 배포
+
+브라우저에서 테스트
+
+https://너의replit주소/threads 접속 → UTM 붙은 주소로 이동하면 성공
+
+추천 UTM 예시 (Threads 전용)
+
+이걸 기본으로 쓰면 분석하기 쉬워:
+
+?utm_source=threads&utm_medium=social&utm_campaign=beta&utm_content=adsetA
+
+나중에 광고 소재별로 utm_content만 바꾸면 됨.
