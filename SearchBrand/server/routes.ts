@@ -97,6 +97,11 @@ export async function registerRoutes(
     res.redirect(302, `${THREADS_UTM_BASE}&utm_content=light`);
   });
 
+  // iBoss 커뮤니티 리다이렉트
+  app.get("/iboss", (_req, res) => {
+    res.redirect(302, "/?utm_source=iboss&utm_medium=community&utm_campaign=260205_traffic&utm_term=all&utm_content=guide");
+  });
+
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
