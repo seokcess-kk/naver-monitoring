@@ -296,7 +296,7 @@ export async function startPlaceReviewWorker(): Promise<Worker | null> {
 
   worker = new Worker(QUEUE_NAME, processPlaceReviewJob, {
     connection: getRedisConfig(),
-    concurrency: 2,
+    concurrency: 5,
   });
 
   worker.on("completed", (job) => {

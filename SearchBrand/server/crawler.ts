@@ -18,7 +18,7 @@ interface SmartBlockSection {
   posts: SmartBlockPost[];
 }
 
-const crawlLimit = pLimit(2);
+const crawlLimit = pLimit(10);
 
 const crawlCache = new LRUCache<string, SmartBlockSection[]>({
   max: 200,
