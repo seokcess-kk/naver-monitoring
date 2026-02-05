@@ -31,23 +31,26 @@ function Router() {
   }
 
   return (
-    <Switch>
-      <Route path="/">
-        {isAuthenticated ? <PlaceReviewPage /> : <LandingPage />}
-      </Route>
-      <Route path="/profile">
-        {isAuthenticated ? <ProfilePage /> : <AuthPage />}
-      </Route>
-      <Route path="/auth" component={AuthPage} />
-      <Route path="/login" component={AuthPage} />
-      <Route path="/reset-password" component={ResetPasswordPage} />
-      <Route path="/complete-signup" component={CompleteSignupPage} />
-      <Route path="/admin" component={AdminPage} />
-      <Route path="/search">
-        {isAuthenticated ? <Dashboard /> : <AuthPage />}
-      </Route>
-      <Route component={NotFound} />
-    </Switch>
+    <>
+      <Switch>
+        <Route path="/">
+          {isAuthenticated ? <PlaceReviewPage /> : <LandingPage />}
+        </Route>
+        <Route path="/profile">
+          {isAuthenticated ? <ProfilePage /> : <AuthPage />}
+        </Route>
+        <Route path="/auth" component={AuthPage} />
+        <Route path="/login" component={AuthPage} />
+        <Route path="/reset-password" component={ResetPasswordPage} />
+        <Route path="/complete-signup" component={CompleteSignupPage} />
+        <Route path="/admin" component={AdminPage} />
+        <Route path="/search">
+          {isAuthenticated ? <Dashboard /> : <AuthPage />}
+        </Route>
+        <Route component={NotFound} />
+      </Switch>
+      <PopupModal />
+    </>
   );
 }
 
@@ -57,7 +60,6 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
-        <PopupModal />
         <FeedbackButton />
       </TooltipProvider>
     </QueryClientProvider>
