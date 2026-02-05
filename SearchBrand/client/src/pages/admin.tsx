@@ -21,6 +21,7 @@ import {
   DataQualityTab,
   SystemStatusTab,
   FeedbackTab,
+  PopupsTab,
   AdminSidebar,
   DEFAULT_TAB,
   type AdminStats,
@@ -133,6 +134,7 @@ export default function AdminPage() {
               <TabsContent value="data-quality" className="mt-0"><DataQualityTab /></TabsContent>
               <TabsContent value="system" className="mt-0"><SystemStatusTab /></TabsContent>
               <TabsContent value="feedback" className="mt-0"><FeedbackTab /></TabsContent>
+              <TabsContent value="popups" className="mt-0"><PopupsTab /></TabsContent>
             </div>
           </main>
         </Tabs>
