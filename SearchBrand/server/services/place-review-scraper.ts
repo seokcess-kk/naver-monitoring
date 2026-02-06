@@ -427,6 +427,10 @@ function filterReviews(
   let filtered = [...reviews];
 
   if (mode === "DATE" && startDate) {
+    if (isNaN(startDate.getTime())) {
+      console.error(`[PlaceReviewScraper] Invalid startDate: ${startDate}`);
+      return [];
+    }
     const normalizedStartDate = normalizeToLocalDate(startDate);
     const beforeCount = filtered.length;
     
@@ -439,13 +443,19 @@ function filterReviews(
   }
 
   if (mode === "DATE_RANGE" && startDate && endDate) {
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      console.error(`[PlaceReviewScraper] Invalid date range: startDate=${startDate}, endDate=${endDate}`);
+      return [];
+    }
     const normalizedStartDate = normalizeToLocalDate(startDate);
-    const normalizedEndDate = normalizeToLocalDate(endDate);
+    const normalizedEndDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999);
+    const beforeCount = filtered.length;
     filtered = filtered.filter((r) => {
       if (r.date === null) return false;
       return r.date.getTime() >= normalizedStartDate.getTime() && 
              r.date.getTime() <= normalizedEndDate.getTime();
     });
+    console.log(`[PlaceReviewScraper] DATE_RANGE filter: ${beforeCount} -> ${filtered.length} reviews (${normalizedStartDate.toISOString().split('T')[0]} ~ ${normalizedEndDate.toISOString().split('T')[0]})`);
   }
 
   if (mode === "QTY" && limitQty) {

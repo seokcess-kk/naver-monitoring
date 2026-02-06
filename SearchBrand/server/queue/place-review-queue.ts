@@ -79,12 +79,22 @@ async function processPlaceReviewJob(job: Job<PlaceReviewJobData>): Promise<void
       .set({ statusMessage: "네이버 플레이스 페이지 접속 중..." })
       .where(eq(placeReviewJobs.id, jobId));
 
+    const parsedStartDate = startDate ? new Date(startDate + (startDate.includes("T") ? "" : "T00:00:00")) : undefined;
+    const parsedEndDate = endDate ? new Date(endDate + (endDate.includes("T") ? "" : "T00:00:00")) : undefined;
+    
+    if (parsedStartDate && isNaN(parsedStartDate.getTime())) {
+      throw new Error(`잘못된 시작일 형식: ${startDate}`);
+    }
+    if (parsedEndDate && isNaN(parsedEndDate.getTime())) {
+      throw new Error(`잘못된 종료일 형식: ${endDate}`);
+    }
+
     const scrapeResult = await scrapePlaceReviews({
       placeId,
       mode,
       limitQty,
-      startDate: startDate ? new Date(startDate) : undefined,
-      endDate: endDate ? new Date(endDate) : undefined,
+      startDate: parsedStartDate,
+      endDate: parsedEndDate,
       onProgress: async (current, total) => {
         const progress = Math.round((current / total) * 50);
         const statusMessage = `리뷰 수집 중... ${current}/${total}개`;

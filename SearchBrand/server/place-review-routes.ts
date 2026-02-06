@@ -7,6 +7,14 @@ import { addPlaceReviewJob, startPlaceReviewWorker } from "./queue/place-review-
 
 const router = Router();
 
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+function isValidISODate(str: string): boolean {
+  if (!ISO_DATE_REGEX.test(str)) return false;
+  const d = new Date(str + "T00:00:00");
+  return !isNaN(d.getTime());
+}
+
 const createJobSchema = z.object({
   placeId: z.string().min(1).max(50),
   mode: z.enum(["QTY", "DATE", "DATE_RANGE"]).default("QTY"),
@@ -20,9 +28,22 @@ const createJobSchema = z.object({
     if (data.mode === "DATE_RANGE" && (!data.startDate || !data.endDate)) return false;
     return true;
   },
-  {
-    message: "모드에 맞는 필수 파라미터를 입력해주세요",
-  }
+  { message: "모드에 맞는 필수 파라미터를 입력해주세요" }
+).refine(
+  (data) => {
+    if (data.startDate && !isValidISODate(data.startDate)) return false;
+    if (data.endDate && !isValidISODate(data.endDate)) return false;
+    return true;
+  },
+  { message: "날짜 형식이 올바르지 않습니다 (YYYY-MM-DD)" }
+).refine(
+  (data) => {
+    if (data.mode === "DATE_RANGE" && data.startDate && data.endDate) {
+      return data.startDate <= data.endDate;
+    }
+    return true;
+  },
+  { message: "시작일이 종료일보다 이후일 수 없습니다" }
 );
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -42,8 +63,8 @@ router.post("/jobs", requireAuth, async (req: Request, res: Response) => {
       placeId: parsed.placeId,
       mode: parsed.mode,
       limitQty: parsed.limitQty ? String(parsed.limitQty) : null,
-      startDate: parsed.startDate ? new Date(parsed.startDate) : null,
-      endDate: parsed.endDate ? new Date(parsed.endDate) : null,
+      startDate: parsed.startDate ? new Date(parsed.startDate + "T00:00:00") : null,
+      endDate: parsed.endDate ? new Date(parsed.endDate + "T00:00:00") : null,
       status: "queued",
     }).returning();
 
